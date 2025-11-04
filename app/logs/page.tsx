@@ -67,7 +67,7 @@ export default function LogsPage() {
       const { data, error } = await supabase
         .from("calls")
         .select("*")
-        .eq("business_id", businessId)
+        .eq("business_id", businessId!)
         .order("started_at", { ascending: false })
         .limit(500);
 

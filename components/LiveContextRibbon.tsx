@@ -41,14 +41,14 @@ export default function LiveContextRibbon({ businessId }: LiveContextRibbonProps
       const { count: activeCount } = await supabase
         .from("calls")
         .select("*", { count: "exact", head: true })
-        .eq("business_id", effectiveBusinessId)
+        .eq("business_id", effectiveBusinessId!)
         .eq("status", "active");
 
       // Today's bookings
       const { data: todayCalls } = await supabase
         .from("calls")
         .select("schedule, success")
-        .eq("business_id", effectiveBusinessId)
+        .eq("business_id", effectiveBusinessId!)
         .gte("started_at", today.toISOString());
 
       const bookings = todayCalls?.filter(c => c.schedule !== null).length || 0;

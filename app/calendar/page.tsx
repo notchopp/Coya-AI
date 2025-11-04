@@ -46,7 +46,7 @@ export default function CalendarPage() {
       const { data, error } = await supabase
         .from("calls")
         .select("id,started_at,patient_name,last_summary,schedule")
-        .eq("business_id", businessId)
+        .eq("business_id", businessId!)
         .not("schedule", "is", null)
         .order("started_at", { ascending: false })
         .limit(500);

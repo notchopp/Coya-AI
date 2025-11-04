@@ -193,7 +193,7 @@ export default function Dashboard() {
       const { data: allCallsData, error: callsError } = await supabase
         .from("calls")
         .select("id, started_at, ended_at, status, schedule, success, last_intent, patient_name")
-        .eq("business_id", businessId)
+        .eq("business_id", businessId!)
         .order("started_at", { ascending: false })
         .limit(1000);
 
