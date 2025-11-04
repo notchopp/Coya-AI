@@ -35,6 +35,12 @@ type DashboardCall = {
   patient_name: string | null;
 };
 
+type BusinessData = {
+  name: string | null;
+  vertical: string | null;
+  services: string | null;
+};
+
 type PerformanceMetrics = {
   totalCallsHandled: number;
   bookingsThisWeek: number;
@@ -567,11 +573,13 @@ export default function Dashboard() {
     const supabase = getSupabaseClient();
     
     // Get business info for context
-    const { data: businessData } = await supabase
+    const { data: businessDataRaw } = await supabase
       .from("businesses")
       .select("name, vertical, services")
       .eq("id", businessId)
       .maybeSingle();
+    
+    const businessData = businessDataRaw as BusinessData | null;
 
     // Calculate various metrics for fun facts
     const totalCalls = calls.length;
