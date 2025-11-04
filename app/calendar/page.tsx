@@ -61,10 +61,10 @@ export default function CalendarPage() {
 
       console.log("✅ Loaded calls with schedule:", data?.length);
       if (data && data.length > 0) {
-        console.log("Sample schedule structure:", data[0]?.schedule);
+        console.log("Sample schedule structure:", (data[0] as Call)?.schedule);
       }
 
-      setCalls(data ?? []);
+      setCalls((data as Call[]) ?? []);
       setLoading(false);
     }
 
