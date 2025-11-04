@@ -239,18 +239,20 @@ export default function SettingsPage() {
     // Try updating by user id first (more reliable with RLS)
     let result;
     
+    const updatePayload = { full_name: userName.trim() };
+    
     if (userId) {
-      result = await supabase
+      result = await (supabase
         .from("users")
-        .update({ full_name: userName.trim() } as { full_name: string })
+        .update(updatePayload as any)
         .eq("id", userId)
-        .select();
+        .select() as any);
     } else if (authUserId) {
-      result = await supabase
+      result = await (supabase
         .from("users")
-        .update({ full_name: userName.trim() } as { full_name: string })
+        .update(updatePayload as any)
         .eq("auth_user_id", authUserId)
-        .select();
+        .select() as any);
     } else {
       setUserNameSaveStatus("error");
       setSavingUserName(false);
