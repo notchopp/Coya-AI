@@ -237,14 +237,18 @@ export default function SettingsPage() {
     console.log("🔄 Saving user name:", userName.trim(), "for auth_user_id:", authUserId, "user_id:", userId);
 
     // Try updating by user id first (more reliable with RLS)
-    let updateQuery = supabase
-      .from("users")
-      .update({ full_name: userName.trim() });
+    let updateQuery: ReturnType<typeof supabase.from> | null = null;
 
     if (userId) {
-      updateQuery = updateQuery.eq("id", userId);
+      updateQuery = supabase
+        .from("users")
+        .update({ full_name: userName.trim() })
+        .eq("id", userId);
     } else if (authUserId) {
-      updateQuery = updateQuery.eq("auth_user_id", authUserId);
+      updateQuery = supabase
+        .from("users")
+        .update({ full_name: userName.trim() })
+        .eq("auth_user_id", authUserId);
     } else {
       setUserNameSaveStatus("error");
       setSavingUserName(false);
