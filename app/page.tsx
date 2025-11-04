@@ -95,8 +95,8 @@ export default function Dashboard() {
           .eq("auth_user_id", authUserId)
           .maybeSingle();
         
-        if (userData?.full_name) {
-          setUserName(userData.full_name);
+        if (userData && (userData as { full_name: string }).full_name) {
+          setUserName((userData as { full_name: string }).full_name);
         }
       }
     }
