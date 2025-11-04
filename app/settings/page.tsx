@@ -332,18 +332,20 @@ export default function SettingsPage() {
       });
     const staffJson = staffParsed.length > 0 ? staffParsed : null;
     
-    const { error } = await supabase
+    const updatePayload: any = {
+      name: formData.name.trim(),
+      vertical: formData.vertical.trim(),
+      services: formData.services.map(s => s.trim()).filter(Boolean),
+      address: formData.address.trim() || null,
+      hours: hoursJson,
+      staff: staffJson,
+      faqs: formData.faqs.length > 0 ? formData.faqs : null,
+      promos: formData.promos.length > 0 ? formData.promos : null,
+    };
+    
+    const { error } = await (supabase as any)
       .from("businesses")
-      .update({
-        name: formData.name.trim(),
-        vertical: formData.vertical.trim(),
-        services: formData.services.map(s => s.trim()).filter(Boolean),
-        address: formData.address.trim() || null,
-        hours: hoursJson,
-        staff: staffJson,
-        faqs: formData.faqs.length > 0 ? formData.faqs : null,
-        promos: formData.promos.length > 0 ? formData.promos : null,
-      })
+      .update(updatePayload)
       .eq("id", businessId);
 
     if (error) {
