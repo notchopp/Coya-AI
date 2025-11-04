@@ -237,20 +237,18 @@ export default function SettingsPage() {
     console.log("🔄 Saving user name:", userName.trim(), "for auth_user_id:", authUserId, "user_id:", userId);
 
     // Try updating by user id first (more reliable with RLS)
-    let result: any;
-    
-    const updatePayload: any = { full_name: userName.trim() };
+    let result;
     
     if (userId) {
-      result = await (supabase as any)
+      result = await supabase
         .from("users")
-        .update(updatePayload)
+        .update({ full_name: userName.trim() })
         .eq("id", userId)
         .select();
     } else if (authUserId) {
-      result = await (supabase as any)
+      result = await supabase
         .from("users")
-        .update(updatePayload)
+        .update({ full_name: userName.trim() })
         .eq("auth_user_id", authUserId)
         .select();
     } else {
@@ -332,20 +330,18 @@ export default function SettingsPage() {
       });
     const staffJson = staffParsed.length > 0 ? staffParsed : null;
     
-    const updatePayload: any = {
-      name: formData.name.trim(),
-      vertical: formData.vertical.trim(),
-      services: formData.services.map(s => s.trim()).filter(Boolean),
-      address: formData.address.trim() || null,
-      hours: hoursJson,
-      staff: staffJson,
-      faqs: formData.faqs.length > 0 ? formData.faqs : null,
-      promos: formData.promos.length > 0 ? formData.promos : null,
-    };
-    
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("businesses")
-      .update(updatePayload)
+      .update({
+        name: formData.name.trim(),
+        vertical: formData.vertical.trim(),
+        services: formData.services.map(s => s.trim()).filter(Boolean),
+        address: formData.address.trim() || null,
+        hours: hoursJson,
+        staff: staffJson,
+        faqs: formData.faqs.length > 0 ? formData.faqs : null,
+        promos: formData.promos.length > 0 ? formData.promos : null,
+      })
       .eq("id", businessId);
 
     if (error) {
