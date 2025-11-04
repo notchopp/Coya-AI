@@ -113,7 +113,7 @@ export interface Database {
           last_summary: string | null
           last_intent: string | null
           success: boolean | null
-          started_at: string | null
+          started_at: string
           ended_at: string | null
           transcript: string | null
           escalate: boolean | null
@@ -136,7 +136,7 @@ export interface Database {
           last_summary?: string | null
           last_intent?: string | null
           success?: boolean | null
-          started_at?: string | null
+          started_at?: string
           ended_at?: string | null
           transcript?: string | null
           escalate?: boolean | null
@@ -159,7 +159,7 @@ export interface Database {
           last_summary?: string | null
           last_intent?: string | null
           success?: boolean | null
-          started_at?: string | null
+          started_at?: string
           ended_at?: string | null
           transcript?: string | null
           escalate?: boolean | null
