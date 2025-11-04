@@ -41,6 +41,10 @@ type BusinessData = {
   services: string | null;
 };
 
+type UserData = {
+  full_name: string | null;
+};
+
 type PerformanceMetrics = {
   totalCallsHandled: number;
   bookingsThisWeek: number;
@@ -106,14 +110,16 @@ export default function Dashboard() {
       const authUserId = (await supabase.auth.getUser()).data.user?.id;
       
       if (authUserId) {
-        const { data: userData } = await supabase
+        const { data: userDataRaw } = await supabase
           .from("users")
           .select("full_name")
           .eq("auth_user_id", authUserId)
           .maybeSingle();
         
-        if (userData && (userData as { full_name: string }).full_name) {
-          setUserName((userData as { full_name: string }).full_name);
+        const userData = userDataRaw as UserData | null;
+        
+        if (userData && userData.full_name) {
+          setUserName(userData.full_name);
         }
       }
     }
