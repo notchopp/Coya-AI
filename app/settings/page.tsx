@@ -105,14 +105,19 @@ export default function SettingsPage() {
       if (authUserId) {
         const { data: userDataRaw } = await supabase
           .from("users")
-          .select("full_name")
+          .select("id, full_name")
           .eq("auth_user_id", authUserId)
           .maybeSingle();
         
-        const userData = userDataRaw as { full_name: string | null } | null;
+        const userData = userDataRaw as { id: string; full_name: string | null } | null;
         
         if (userData && userData.full_name) {
           setUserName(userData.full_name);
+        }
+        
+        // Store user id for updates
+        if (userData && userData.id) {
+          sessionStorage.setItem("user_id", userData.id);
         }
       }
     }
@@ -219,22 +224,34 @@ export default function SettingsPage() {
 
     const supabase = getSupabaseClient();
     const authUserId = (await supabase.auth.getUser()).data.user?.id;
+    const userId = sessionStorage.getItem("user_id");
 
-    if (!authUserId) {
-      console.error("❌ No auth_user_id found");
+    if (!authUserId && !userId) {
+      console.error("❌ No auth_user_id or user_id found");
       setUserNameSaveStatus("error");
       setSavingUserName(false);
       setTimeout(() => setUserNameSaveStatus("idle"), 3000);
       return;
     }
 
-    console.log("🔄 Saving user name:", userName.trim(), "for auth_user_id:", authUserId);
+    console.log("🔄 Saving user name:", userName.trim(), "for auth_user_id:", authUserId, "user_id:", userId);
 
-    const { data, error } = await supabase
+    // Try updating by user id first (more reliable with RLS)
+    let updateQuery = supabase
       .from("users")
-      .update({ full_name: userName.trim() })
-      .eq("auth_user_id", authUserId)
-      .select();
+      .update({ full_name: userName.trim() });
+
+    if (userId) {
+      updateQuery = updateQuery.eq("id", userId);
+    } else if (authUserId) {
+      updateQuery = updateQuery.eq("auth_user_id", authUserId);
+    } else {
+      setUserNameSaveStatus("error");
+      setSavingUserName(false);
+      return;
+    }
+
+    const { data, error } = await updateQuery.select();
 
     if (error) {
       console.error("❌ Error saving user name:", error);
@@ -242,6 +259,7 @@ export default function SettingsPage() {
       setUserNameSaveStatus("error");
     } else if (!data || data.length === 0) {
       console.error("❌ No rows updated - user might not exist or RLS blocked update");
+      console.error("💡 Tip: Check your RLS policies allow users to update their own record");
       setUserNameSaveStatus("error");
     } else {
       console.log("✅ User name saved successfully:", data);
