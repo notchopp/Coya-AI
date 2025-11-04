@@ -373,6 +373,9 @@ export default function SettingsPage() {
         <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-4xl font-bold text-white">Settings</h1>
+              {business?.name && (
+                <span className="text-xl font-medium text-white/60">for {business.name}</span>
+              )}
               <span className="beta-badge">Beta</span>
             </div>
         </div>
