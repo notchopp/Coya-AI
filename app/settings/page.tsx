@@ -242,13 +242,13 @@ export default function SettingsPage() {
     if (userId) {
       result = await supabase
         .from("users")
-        .update({ full_name: userName.trim() })
+        .update({ full_name: userName.trim() } as { full_name: string })
         .eq("id", userId)
         .select();
     } else if (authUserId) {
       result = await supabase
         .from("users")
-        .update({ full_name: userName.trim() })
+        .update({ full_name: userName.trim() } as { full_name: string })
         .eq("auth_user_id", authUserId)
         .select();
     } else {
