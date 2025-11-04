@@ -154,6 +154,19 @@ export default function Dashboard() {
     }
 
     loadUserData();
+
+    // Listen for user name updates from settings page
+    const handleUserNameUpdate = (event: CustomEvent) => {
+      if (event.detail?.full_name) {
+        setUserName(event.detail.full_name);
+      }
+    };
+
+    window.addEventListener("userNameUpdated", handleUserNameUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener("userNameUpdated", handleUserNameUpdate as EventListener);
+    };
   }, [mounted]);
 
   useEffect(() => {

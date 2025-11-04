@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X } from "lucide-react";
+import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User } from "lucide-react";
 
 type Business = {
   id: string;
@@ -55,7 +55,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"info" | "hours" | "content">("info");
+  const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content">("profile");
+  const [userName, setUserName] = useState<string>("");
+  const [savingUserName, setSavingUserName] = useState(false);
+  const [userNameSaveStatus, setUserNameSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [formData, setFormData] = useState({
     name: "",
     vertical: "",
@@ -91,6 +94,31 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    async function loadUserData() {
+      const supabase = getSupabaseClient();
+      const authUserId = (await supabase.auth.getUser()).data.user?.id;
+      
+      if (authUserId) {
+        const { data: userDataRaw } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("auth_user_id", authUserId)
+          .maybeSingle();
+        
+        const userData = userDataRaw as { full_name: string | null } | null;
+        
+        if (userData && userData.full_name) {
+          setUserName(userData.full_name);
+        }
+      }
+    }
+
+    loadUserData();
+  }, [mounted]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -184,6 +212,43 @@ export default function SettingsPage() {
 
     loadBusiness();
   }, [mounted]);
+
+  async function handleSaveUserName() {
+    setSavingUserName(true);
+    setUserNameSaveStatus("idle");
+
+    const supabase = getSupabaseClient();
+    const authUserId = (await supabase.auth.getUser()).data.user?.id;
+
+    if (!authUserId) {
+      setUserNameSaveStatus("error");
+      setSavingUserName(false);
+      setTimeout(() => setUserNameSaveStatus("idle"), 3000);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("users")
+      .update({ full_name: userName.trim() })
+      .eq("auth_user_id", authUserId);
+
+    if (error) {
+      console.error("❌ Error saving user name:", error);
+      setUserNameSaveStatus("error");
+    } else {
+      console.log("✅ User name saved successfully");
+      setUserNameSaveStatus("success");
+      // Trigger a custom event to notify dashboard to refresh
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("userNameUpdated", { detail: { full_name: userName.trim() } }));
+      }
+    }
+
+    setSavingUserName(false);
+    setTimeout(() => {
+      setUserNameSaveStatus("idle");
+    }, 3000);
+  }
 
   async function handleSave() {
     if (!business) {
@@ -359,6 +424,7 @@ export default function SettingsPage() {
   }
 
   const tabs = [
+    { id: "profile" as const, label: "User Profile", icon: User },
     { id: "info" as const, label: "Business Info", icon: Building2 },
     { id: "hours" as const, label: "Hours & Staff", icon: Clock },
     { id: "content" as const, label: "Content", icon: Tag },
@@ -412,6 +478,90 @@ export default function SettingsPage() {
 
       {/* Tab Content */}
       <AnimatePresence mode="wait">
+        {activeTab === "profile" && (
+          <motion.div
+            key="profile"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* User Profile */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 rounded-2xl glass-strong border border-white/10"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
+                  <User className="h-5 w-5 text-yellow-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">User Profile</h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                    placeholder="Your Full Name"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <AnimatePresence>
+                    {userNameSaveStatus === "success" && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Name saved successfully
+                      </motion.div>
+                    )}
+                    {userNameSaveStatus === "error" && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Failed to save name
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <motion.button
+                    onClick={handleSaveUserName}
+                    disabled={savingUserName}
+                    whileHover={{ scale: savingUserName ? 1 : 1.02 }}
+                    whileTap={{ scale: savingUserName ? 1 : 0.98 }}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingUserName ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Name
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {activeTab === "info" && (
           <motion.div
             key="info"
