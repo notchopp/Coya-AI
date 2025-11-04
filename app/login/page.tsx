@@ -45,11 +45,13 @@ export default function LoginPage() {
           role: string | null;
         };
         
-        const { data: userData, error: userError } = await supabase
+        const { data: userDataRaw, error: userError } = await supabase
           .from("users")
           .select("business_id, is_active, role")
           .eq("auth_user_id", data.user.id)
-          .maybeSingle() as { data: UserData | null; error: any };
+          .maybeSingle();
+        
+        const userData = userDataRaw as UserData | null;
 
         if (userError) {
           console.error("Error fetching user:", userError);
