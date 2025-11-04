@@ -105,6 +105,34 @@ export default function Dashboard() {
   useEffect(() => {
     if (!mounted) return;
 
+    async function loadBusinessName() {
+      const supabase = getSupabaseClient();
+      const businessId = sessionStorage.getItem("business_id");
+      
+      if (businessId) {
+        const { data: businessDataRaw } = await supabase
+          .from("businesses")
+          .select("name")
+          .eq("id", businessId)
+          .maybeSingle();
+        
+        const businessData = businessDataRaw as { name: string | null } | null;
+        
+        if (businessData && businessData.name) {
+          setBusinessName(businessData.name);
+        }
+      }
+    }
+
+    loadBusinessName();
+    // Refresh business name every 30 seconds to catch updates
+    const interval = setInterval(loadBusinessName, 30000);
+    return () => clearInterval(interval);
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     async function loadUserData() {
       const supabase = getSupabaseClient();
       const authUserId = (await supabase.auth.getUser()).data.user?.id;
@@ -720,6 +748,9 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+            {businessName && (
+              <span className="text-xl font-medium text-white/60">— {businessName}</span>
+            )}
             <span className="beta-badge">Beta</span>
           </div>
         </div>
