@@ -7,14 +7,14 @@ import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, Help
 
 type Business = {
   id: string;
-  name: string;
-  vertical: string;
-  services: string[] | null;
+  name: string | null;
+  vertical: string | null;
+  services: string[] | string | null;
   address: string | null;
-  hours: any;
-  staff: any;
-  faqs: any;
-  promos: any;
+  hours: Record<string, string> | null;
+  staff: any[] | null;
+  faqs: FAQ[] | null;
+  promos: Promo[] | null;
 };
 
 type FAQ = {
@@ -131,11 +131,11 @@ export default function SettingsPage() {
         
         // Parse hours from JSON to visual form
         let hoursData: DayHours[] = [];
-        if (data.hours && typeof data.hours === "object") {
+        if (data.hours && typeof data.hours === "object" && data.hours !== null) {
           hoursData = DAYS_OF_WEEK.map((day) => ({
             day,
-            hours: data.hours[day] || "",
-            closed: !data.hours[day] || data.hours[day] === "closed",
+            hours: (data.hours as Record<string, string>)[day] || "",
+            closed: !(data.hours as Record<string, string>)[day] || (data.hours as Record<string, string>)[day] === "closed",
           }));
         } else {
           hoursData = DAYS_OF_WEEK.map((day) => ({
@@ -158,7 +158,7 @@ export default function SettingsPage() {
         setFormData({
           name: data.name || "",
           vertical: data.vertical || "",
-          services: data.services || [],
+          services: Array.isArray(data.services) ? data.services : (typeof data.services === "string" ? data.services.split(",").map(s => s.trim()).filter(Boolean) : []),
           address: data.address || "",
           hours: hoursData,
           staff: staffData,
