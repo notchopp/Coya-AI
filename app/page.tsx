@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>("");
   const [funFact, setFunFact] = useState<string>("");
+  const [businessName, setBusinessName] = useState<string>("");
 
   useEffect(() => {
     setMounted(true);
