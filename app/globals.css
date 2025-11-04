@@ -1,26 +1,225 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent: #eab308;
+  --accent-light: #fde047;
+  --accent-dark: #ca8a04;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Light mode */
+:root.light {
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --accent: #eab308;
+  --accent-light: #fde047;
+  --accent-dark: #ca8a04;
+}
+
+/* Dark mode */
+:root.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent: #eab308;
+  --accent-light: #fde047;
+  --accent-dark: #ca8a04;
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, var(--background) 0%, rgba(234, 179, 8, 0.1) 50%, var(--background) 100%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+body.light {
+  background: linear-gradient(135deg, #fafafa 0%, rgba(234, 179, 8, 0.03) 50%, #fafafa 100%);
+  color: #1a1a1a;
+}
+
+body.dark {
+  background: linear-gradient(135deg, #000000 0%, rgba(234, 179, 8, 0.1) 50%, #000000 100%);
+  color: #ffffff;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but keep functionality */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  display: none;
+}
+
+::-webkit-scrollbar-thumb {
+  display: none;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: none;
+}
+
+/* Glass morphism utility class */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light .glass {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.light .glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* Light mode text colors */
+.light .text-white {
+  color: #1a1a1a;
+}
+
+.light .text-white\/60 {
+  color: rgba(26, 26, 26, 0.6);
+}
+
+.light .text-white\/40 {
+  color: rgba(26, 26, 26, 0.4);
+}
+
+.light .text-white\/90 {
+  color: rgba(26, 26, 26, 0.9);
+}
+
+.light .text-white\/70 {
+  color: rgba(26, 26, 26, 0.7);
+}
+
+.light .text-white\/80 {
+  color: rgba(26, 26, 26, 0.8);
+}
+
+/* Light mode backgrounds */
+.light .bg-black {
+  background-color: #fafafa;
+}
+
+.light .bg-black\/80 {
+  background-color: rgba(250, 250, 250, 0.8);
+}
+
+.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.light .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Light mode borders */
+.light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.light .divide-white\/10 > * {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Light mode select and input elements */
+.light select,
+.light input[type="date"],
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light textarea {
+  color: #1a1a1a !important;
+}
+
+.light select option {
+  color: #1a1a1a;
+  background-color: #ffffff;
+}
+
+.light select:focus,
+.light input:focus {
+  color: #1a1a1a;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: rgba(26, 26, 26, 0.4) !important;
+}
+
+/* Beta badge */
+.beta-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(234, 179, 8, 0.6);
+  opacity: 0.7;
+}
+
+.light .beta-badge {
+  color: rgba(234, 179, 8, 0.8);
+}
+
+/* Animated sparkle */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1) rotate(180deg);
+  }
+}
+
+.sparkle-animate {
+  animation: sparkle 3s ease-in-out infinite;
+}
+
+
