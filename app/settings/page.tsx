@@ -109,7 +109,7 @@ export default function SettingsPage() {
 
       console.log("🔄 Loading business for business_id:", businessId);
 
-      const { data, error } = await supabase
+      const { data: dataRaw, error } = await supabase
         .from("businesses")
         .select("id, name, vertical, services, address, hours, staff, faqs, promos")
         .eq("id", businessId)
@@ -122,6 +122,8 @@ export default function SettingsPage() {
         setLoading(false);
         return;
       }
+
+      const data = dataRaw as Business | null;
 
       if (data) {
         console.log("✅ Loaded business:", data);
