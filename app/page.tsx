@@ -24,6 +24,17 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, startOfMonth, subMonths, subWeeks } from "date-fns";
 
+type DashboardCall = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string | null;
+  schedule: any;
+  success: boolean | null;
+  last_intent: string | null;
+  patient_name: string | null;
+};
+
 type PerformanceMetrics = {
   totalCallsHandled: number;
   bookingsThisWeek: number;
@@ -125,7 +136,7 @@ export default function Dashboard() {
       const lastMonthEnd = monthStart;
 
       // Get all calls for this business
-      const { data: allCalls, error: callsError } = await supabase
+      const { data: allCallsData, error: callsError } = await supabase
         .from("calls")
         .select("id, started_at, ended_at, status, schedule, success, last_intent, patient_name")
         .eq("business_id", businessId)
@@ -137,6 +148,8 @@ export default function Dashboard() {
         setLoading(false);
         return;
       }
+
+      const allCalls = (allCallsData || []) as DashboardCall[];
 
       if (!allCalls || allCalls.length === 0) {
         setLoading(false);
