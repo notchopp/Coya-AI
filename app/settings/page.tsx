@@ -221,22 +221,30 @@ export default function SettingsPage() {
     const authUserId = (await supabase.auth.getUser()).data.user?.id;
 
     if (!authUserId) {
+      console.error("❌ No auth_user_id found");
       setUserNameSaveStatus("error");
       setSavingUserName(false);
       setTimeout(() => setUserNameSaveStatus("idle"), 3000);
       return;
     }
 
-    const { error } = await supabase
+    console.log("🔄 Saving user name:", userName.trim(), "for auth_user_id:", authUserId);
+
+    const { data, error } = await supabase
       .from("users")
       .update({ full_name: userName.trim() })
-      .eq("auth_user_id", authUserId);
+      .eq("auth_user_id", authUserId)
+      .select();
 
     if (error) {
       console.error("❌ Error saving user name:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      setUserNameSaveStatus("error");
+    } else if (!data || data.length === 0) {
+      console.error("❌ No rows updated - user might not exist or RLS blocked update");
       setUserNameSaveStatus("error");
     } else {
-      console.log("✅ User name saved successfully");
+      console.log("✅ User name saved successfully:", data);
       setUserNameSaveStatus("success");
       // Trigger a custom event to notify dashboard to refresh
       if (typeof window !== "undefined") {
