@@ -260,6 +260,13 @@ export default function Dashboard() {
       }
 
       // Calculate performance metrics based on selected period
+      // Total calls in period (all calls, not just ended)
+      const totalCallsInPeriod = allCalls.filter(c => {
+        const callDate = new Date(c.started_at);
+        return callDate >= periodStart && callDate <= periodEnd;
+      }).length;
+      
+      // Ended calls in period (for handled calls metric)
       const periodCalls = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
         return callDate >= periodStart && callDate <= periodEnd && (c.status === "ended" || c.ended_at);
@@ -270,7 +277,7 @@ export default function Dashboard() {
         return callDate >= comparePeriodStart && callDate < comparePeriodEnd && (c.status === "ended" || c.ended_at);
       });
 
-      const totalCallsHandled = periodCalls.length;
+      const totalCallsHandled = totalCallsInPeriod;
       const handledCalls = periodCalls.length;
       const missedCalls = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
