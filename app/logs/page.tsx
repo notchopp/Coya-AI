@@ -437,8 +437,20 @@ export default function LogsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-2 rounded-xl bg-${statusColor}-500/20 border border-${statusColor}-500/30`}>
-                          <Phone className={`h-5 w-5 text-${statusColor}-400`} />
+                        <div className={`p-2 rounded-xl ${
+                          statusColor === "emerald"
+                            ? "bg-emerald-500/20 border border-emerald-500/30"
+                            : statusColor === "yellow"
+                            ? "bg-yellow-500/20 border border-yellow-500/30"
+                            : "bg-white/10 border border-white/10"
+                        }`}>
+                          <Phone className={`h-5 w-5 ${
+                            statusColor === "emerald"
+                              ? "text-emerald-400"
+                              : statusColor === "yellow"
+                              ? "text-yellow-400"
+                              : "text-white/60"
+                          }`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
