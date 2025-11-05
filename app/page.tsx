@@ -350,15 +350,13 @@ export default function Dashboard() {
       const repeatPatients = Object.values(patientCallCounts).filter(count => count > 1).length;
 
       // Conversion rate for current period
-      const periodBookings = periodCalls.filter(c => c.schedule !== null).length;
       const conversionRate = periodCalls.length > 0 
-        ? (periodBookings / periodCalls.length) * 100 
+        ? (bookingsThisPeriod / periodCalls.length) * 100 
         : 0;
 
       // Conversion rate for comparison period
-      const comparePeriodBookings = comparePeriodCalls.filter(c => c.schedule !== null).length;
       const conversionRateLastPeriod = comparePeriodCalls.length > 0
-        ? (comparePeriodBookings / comparePeriodCalls.length) * 100
+        ? (bookingsLastPeriod / comparePeriodCalls.length) * 100
         : 0;
 
       // Time saved (approximation: assume 3 minutes per call handled)
