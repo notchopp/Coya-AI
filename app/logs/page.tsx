@@ -3,7 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { getSupabaseClient } from "@/lib/supabase";
+import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target } from "lucide-react";
+import { format } from "date-fns";
 import { format } from "date-fns";
 
 type Call = {
@@ -36,6 +40,7 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<FilterState>({
     status: null,
     success: null,
@@ -156,6 +161,18 @@ export default function LogsPage() {
 
     return result;
   }, [logs, search, filters]);
+
+  function toggleCard(callId: string) {
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(callId)) {
+        newSet.delete(callId);
+      } else {
+        newSet.add(callId);
+      }
+      return newSet;
+    });
+  }
 
   function exportToCSV() {
     if (filteredLogs.length === 0) {
@@ -394,86 +411,192 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Logs Table */}
-      <div className="rounded-2xl glass-strong border border-white/10 overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-white/40">Loading...</div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="p-8 text-center text-white/40">No calls found</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-white/5 border-b border-white/10">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Patient
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Intent
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Summary
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {filteredLogs.map((log) => (
-                    <motion.tr
-                      key={log.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-white/5 transition-colors"
+      {/* Logs Cards */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="p-8 text-center text-white/40">Loading...</div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="p-8 text-center text-white/40">No calls found</div>
+        ) : (
+          filteredLogs.map((log) => {
+            const isExpanded = expandedCards.has(log.id);
+            const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
+              ? "emerald"
+              : log.status === "active"
+              ? "yellow"
+              : "gray";
+            
+            return (
+              <motion.div
+                key={log.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl glass-strong border border-white/10 overflow-hidden hover:border-white/20 transition-all"
+              >
+                {/* Card Header */}
+                <div 
+                  className="p-6 cursor-pointer"
+                  onClick={() => toggleCard(log.id)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`p-2 rounded-xl bg-${statusColor}-500/20 border border-${statusColor}-500/30`}>
+                          <Phone className={`h-5 w-5 text-${statusColor}-400`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-lg font-bold text-white truncate">
+                              {log.patient_name || "Unknown Caller"}
+                            </h3>
+                            {log.success !== null && (
+                              <span className={`${log.success ? "text-emerald-400" : "text-red-400"}`}>
+                                {log.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-white/60">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(log.started_at), "MMM d, h:mm a")}
+                            </div>
+                            {log.phone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {log.phone}
+                              </div>
+                            )}
+                            {log.last_intent && (
+                              <div className="flex items-center gap-1">
+                                <Target className="h-3 w-3" />
+                                <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs border border-yellow-500/30">
+                                  {log.last_intent}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Status Badge */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            statusColor === "emerald"
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              : statusColor === "yellow"
+                              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                              : "bg-white/10 text-white/60 border border-white/10"
+                          }`}
+                        >
+                          {log.status ?? "unknown"}
+                        </span>
+                      </div>
+                      
+                      {/* Summary Preview */}
+                      {log.last_summary && (
+                        <p className="text-sm text-white/70 line-clamp-2 mt-3">
+                          {log.last_summary}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Expand Button */}
+                    <button className="p-2 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0">
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-white/60" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-white/60" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Expanded Content */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-t border-white/10 overflow-hidden"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {format(new Date(log.started_at), "MMM d, h:mm a")}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white/90">
-                        {log.patient_name ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">
-                        {log.phone ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              log.status === "ended" || (log.status !== "active" && log.ended_at)
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                : log.status === "active"
-                                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                                : "bg-white/10 text-white/60 border border-white/10"
-                            }`}
-                          >
-                            {log.status ?? "unknown"}
-                          </span>
-                          {log.success !== null && (
-                            <span className={`text-xs ${log.success ? "text-emerald-400" : "text-red-400"}`}>
-                              {log.success ? "✓" : "✗"}
-                            </span>
+                      <div className="p-6 space-y-4">
+                        {/* Contact Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {log.phone && (
+                            <div className="flex items-start gap-3">
+                              <Phone className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-white/60 mb-1">Phone</div>
+                                <div className="text-sm text-white">{log.phone}</div>
+                              </div>
+                            </div>
+                          )}
+                          {log.email && (
+                            <div className="flex items-start gap-3">
+                              <Mail className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-white/60 mb-1">Email</div>
+                                <div className="text-sm text-white">{log.email}</div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-start gap-3">
+                            <Clock className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
+                            <div>
+                              <div className="text-xs text-white/60 mb-1">Started</div>
+                              <div className="text-sm text-white">{format(new Date(log.started_at), "MMM d, yyyy 'at' h:mm a")}</div>
+                            </div>
+                          </div>
+                          {log.ended_at && (
+                            <div className="flex items-start gap-3">
+                              <Clock className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
+                              <div>
+                                <div className="text-xs text-white/60 mb-1">Ended</div>
+                                <div className="text-sm text-white">{format(new Date(log.ended_at), "MMM d, yyyy 'at' h:mm a")}</div>
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">
-                        {log.last_intent ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-white/70 max-w-md truncate">
-                        {log.last_summary ?? "—"}
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        
+                        {/* Full Summary */}
+                        {log.last_summary && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4 text-white/60" />
+                              <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Summary</div>
+                            </div>
+                            <p className="text-sm text-white/80 leading-relaxed">{log.last_summary}</p>
+                          </div>
+                        )}
+                        
+                        {/* Transcript */}
+                        {log.transcript && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4 text-white/60" />
+                              <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
+                            </div>
+                            <div className="p-4 rounded-xl glass border border-white/10">
+                              <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{log.transcript}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Call ID */}
+                        <div className="pt-2 border-t border-white/10">
+                          <div className="text-xs text-white/40">Call ID: {log.call_id}</div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })
+        )}
       </div>
     </div>
   );
