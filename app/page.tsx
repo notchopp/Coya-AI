@@ -192,29 +192,30 @@ export default function Dashboard() {
       let comparePeriodEnd: Date;
       
       if (timePeriod === "daily") {
+        // Last 24 hours
         periodStart = new Date(now);
-        periodStart.setHours(0, 0, 0, 0);
+        periodStart.setHours(now.getHours() - 24);
         
         comparePeriodStart = new Date(periodStart);
-        comparePeriodStart.setDate(comparePeriodStart.getDate() - 1);
+        comparePeriodStart.setHours(comparePeriodStart.getHours() - 24);
         comparePeriodEnd = periodStart;
       } else if (timePeriod === "weekly") {
-        periodStart = startOfWeek(now, { weekStartsOn: 1 });
-        comparePeriodStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+        // Last 7 days
+        periodStart = new Date(now);
+        periodStart.setDate(periodStart.getDate() - 7);
+        
+        comparePeriodStart = new Date(periodStart);
+        comparePeriodStart.setDate(comparePeriodStart.getDate() - 7);
         comparePeriodEnd = periodStart;
       } else {
-        // monthly
-        periodStart = startOfMonth(now);
-        comparePeriodStart = startOfMonth(subMonths(now, 1));
+        // Last 30 days (monthly)
+        periodStart = new Date(now);
+        periodStart.setDate(periodStart.getDate() - 30);
+        
+        comparePeriodStart = new Date(periodStart);
+        comparePeriodStart.setDate(comparePeriodStart.getDate() - 30);
         comparePeriodEnd = periodStart;
       }
-
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const lastWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      const lastWeekEnd = weekStart;
-      const monthStart = startOfMonth(now);
-      const lastMonthStart = startOfMonth(subMonths(now, 1));
-      const lastMonthEnd = monthStart;
 
       // Get all calls for this business
       const { data: allCallsData, error: callsError } = await supabase
@@ -277,7 +278,7 @@ export default function Dashboard() {
                (c.status === "missed" || (c.success === false && c.ended_at && c.status !== "ended"));
       }).length;
 
-      // Bookings in current period
+      // Bookings in current period (filter by schedule existence)
       const bookingsThisPeriod = periodCalls.filter(c => c.schedule !== null).length;
       const bookingsLastPeriod = comparePeriodCalls.filter(c => c.schedule !== null).length;
 
