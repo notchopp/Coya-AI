@@ -364,3 +364,64 @@ function SidebarContent({
   );
 }
 
+function BusinessHeader() {
+  const [businessName, setBusinessName] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    async function loadBusinessName() {
+      const supabase = getSupabaseClient();
+      const businessId = sessionStorage.getItem("business_id");
+
+      if (!businessId) {
+        setBusinessName("");
+        return;
+      }
+
+      const { data: businessDataRaw } = await supabase
+        .from("businesses")
+        .select("name")
+        .eq("id", businessId)
+        .maybeSingle();
+
+      const businessData = businessDataRaw as { name: string | null } | null;
+
+      if (businessData?.name) {
+        setBusinessName(businessData.name);
+      }
+    }
+
+    loadBusinessName();
+    // Refresh business name every 30 seconds to catch updates
+    const interval = setInterval(loadBusinessName, 30000);
+    return () => clearInterval(interval);
+  }, [mounted]);
+
+  if (!businessName) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col gap-2"
+    >
+      <h2 className="text-2xl font-bold text-white">{businessName}</h2>
+      <motion.span
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-yellow-400 bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 shadow-lg shadow-yellow-500/10 w-fit"
+      >
+        <span className="text-yellow-400">#</span>
+        <span>Founders Program</span>
+      </motion.span>
+    </motion.div>
+  );
+}
+
