@@ -294,7 +294,8 @@ export default function Dashboard() {
           
           const hourBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= hourStart && callDate < hourEnd && c.schedule !== null;
+            return callDate >= hourStart && callDate < hourEnd && c.schedule !== null && 
+                   (c.status === "ended" || c.ended_at);
           }).length;
           bookingsTrend.push(hourBookings);
         }
@@ -309,21 +310,26 @@ export default function Dashboard() {
           
           const dayBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null;
+            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null &&
+                   (c.status === "ended" || c.ended_at);
           }).length;
           bookingsTrend.push(dayBookings);
         }
       } else {
-        // Last 4 weeks
-        for (let i = 3; i >= 0; i--) {
-          const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
-          const weekEnd = startOfWeek(subWeeks(now, i - 1), { weekStartsOn: 1 });
+        // Last 30 days by day
+        for (let i = 29; i >= 0; i--) {
+          const dayStart = new Date(now);
+          dayStart.setDate(dayStart.getDate() - i);
+          dayStart.setHours(0, 0, 0, 0);
+          const dayEnd = new Date(dayStart);
+          dayEnd.setHours(23, 59, 59, 999);
           
-          const weekBookings = allCalls.filter(c => {
+          const dayBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= weekStart && callDate < weekEnd && c.schedule !== null;
+            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null &&
+                   (c.status === "ended" || c.ended_at);
           }).length;
-          bookingsTrend.push(weekBookings);
+          bookingsTrend.push(dayBookings);
         }
       }
 
