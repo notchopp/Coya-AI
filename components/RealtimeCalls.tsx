@@ -132,24 +132,11 @@ export default function RealtimeCalls({ businessId }: Props) {
           if (!callData) return;
 
                 if (eventType === "INSERT" || eventType === "insert") {
-                  // Only add if not ended
-                  if (callData.status !== "ended" && !callData.ended_at) {
-                    setCalls((prev) => {
-                      const filtered = [callData!, ...prev].filter(c => c.status !== "ended" && !c.ended_at);
-                      return filtered.slice(0, 50);
-                    });
-                  }
+                  // Refresh last 5 calls
+                  loadInitial();
                 } else if (eventType === "UPDATE" || eventType === "update") {
-                  // Remove if ended, otherwise update
-                  if (callData.status === "ended" || callData.ended_at) {
-                    setCalls((prev) => prev.filter((c) => c.id !== callData!.id));
-                  } else {
-                    setCalls((prev) => {
-                      const updated = prev.map((c) => (c.id === callData!.id ? callData! : c));
-                      // Double-check filter after update
-                      return updated.filter(c => c.status !== "ended" && !c.ended_at);
-                    });
-                  }
+                  // Refresh last 5 calls
+                  loadInitial();
                 } else if (eventType === "DELETE" || eventType === "delete") {
                   setCalls((prev) => prev.filter((c) => c.id !== callData!.id));
                 }
@@ -189,16 +176,8 @@ export default function RealtimeCalls({ businessId }: Props) {
           },
           (payload) => {
             const updatedCall = payload.new as Call;
-            // Remove if ended, otherwise update
-            if (updatedCall.status === "ended" || updatedCall.ended_at) {
-              setCalls((prev) => prev.filter((c) => c.id !== updatedCall.id));
-            } else {
-              setCalls((prev) => {
-                const updated = prev.map((c) => (c.id === updatedCall.id ? updatedCall : c));
-                // Double-check filter after update
-                return updated.filter(c => c.status !== "ended" && !c.ended_at);
-              });
-            }
+            // Refresh last 5 calls
+            loadInitial();
           }
         )
         .on(
