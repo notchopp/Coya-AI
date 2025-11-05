@@ -855,103 +855,196 @@ export default function Dashboard() {
         transition={{ delay: 0.1 }}
         className="p-6 rounded-2xl glass-strong border border-white/10"
       >
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-            <Trophy className="h-5 w-5 text-yellow-400" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
+              <Trophy className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Performance Overview</h2>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">Performance Overview</h2>
+          
+          {/* Time Period Toggle */}
+          <div className="flex items-center gap-2 p-1 rounded-lg glass border border-white/10">
+            {(["daily", "weekly", "monthly"] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setTimePeriod(period)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  timePeriod === period
+                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+              >
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="p-4 rounded-xl glass border border-white/10">
+          <motion.div 
+            key={`totalCalls-${metricKey}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-xl glass border border-white/10"
+          >
             <div className="text-xs text-white/60 mb-1">Total Calls Handled</div>
-            <div className="text-2xl font-bold text-white">
+            <motion.div 
+              key={`totalCalls-value-${metricKey}`}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-2xl font-bold text-white"
+            >
               {loading ? "..." : performance.totalCallsHandled.toLocaleString()}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="p-4 rounded-xl glass border border-white/10 relative">
+          <motion.div 
+            key={`bookings-${metricKey}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-xl glass border border-white/10 relative"
+          >
             <div className="flex items-center justify-between mb-1">
-              <div className="text-xs text-white/60">Bookings This Week</div>
+              <div className="text-xs text-white/60">
+                Bookings {timePeriod === "daily" ? "Today" : timePeriod === "weekly" ? "This Week" : "This Month"}
+              </div>
               {bookingsTrend !== 0 && bookingsTrendPercent !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${
-                  bookingsTrend > 0 ? "text-emerald-400" : "text-red-400"
-                }`}>
+                <motion.div 
+                  key={`trend-${metricKey}`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex items-center gap-1 text-xs ${
+                    bookingsTrend > 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
                   {bookingsTrend > 0 ? (
                     <ArrowUpRight className="h-3 w-3" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3" />
                   )}
                   {Math.abs(bookingsTrendPercent).toFixed(0)}%
-                </div>
+                </motion.div>
               )}
             </div>
-            <div className="text-2xl font-bold text-white mb-2">
+            <motion.div 
+              key={`bookings-value-${metricKey}`}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-2xl font-bold text-white mb-2"
+            >
               {loading ? "..." : performance.bookingsThisWeek}
-            </div>
+            </motion.div>
             {performance.bookingsThisWeekTrend.length > 0 && (
               <div className="absolute bottom-3 right-3 opacity-60">
                 <Sparkline 
                   data={performance.bookingsThisWeekTrend} 
                   width={50} 
-              height={16}
+                  height={16}
                   color={bookingsTrend > 0 ? "#10b981" : bookingsTrend < 0 ? "#ef4444" : "#eab308"}
                 />
               </div>
             )}
             <div className="text-xs text-white/40">
-              vs {performance.bookingsLastWeek} last week
+              vs {performance.bookingsLastWeek} {timePeriod === "daily" ? "yesterday" : timePeriod === "weekly" ? "last week" : "last month"}
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-4 rounded-xl glass border border-white/10">
+          <motion.div 
+            key={`conversion-${metricKey}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-xl glass border border-white/10"
+          >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs text-white/60">Conversion</div>
               {conversionTrend !== 0 && (
-                <div className={`flex items-center gap-1 text-xs ${
-                  conversionTrend > 0 ? "text-emerald-400" : "text-red-400"
-                }`}>
+                <motion.div 
+                  key={`conversion-trend-${metricKey}`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex items-center gap-1 text-xs ${
+                    conversionTrend > 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
                   {conversionTrend > 0 ? (
                     <ArrowUpRight className="h-3 w-3" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3" />
                   )}
                   {Math.abs(conversionTrend).toFixed(1)}%
-                </div>
+                </motion.div>
               )}
             </div>
-            <div className="text-sm font-medium text-white/90 mb-1 line-clamp-2">
+            <motion.div 
+              key={`conversion-value-${metricKey}`}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-sm font-medium text-white/90 mb-1 line-clamp-2"
+            >
               {loading ? "..." : humanizedConversion}
-            </div>
+            </motion.div>
             <div className="text-xs text-white/40 mt-1">
               {performance.conversionRate.toFixed(1)}% rate
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-4 rounded-xl glass border border-white/10">
+          <motion.div 
+            key={`savings-${metricKey}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-xl glass border border-white/10"
+          >
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="h-3 w-3 text-yellow-400" />
               <div className="text-xs text-white/60">Estimated Savings</div>
             </div>
-            <div className="text-2xl font-bold text-white">
+            <motion.div 
+              key={`savings-value-${metricKey}`}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-2xl font-bold text-white"
+            >
               {loading ? "..." : `$${performance.estimatedSavings.toFixed(0)}`}
-            </div>
+            </motion.div>
             <div className="text-xs text-white/40 mt-1">
               {totalBookings} patient{totalBookings !== 1 ? 's' : ''} booked × $300
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-4 rounded-xl glass border border-white/10">
+          <motion.div 
+            key={`ratio-${metricKey}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-xl glass border border-white/10"
+          >
             <div className="text-xs text-white/60 mb-1">Handled Ratio</div>
-            <div className="text-2xl font-bold text-white">
+            <motion.div 
+              key={`ratio-value-${metricKey}`}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-2xl font-bold text-white"
+            >
               {loading ? "..." : `${handledRatio.toFixed(1)}%`}
-            </div>
+            </motion.div>
             <div className="text-xs text-white/40 mt-1">
               {performance.missedCalls} missed
             </div>
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
