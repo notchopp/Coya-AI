@@ -107,34 +107,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!mounted) return;
 
-    async function loadBusinessName() {
-      const supabase = getSupabaseClient();
-      const businessId = sessionStorage.getItem("business_id");
-      
-      if (businessId) {
-        const { data: businessDataRaw } = await supabase
-          .from("businesses")
-          .select("name")
-          .eq("id", businessId)
-          .maybeSingle();
-        
-        const businessData = businessDataRaw as { name: string | null } | null;
-        
-        if (businessData && businessData.name) {
-          setBusinessName(businessData.name);
-        }
-      }
-    }
-
-    loadBusinessName();
-    // Refresh business name every 30 seconds to catch updates
-    const interval = setInterval(loadBusinessName, 30000);
-    return () => clearInterval(interval);
-  }, [mounted]);
-
-  useEffect(() => {
-    if (!mounted) return;
-
     async function loadUserData() {
       const supabase = getSupabaseClient();
       const authUserId = (await supabase.auth.getUser()).data.user?.id;
