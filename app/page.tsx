@@ -184,6 +184,7 @@ export default function Dashboard() {
       }
 
       const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       
       // Calculate date ranges based on selected time period
       let periodStart: Date;
