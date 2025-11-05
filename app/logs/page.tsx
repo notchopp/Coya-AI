@@ -415,8 +415,10 @@ export default function LogsPage() {
 
       {/* Results Count */}
       {!loading && (
-        <div className="text-sm text-white/60">
-          Showing {filteredLogs.length} of {logs.length} calls
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-white/60">
+            Showing {startIndex + 1}–{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} calls
+          </div>
         </div>
       )}
 
