@@ -677,4 +677,6 @@ export default function LogsPage() {
           </button>
         </div>
       )}
-
+    </div>
+  );
+}
