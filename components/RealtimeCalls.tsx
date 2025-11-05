@@ -76,7 +76,7 @@ export default function RealtimeCalls({ businessId }: Props) {
               .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns")
               .eq("business_id", effectiveBusinessId)
               .order("started_at", { ascending: false })
-              .limit(25);
+              .limit(5); // Show last 5 calls
 
       if (!isMounted) return;
       if (error) {
@@ -97,10 +97,8 @@ export default function RealtimeCalls({ businessId }: Props) {
         console.warn("2. Is RLS blocking the query?");
         console.warn("3. Does business_id match?", effectiveBusinessId);
       }
-      // Filter out ended calls - only show active calls
-      const activeCalls = (data || []).filter(c => c.status !== "ended" && !c.ended_at);
-      console.log("✅ Active calls after filter:", activeCalls.length);
-      setCalls(activeCalls);
+      // Show last 5 calls regardless of status
+      setCalls(data || []);
     }
 
     loadInitial();
