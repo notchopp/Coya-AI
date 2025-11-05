@@ -621,7 +621,60 @@ export default function LogsPage() {
           })
         )}
       </div>
-    </div>
-  );
-}
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg glass border transition-colors ${
+              currentPage === 1
+                ? "border-white/10 text-white/40 cursor-not-allowed"
+                : "border-white/10 text-white hover:bg-white/10"
+            }`}
+          >
+            Previous
+          </button>
+          <div className="flex items-center gap-2">
+            {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 7) {
+                pageNum = i + 1;
+              } else if (currentPage <= 4) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 3) {
+                pageNum = totalPages - 6 + i;
+              } else {
+                pageNum = currentPage - 3 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-2 rounded-lg glass border transition-colors text-sm ${
+                    currentPage === pageNum
+                      ? "border-yellow-500/50 bg-yellow-500/20 text-yellow-400"
+                      : "border-white/10 text-white hover:bg-white/10"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-lg glass border transition-colors ${
+              currentPage === totalPages
+                ? "border-white/10 text-white/40 cursor-not-allowed"
+                : "border-white/10 text-white hover:bg-white/10"
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
