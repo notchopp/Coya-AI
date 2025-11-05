@@ -158,13 +158,8 @@ export default function RealtimeCalls({ businessId }: Props) {
           },
           (payload) => {
             const newCall = payload.new as Call;
-            // Only add if not ended
-            if (newCall.status !== "ended" && !newCall.ended_at) {
-              setCalls((prev) => {
-                const filtered = [newCall, ...prev].filter(c => c.status !== "ended" && !c.ended_at);
-                return filtered.slice(0, 50);
-              });
-            }
+            // Refresh last 5 calls
+            loadInitial();
           }
         )
         .on(
