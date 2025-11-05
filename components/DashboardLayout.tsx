@@ -149,11 +149,12 @@ function SidebarContent({
         .eq("business_id", businessId)
         .eq("status", "active");
 
-      // Get today's calls
+      // Get today's active calls
       const { count: todayCount } = await supabase
         .from("calls")
         .select("*", { count: "exact", head: true })
         .eq("business_id", businessId)
+        .eq("status", "active")
         .gte("started_at", today.toISOString());
 
       // Get escalations
@@ -221,7 +222,7 @@ function SidebarContent({
           </div>
           <div className="p-2 rounded-lg glass border border-white/10">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-white/60">Today</span>
+              <span className="text-xs text-white/60">Active Today</span>
               <span className="text-sm font-bold text-white">{sidebarStats.todayCalls}</span>
             </div>
           </div>
