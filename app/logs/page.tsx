@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target } from "lucide-react";
+import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target, Bot, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 
 type Call = {
@@ -23,12 +23,89 @@ type Call = {
   transcript: string | null;
 };
 
-type FilterState = {
-  status: string | null;
-  success: boolean | null;
-  intent: string | null;
-  dateRange: { start: string; end: string } | null;
+type Message = {
+  role: "user" | "bot";
+  text: string;
 };
+
+function parseTranscript(transcript: string): Message[] {
+  if (!transcript) return [];
+  
+  const messages: Message[] = [];
+  const lines = transcript.split("\n").filter(line => line.trim());
+  
+  let currentRole: "user" | "bot" | null = null;
+  let currentText = "";
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Detect role indicators
+    const userPatterns = [
+      /^(user|caller|patient|client):\s*/i,
+      /^\[user\]/i,
+      /^\(user\)/i,
+    ];
+    
+    const botPatterns = [
+      /^(bot|ai|assistant|agent|nia):\s*/i,
+      /^\[bot\]/i,
+      /^\[ai\]/i,
+      /^\(bot\)/i,
+      /^\(assistant\)/i,
+    ];
+    
+    const isUser = userPatterns.some(pattern => pattern.test(trimmed));
+    const isBot = botPatterns.some(pattern => pattern.test(trimmed));
+    
+    if (isUser || isBot) {
+      // Save previous message if exists
+      if (currentRole && currentText.trim()) {
+        messages.push({ role: currentRole, text: currentText.trim() });
+      }
+      
+      // Start new message
+      currentRole = isUser ? "user" : "bot";
+      currentText = trimmed.replace(/^(user|caller|patient|client|bot|ai|assistant|agent|nia):\s*/i, "")
+        .replace(/^\[(user|bot|ai)\]\s*/i, "")
+        .replace(/^\((user|bot|assistant)\)\s*/i, "")
+        .trim();
+    } else if (currentRole) {
+      // Continue current message
+      currentText += (currentText ? " " : "") + trimmed;
+    } else {
+      // If no role detected yet, try to infer from context
+      // Default to bot if it's the first line and looks like a greeting
+      if (messages.length === 0) {
+        const lower = trimmed.toLowerCase();
+        if (lower.includes("hello") || lower.includes("hi") || lower.includes("thank you") || 
+            lower.includes("how can i") || lower.includes("i can help")) {
+          currentRole = "bot";
+          currentText = trimmed;
+        } else {
+          currentRole = "user";
+          currentText = trimmed;
+        }
+      } else {
+        // Continue with last role
+        currentRole = messages[messages.length - 1].role;
+        currentText = trimmed;
+      }
+    }
+  }
+  
+  // Save last message
+  if (currentRole && currentText.trim()) {
+    messages.push({ role: currentRole, text: currentText.trim() });
+  }
+  
+  // If no messages parsed, return the whole transcript as a single bot message
+  if (messages.length === 0 && transcript.trim()) {
+    return [{ role: "bot", text: transcript.trim() }];
+  }
+  
+  return messages;
+}
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<Call[]>([]);
@@ -598,12 +675,41 @@ export default function LogsPage() {
                         {/* Transcript */}
                         {log.transcript && (
                           <div>
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-4 w-4 text-white/60" />
                               <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
                             </div>
-                            <div className="p-4 rounded-xl glass border border-white/10">
-                              <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{log.transcript}</p>
+                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                              {parseTranscript(log.transcript).map((message, idx) => (
+                                <motion.div
+                                  key={idx}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: idx * 0.05 }}
+                                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                                >
+                                  <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                                    <div className={`p-1.5 rounded-full flex-shrink-0 ${
+                                      message.role === "user"
+                                        ? "bg-blue-500/20 border border-blue-500/30"
+                                        : "bg-yellow-500/20 border border-yellow-500/30"
+                                    }`}>
+                                      {message.role === "user" ? (
+                                        <UserCircle className="h-3.5 w-3.5 text-blue-400" />
+                                      ) : (
+                                        <Bot className="h-3.5 w-3.5 text-yellow-400" />
+                                      )}
+                                    </div>
+                                    <div className={`px-4 py-2.5 rounded-2xl ${
+                                      message.role === "user"
+                                        ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
+                                        : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
+                                    }`}>
+                                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))}
                             </div>
                           </div>
                         )}
