@@ -72,6 +72,11 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Global Header with Business Name and Founders Program */}
+        <header className="hidden lg:block p-6 border-b border-yellow-500/20 glass-strong">
+          <BusinessHeader />
+        </header>
+        
         {/* Mobile header */}
         <header className="lg:hidden flex items-center justify-between p-4 border-b border-yellow-500/20 glass-strong">
           <button
