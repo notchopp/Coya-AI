@@ -37,6 +37,8 @@ export default function LogsPage() {
   const [mounted, setMounted] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [filters, setFilters] = useState<FilterState>({
     status: null,
     success: null,
@@ -157,6 +159,17 @@ export default function LogsPage() {
 
     return result;
   }, [logs, search, filters]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filters]);
 
   function toggleCard(callId: string) {
     setExpandedCards(prev => {
@@ -414,7 +427,7 @@ export default function LogsPage() {
         ) : filteredLogs.length === 0 ? (
           <div className="p-8 text-center text-white/40">No calls found</div>
         ) : (
-          filteredLogs.map((log) => {
+          paginatedLogs.map((log) => {
             const isExpanded = expandedCards.has(log.id);
             const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
               ? "emerald"
