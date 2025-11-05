@@ -243,9 +243,19 @@ function SidebarContent({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-white/60">Bookings {periodLabel}</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-yellow-400/70 bg-yellow-400/10 border border-yellow-400/20">
+                <motion.span
+                  animate={{
+                    opacity: [1, 0.3, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-medium text-yellow-400/70 bg-yellow-400/10 border border-yellow-400/20"
+                >
                   Tap
-                </span>
+                </motion.span>
               </div>
               <span className="text-sm font-bold text-white">{sidebarStats.bookings}</span>
             </div>
