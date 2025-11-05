@@ -111,28 +111,6 @@ function parseTranscript(transcript: string): Message[] {
   return messages;
 }
 
-type Call = {
-  id: string;
-  business_id: string;
-  call_id: string;
-  patient_id: string | null;
-  status: string | null;
-  phone: string | null;
-  email: string | null;
-  patient_name: string | null;
-  last_summary: string | null;
-  last_intent: string | null;
-  success: boolean | null;
-  started_at: string;
-  ended_at: string | null;
-  transcript: string | null;
-  escalate: boolean | null;
-  upsell: boolean | null;
-  schedule: any;
-  context: any;
-  total_turns: number | null;
-};
-
 type CallDetailsModalProps = {
   call: Call | null;
   isOpen: boolean;
