@@ -278,9 +278,16 @@ export default function Dashboard() {
                (c.status === "missed" || (c.success === false && c.ended_at && c.status !== "ended"));
       }).length;
 
-      // Bookings in current period (filter by schedule existence)
-      const bookingsThisPeriod = periodCalls.filter(c => c.schedule !== null).length;
-      const bookingsLastPeriod = comparePeriodCalls.filter(c => c.schedule !== null).length;
+      // Bookings in current period (count ALL calls with schedule, not just ended ones)
+      const bookingsThisPeriod = allCalls.filter(c => {
+        const callDate = new Date(c.started_at);
+        return callDate >= periodStart && callDate <= periodEnd && c.schedule !== null;
+      }).length;
+      
+      const bookingsLastPeriod = allCalls.filter(c => {
+        const callDate = new Date(c.started_at);
+        return callDate >= comparePeriodStart && callDate < comparePeriodEnd && c.schedule !== null;
+      }).length;
 
       // Generate trend data based on period
       const bookingsTrend: number[] = [];
@@ -294,8 +301,7 @@ export default function Dashboard() {
           
           const hourBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= hourStart && callDate < hourEnd && c.schedule !== null && 
-                   (c.status === "ended" || c.ended_at);
+            return callDate >= hourStart && callDate < hourEnd && c.schedule !== null;
           }).length;
           bookingsTrend.push(hourBookings);
         }
@@ -310,8 +316,7 @@ export default function Dashboard() {
           
           const dayBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null &&
-                   (c.status === "ended" || c.ended_at);
+            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null;
           }).length;
           bookingsTrend.push(dayBookings);
         }
@@ -326,8 +331,7 @@ export default function Dashboard() {
           
           const dayBookings = allCalls.filter(c => {
             const callDate = new Date(c.started_at);
-            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null &&
-                   (c.status === "ended" || c.ended_at);
+            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null;
           }).length;
           bookingsTrend.push(dayBookings);
         }
@@ -362,7 +366,7 @@ export default function Dashboard() {
       const timeSavedHours = (handledCalls * avgCallMinutes) / 60;
 
       // Estimated savings: $300 per patient booked (for current period)
-      const estimatedSavings = periodBookings * 300;
+      const estimatedSavings = bookingsThisPeriod * 300;
 
       setPerformance({
         totalCallsHandled,
