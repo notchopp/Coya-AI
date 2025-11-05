@@ -98,6 +98,8 @@ export default function Dashboard() {
   const [userName, setUserName] = useState<string>("");
   const [funFact, setFunFact] = useState<string>("");
   const [businessName, setBusinessName] = useState<string>("");
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [metricKey, setMetricKey] = useState(0); // Key for re-animating metrics
 
   useEffect(() => {
     setMounted(true);
@@ -182,6 +184,31 @@ export default function Dashboard() {
       }
 
       const now = new Date();
+      
+      // Calculate date ranges based on selected time period
+      let periodStart: Date;
+      let periodEnd: Date = now;
+      let comparePeriodStart: Date;
+      let comparePeriodEnd: Date;
+      
+      if (timePeriod === "daily") {
+        periodStart = new Date(now);
+        periodStart.setHours(0, 0, 0, 0);
+        
+        comparePeriodStart = new Date(periodStart);
+        comparePeriodStart.setDate(comparePeriodStart.getDate() - 1);
+        comparePeriodEnd = periodStart;
+      } else if (timePeriod === "weekly") {
+        periodStart = startOfWeek(now, { weekStartsOn: 1 });
+        comparePeriodStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+        comparePeriodEnd = periodStart;
+      } else {
+        // monthly
+        periodStart = startOfMonth(now);
+        comparePeriodStart = startOfMonth(subMonths(now, 1));
+        comparePeriodEnd = periodStart;
+      }
+
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
       const lastWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
       const lastWeekEnd = weekStart;
@@ -210,37 +237,72 @@ export default function Dashboard() {
         return;
       }
 
-      // Calculate performance metrics
-      const totalCallsHandled = allCalls.filter(c => c.status === "ended" || c.ended_at).length;
-      const handledCalls = allCalls.filter(c => c.status === "ended" || c.ended_at).length;
-      const missedCalls = allCalls.filter(c => c.status === "missed" || (c.success === false && c.ended_at && c.status !== "ended")).length;
-
-      // Bookings this week
-      const bookingsThisWeek = allCalls.filter(c => {
+      // Calculate performance metrics based on selected period
+      const periodCalls = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
-        return callDate >= weekStart && c.schedule !== null;
+        return callDate >= periodStart && callDate <= periodEnd && (c.status === "ended" || c.ended_at);
+      });
+      
+      const comparePeriodCalls = allCalls.filter(c => {
+        const callDate = new Date(c.started_at);
+        return callDate >= comparePeriodStart && callDate < comparePeriodEnd && (c.status === "ended" || c.ended_at);
+      });
+
+      const totalCallsHandled = periodCalls.length;
+      const handledCalls = periodCalls.length;
+      const missedCalls = allCalls.filter(c => {
+        const callDate = new Date(c.started_at);
+        return callDate >= periodStart && callDate <= periodEnd && 
+               (c.status === "missed" || (c.success === false && c.ended_at && c.status !== "ended"));
       }).length;
 
-      // Bookings last week
-      const bookingsLastWeek = allCalls.filter(c => {
-        const callDate = new Date(c.started_at);
-        return callDate >= lastWeekStart && callDate < lastWeekEnd && c.schedule !== null;
-      }).length;
+      // Bookings in current period
+      const bookingsThisPeriod = periodCalls.filter(c => c.schedule !== null).length;
+      const bookingsLastPeriod = comparePeriodCalls.filter(c => c.schedule !== null).length;
 
-      // Generate trend data for bookings (last 7 days)
+      // Generate trend data based on period
       const bookingsTrend: number[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const dayStart = new Date(now);
-        dayStart.setDate(dayStart.getDate() - i);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(dayStart);
-        dayEnd.setHours(23, 59, 59, 999);
-        
-        const dayBookings = allCalls.filter(c => {
-          const callDate = new Date(c.started_at);
-          return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null;
-        }).length;
-        bookingsTrend.push(dayBookings);
+      if (timePeriod === "daily") {
+        // Last 24 hours by hour
+        for (let i = 23; i >= 0; i--) {
+          const hourStart = new Date(now);
+          hourStart.setHours(now.getHours() - i, 0, 0, 0);
+          const hourEnd = new Date(hourStart);
+          hourEnd.setHours(hourEnd.getHours() + 1, 0, 0, 0);
+          
+          const hourBookings = allCalls.filter(c => {
+            const callDate = new Date(c.started_at);
+            return callDate >= hourStart && callDate < hourEnd && c.schedule !== null;
+          }).length;
+          bookingsTrend.push(hourBookings);
+        }
+      } else if (timePeriod === "weekly") {
+        // Last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const dayStart = new Date(now);
+          dayStart.setDate(dayStart.getDate() - i);
+          dayStart.setHours(0, 0, 0, 0);
+          const dayEnd = new Date(dayStart);
+          dayEnd.setHours(23, 59, 59, 999);
+          
+          const dayBookings = allCalls.filter(c => {
+            const callDate = new Date(c.started_at);
+            return callDate >= dayStart && callDate <= dayEnd && c.schedule !== null;
+          }).length;
+          bookingsTrend.push(dayBookings);
+        }
+      } else {
+        // Last 4 weeks
+        for (let i = 3; i >= 0; i--) {
+          const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+          const weekEnd = startOfWeek(subWeeks(now, i - 1), { weekStartsOn: 1 });
+          
+          const weekBookings = allCalls.filter(c => {
+            const callDate = new Date(c.started_at);
+            return callDate >= weekStart && callDate < weekEnd && c.schedule !== null;
+          }).length;
+          bookingsTrend.push(weekBookings);
+        }
       }
 
       // New vs repeat patients
@@ -255,40 +317,31 @@ export default function Dashboard() {
       const newPatients = Object.values(patientCallCounts).filter(count => count === 1).length;
       const repeatPatients = Object.values(patientCallCounts).filter(count => count > 1).length;
 
-      // Conversion rate this month
-      const thisMonthCalls = allCalls.filter(c => {
-        const callDate = new Date(c.started_at);
-        return callDate >= monthStart && (c.status === "ended" || c.ended_at);
-      });
-      const thisMonthBookings = thisMonthCalls.filter(c => c.schedule !== null).length;
-      const conversionRate = thisMonthCalls.length > 0 
-        ? (thisMonthBookings / thisMonthCalls.length) * 100 
+      // Conversion rate for current period
+      const periodBookings = periodCalls.filter(c => c.schedule !== null).length;
+      const conversionRate = periodCalls.length > 0 
+        ? (periodBookings / periodCalls.length) * 100 
         : 0;
 
-      // Conversion rate last month
-      const lastMonthCalls = allCalls.filter(c => {
-        const callDate = new Date(c.started_at);
-        return callDate >= lastMonthStart && callDate < lastMonthEnd && (c.status === "ended" || c.ended_at);
-      });
-      const lastMonthBookings = lastMonthCalls.filter(c => c.schedule !== null).length;
-      const conversionRateLastMonth = lastMonthCalls.length > 0
-        ? (lastMonthBookings / lastMonthCalls.length) * 100
+      // Conversion rate for comparison period
+      const comparePeriodBookings = comparePeriodCalls.filter(c => c.schedule !== null).length;
+      const conversionRateLastPeriod = comparePeriodCalls.length > 0
+        ? (comparePeriodBookings / comparePeriodCalls.length) * 100
         : 0;
 
       // Time saved (approximation: assume 3 minutes per call handled)
       const avgCallMinutes = 3;
       const timeSavedHours = (handledCalls * avgCallMinutes) / 60;
 
-      // Estimated savings: $300 per patient booked
-      const totalBookings = allCalls.filter(c => c.schedule !== null).length;
-      const estimatedSavings = totalBookings * 300;
+      // Estimated savings: $300 per patient booked (for current period)
+      const estimatedSavings = periodBookings * 300;
 
       setPerformance({
         totalCallsHandled,
-        bookingsThisWeek,
-        bookingsLastWeek,
+        bookingsThisWeek: bookingsThisPeriod,
+        bookingsLastWeek: bookingsLastPeriod,
         conversionRate,
-        conversionRateLastMonth,
+        conversionRateLastMonth: conversionRateLastPeriod,
         timeSavedHours,
         handledCalls,
         missedCalls,
@@ -297,6 +350,9 @@ export default function Dashboard() {
         estimatedSavings,
         bookingsThisWeekTrend: bookingsTrend,
       });
+      
+      // Trigger animation by updating key
+      setMetricKey(prev => prev + 1);
 
       // Generate insights
       const newInsights: Insight[] = [];
@@ -610,7 +666,7 @@ export default function Dashboard() {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [mounted]);
+  }, [mounted, timePeriod]);
 
   async function generateFunFact(calls: any[], businessId: string) {
     if (!calls || calls.length === 0) {
