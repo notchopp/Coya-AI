@@ -181,6 +181,18 @@ function SidebarContent({
     return () => clearInterval(interval);
   }, [mounted, period]);
 
+  function togglePeriod() {
+    if (period === "daily") {
+      setPeriod("weekly");
+    } else if (period === "weekly") {
+      setPeriod("monthly");
+    } else {
+      setPeriod("daily");
+    }
+  }
+
+  const periodLabel = period === "daily" ? "Today" : period === "weekly" ? "This Week" : "This Month";
+
   return (
     <>
       <div className="p-6 border-b border-yellow-500/20">
