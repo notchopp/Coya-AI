@@ -227,13 +227,34 @@ export default function Dashboard() {
       if (callsError) {
         console.error("Error loading calls:", callsError);
         setLoading(false);
+        setInsights([]);
+        setActivityFeed([]);
         return;
       }
 
       const allCalls = (allCallsData || []) as DashboardCall[];
 
+      // Always set loading to false, even if no calls
+      setLoading(false);
+
       if (!allCalls || allCalls.length === 0) {
-        setLoading(false);
+        // Set empty states for insights and activity feed
+        setInsights([]);
+        setActivityFeed([]);
+        setPerformance({
+          totalCallsHandled: 0,
+          bookingsThisWeek: 0,
+          bookingsLastWeek: 0,
+          conversionRate: 0,
+          conversionRateLastMonth: 0,
+          timeSavedHours: 0,
+          handledCalls: 0,
+          missedCalls: 0,
+          newPatients: 0,
+          repeatPatients: 0,
+          estimatedSavings: 0,
+          bookingsThisWeekTrend: [],
+        });
         return;
       }
 
@@ -642,15 +663,15 @@ export default function Dashboard() {
         }
       });
 
-      // Success streak (consecutive successful calls this month)
-      const thisMonthSuccessful = thisMonthCalls.filter(c => c.success === true);
-      setSuccessStreak(thisMonthSuccessful.length);
+      // Success streak (consecutive successful calls in current period)
+      const periodSuccessful = periodCalls.filter(c => c.success === true);
+      setSuccessStreak(periodSuccessful.length);
 
-      if (thisMonthSuccessful.length >= 10) {
+      if (periodSuccessful.length >= 10) {
         activities.push({
           id: "streak",
           type: "streak",
-          message: `You've handled ${thisMonthSuccessful.length} calls this month flawlessly!`,
+          message: `You've handled ${periodSuccessful.length} calls ${timePeriod === "daily" ? "today" : timePeriod === "weekly" ? "this week" : "this month"} flawlessly!`,
           timestamp: new Date(),
         });
       }
@@ -659,8 +680,6 @@ export default function Dashboard() {
 
       // Generate fun fact based on real data (changes every 24 hours)
       generateFunFact(allCalls, businessId);
-
-      setLoading(false);
     }
 
     loadDashboardData();
