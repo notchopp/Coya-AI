@@ -121,9 +121,9 @@ function SidebarContent({
   const { theme, toggleTheme } = useTheme();
   const [sidebarStats, setSidebarStats] = useState({
     activeCalls: 0,
-    todayCalls: 0,
-    escalations: 0,
+    bookings: 0,
   });
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -139,43 +139,47 @@ function SidebarContent({
 
       if (!businessId) return;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      
+      // Calculate date range based on period
+      let periodStart: Date;
+      if (period === "daily") {
+        periodStart = new Date(now);
+        periodStart.setHours(0, 0, 0, 0);
+      } else if (period === "weekly") {
+        periodStart = new Date(now);
+        periodStart.setDate(periodStart.getDate() - 7);
+      } else {
+        // monthly
+        periodStart = new Date(now);
+        periodStart.setDate(periodStart.getDate() - 30);
+      }
 
-      // Get active calls
+      // Get active calls (always current active, not filtered by period)
       const { count: activeCount } = await supabase
         .from("calls")
         .select("*", { count: "exact", head: true })
         .eq("business_id", businessId)
         .eq("status", "active");
 
-      // Get today's active calls
-      const { count: todayCount } = await supabase
+      // Get bookings for the selected period
+      const { count: bookingsCount } = await supabase
         .from("calls")
         .select("*", { count: "exact", head: true })
         .eq("business_id", businessId)
-        .eq("status", "active")
-        .gte("started_at", today.toISOString());
-
-      // Get escalations
-      const { count: escalationCount } = await supabase
-        .from("calls")
-        .select("*", { count: "exact", head: true })
-        .eq("business_id", businessId)
-        .eq("escalate", true)
-        .gte("started_at", today.toISOString());
+        .not("schedule", "is", null)
+        .gte("started_at", periodStart.toISOString());
 
       setSidebarStats({
         activeCalls: activeCount ?? 0,
-        todayCalls: todayCount ?? 0,
-        escalations: escalationCount ?? 0,
+        bookings: bookingsCount ?? 0,
       });
     }
 
     loadStats();
     const interval = setInterval(loadStats, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, [mounted]);
+  }, [mounted, period]);
 
   return (
     <>
@@ -220,23 +224,15 @@ function SidebarContent({
               <span className="text-sm font-bold text-yellow-400">{sidebarStats.activeCalls}</span>
             </div>
           </div>
-          <div className="p-2 rounded-lg glass border border-white/10">
+          <button
+            onClick={togglePeriod}
+            className="w-full p-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors text-left"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-white/60">Active Today</span>
-              <span className="text-sm font-bold text-white">{sidebarStats.todayCalls}</span>
+              <span className="text-xs text-white/60">Bookings {periodLabel}</span>
+              <span className="text-sm font-bold text-white">{sidebarStats.bookings}</span>
             </div>
-          </div>
-          {sidebarStats.escalations > 0 && (
-            <div className="p-2 rounded-lg glass border border-red-500/30 bg-red-500/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="h-3 w-3 text-red-400" />
-                  <span className="text-xs text-red-400">Escalations</span>
-                </div>
-                <span className="text-sm font-bold text-red-400">{sidebarStats.escalations}</span>
-              </div>
-            </div>
-          )}
+          </button>
         </div>
       </div>
 
