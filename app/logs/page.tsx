@@ -3,11 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { getSupabaseClient } from "@/lib/supabase";
 import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target } from "lucide-react";
-import { format } from "date-fns";
 import { format } from "date-fns";
 
 type Call = {
