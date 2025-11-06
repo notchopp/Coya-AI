@@ -1,42 +1,461 @@
 "use client";
 
-import { motion } from "framer-motion";
-import RealtimeCalls from "@/components/RealtimeCalls";
-import LiveWaveform from "@/components/LiveWaveform";
-import { PhoneIncoming } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase";
+import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
 
-export default function CallsPage() {
+type Call = {
+  id: string;
+  business_id: string;
+  call_id: string;
+  patient_id: string | null;
+  status: string | null;
+  phone: string | null;
+  email: string | null;
+  patient_name: string | null;
+  last_summary: string | null;
+  last_intent: string | null;
+  success: boolean | null;
+  started_at: string;
+  ended_at: string | null;
+  transcript: string | null;
+  total_turns: number | null;
+};
+
+type Message = {
+  role: "user" | "bot";
+  text: string;
+};
+
+function parseTranscript(transcript: string): Message[] {
+  if (!transcript) return [];
+  
+  const messages: Message[] = [];
+  const lines = transcript.split("\n").filter(line => line.trim());
+  
+  let currentRole: "user" | "bot" | null = null;
+  let currentText = "";
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Detect role indicators
+    const userPatterns = [
+      /^(user|caller|patient|client):\s*/i,
+      /^\[user\]/i,
+      /^\(user\)/i,
+    ];
+    
+    const botPatterns = [
+      /^(bot|ai|assistant|agent|nia):\s*/i,
+      /^\[bot\]/i,
+      /^\[ai\]/i,
+      /^\(bot\)/i,
+      /^\(assistant\)/i,
+    ];
+    
+    const isUser = userPatterns.some(pattern => pattern.test(trimmed));
+    const isBot = botPatterns.some(pattern => pattern.test(trimmed));
+    
+    if (isUser || isBot) {
+      // Save previous message if exists
+      if (currentRole && currentText.trim()) {
+        messages.push({ role: currentRole, text: currentText.trim() });
+      }
+      
+      // Start new message
+      currentRole = isUser ? "user" : "bot";
+      currentText = trimmed.replace(/^(user|caller|patient|client|bot|ai|assistant|agent|nia):\s*/i, "")
+        .replace(/^\[(user|bot|ai)\]\s*/i, "")
+        .replace(/^\((user|bot|assistant)\)\s*/i, "")
+        .trim();
+    } else if (currentRole) {
+      // Continue current message
+      currentText += (currentText ? " " : "") + trimmed;
+    } else {
+      // If no role detected yet, try to infer from context
+      if (messages.length === 0) {
+        const lower = trimmed.toLowerCase();
+        if (lower.includes("hello") || lower.includes("hi") || lower.includes("thank you") || 
+            lower.includes("how can i") || lower.includes("i can help")) {
+          currentRole = "bot";
+          currentText = trimmed;
+        } else {
+          currentRole = "user";
+          currentText = trimmed;
+        }
+      } else {
+        // Continue with last role
+        currentRole = messages[messages.length - 1].role;
+        currentText = trimmed;
+      }
+    }
+  }
+  
+  // Save last message
+  if (currentRole && currentText.trim()) {
+    messages.push({ role: currentRole, text: currentText.trim() });
+  }
+  
+  // If no messages parsed, return the whole transcript as a single bot message
+  if (messages.length === 0 && transcript.trim()) {
+    return [{ role: "bot", text: transcript.trim() }];
+  }
+  
+  return messages;
+}
+
+export default function LiveCallsPage() {
+  const router = useRouter();
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  const [calls, setCalls] = useState<Call[]>([]);
+  const [connected, setConnected] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+  const [endedCallId, setEndedCallId] = useState<string | null>(null);
+
+  const effectiveBusinessId = useMemo(() => {
+    if (mounted && typeof window !== "undefined") {
+      return sessionStorage.getItem("business_id") || undefined;
+    }
+    return undefined;
+  }, [mounted]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    let isMounted = true;
+
+    async function loadActiveCalls() {
+      if (!effectiveBusinessId) {
+        console.warn("⚠️ No business_id found, cannot load calls");
+        setCalls([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("calls")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,total_turns")
+        .eq("business_id", effectiveBusinessId)
+        .eq("status", "active")
+        .order("started_at", { ascending: false });
+
+      if (!isMounted) return;
+      if (error) {
+        console.error("❌ Error loading active calls:", error);
+        return;
+      }
+
+      // Check for calls that just ended
+      const activeCalls = (data || []).filter(c => c.status === "active");
+      setCalls(activeCalls);
+
+      // Check if any call just ended (was in state but no longer active)
+      const previousCallIds = calls.map(c => c.id);
+      const currentCallIds = activeCalls.map(c => c.id);
+      const endedCalls = previousCallIds.filter(id => !currentCallIds.includes(id));
+      
+      if (endedCalls.length > 0 && calls.length > 0) {
+        setEndedCallId(endedCalls[0]);
+      }
+    }
+
+    loadActiveCalls();
+
+    // Set up real-time subscription
+    const channels: ReturnType<typeof supabase.channel>[] = [];
+
+    if (effectiveBusinessId) {
+      const channel = supabase
+        .channel(`live-calls:${effectiveBusinessId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "calls",
+            filter: `business_id=eq.${effectiveBusinessId}`,
+          },
+          (payload) => {
+            const call = payload.new as Call;
+            const oldCall = payload.old as Call;
+
+            // Handle INSERT (new active call)
+            if (payload.eventType === "INSERT" && call.status === "active") {
+              setCalls((prev) => {
+                if (prev.find(c => c.id === call.id)) return prev;
+                return [call, ...prev];
+              });
+            }
+            // Handle UPDATE
+            else if (payload.eventType === "UPDATE") {
+              // If call just ended
+              if (oldCall?.status === "active" && call.status === "ended") {
+                setEndedCallId(call.id);
+                setCalls((prev) => prev.filter((c) => c.id !== call.id));
+              }
+              // If call is still active, update it
+              else if (call.status === "active") {
+                setCalls((prev) => {
+                  const updated = prev.map((c) => (c.id === call.id ? call : c));
+                  // Also add if it wasn't in the list
+                  if (!prev.find(c => c.id === call.id)) {
+                    return [call, ...updated];
+                  }
+                  return updated;
+                });
+              }
+              // Remove if no longer active
+              else {
+                setCalls((prev) => prev.filter((c) => c.id !== call.id));
+              }
+            }
+            // Handle DELETE
+            else if (payload.eventType === "DELETE") {
+              setCalls((prev) => prev.filter((c) => c.id !== call.id));
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log("Live calls channel status:", status);
+          setConnected(status === "SUBSCRIBED");
+        });
+      
+      channels.push(channel);
+
+      // Poll for updates every 2 seconds to catch transcript changes
+      const pollInterval = setInterval(() => {
+        loadActiveCalls();
+      }, 2000);
+
+      return () => {
+        isMounted = false;
+        clearInterval(pollInterval);
+        channels.forEach((channel) => {
+          supabase.removeChannel(channel);
+        });
+      };
+    }
+
+    return () => {
+      isMounted = false;
+      channels.forEach((channel) => {
+        supabase.removeChannel(channel);
+      });
+    };
+  }, [supabase, effectiveBusinessId, mounted, calls.length]);
+
+  function handleViewFullLog(callId: string) {
+    router.push(`/logs?callId=${callId}`);
+    setEndedCallId(null);
+  }
+
+  function hasTranscript(call: Call): boolean {
+    return !!(call.transcript && call.transcript.trim().length > 0) || (call.total_turns !== null && call.total_turns > 0);
+  }
+
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold text-white">Live Calls</h1>
-            <span className="beta-badge">Beta</span>
-          </div>
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-4xl font-bold text-white">Live Calls</h1>
+          <span className="beta-badge">Beta</span>
         </div>
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 backdrop-blur-xl"
-        >
-          <LiveWaveform isActive={true} amplitude={0.7} />
-          <span className="text-sm font-medium text-yellow-400">Live</span>
-        </motion.div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <RealtimeCalls />
-      </motion.div>
+      {/* Connection Status */}
+      <div className="flex items-center gap-2 text-sm text-white/60 mb-6">
+        {connected ? (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="flex items-center gap-2"
+          >
+            <BadgeCheck className="h-4 w-4 text-emerald-400" />
+            <span className="text-emerald-400 font-medium">Live</span>
+          </motion.div>
+        ) : (
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="flex items-center gap-2"
+          >
+            <BadgeCheck className="h-4 w-4 text-white/40" />
+            <span>Connecting...</span>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Call Ended Popup */}
+      <AnimatePresence>
+        {endedCallId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setEndedCallId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-strong rounded-2xl p-6 max-w-md w-full border border-yellow-500/30"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">Call Ended</h3>
+                <button
+                  onClick={() => setEndedCallId(null)}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <X className="h-5 w-5 text-white/60" />
+                </button>
+              </div>
+              <p className="text-white/80 mb-6">
+                Do you want to see the full log?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleViewFullLog(endedCallId)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Full Log
+                </button>
+                <button
+                  onClick={() => setEndedCallId(null)}
+                  className="px-4 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 text-white/80 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active Calls */}
+      {calls.length === 0 ? (
+        <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
+          No active calls
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {calls.map((call, index) => {
+            const hasTranscriptContent = hasTranscript(call);
+            const messages = hasTranscriptContent && call.transcript 
+              ? parseTranscript(call.transcript) 
+              : [];
+
+            return (
+              <motion.div
+                key={call.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="rounded-2xl glass-strong border border-white/10 overflow-hidden"
+              >
+                {/* Call Header */}
+                <div className="p-6 border-b border-white/10">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30">
+                        <PhoneIncoming className="h-5 w-5 text-yellow-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">
+                          {call.patient_name || "Unknown Caller"}
+                        </h3>
+                        {call.phone && (
+                          <p className="text-sm text-white/60">{call.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/40">
+                      {format(new Date(call.started_at), "h:mm a")}
+                    </div>
+                  </div>
+                  {call.last_intent && (
+                    <div className="mt-3">
+                      <span className="px-2.5 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-medium border border-yellow-500/30">
+                        {call.last_intent}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Call Content */}
+                <div className="p-6 relative">
+                  {!hasTranscriptContent ? (
+                    // Call in Progress Animation
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          opacity: [0.5, 1, 0.5],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        className="mb-4"
+                      >
+                        <div className="p-4 rounded-full bg-yellow-500/20 border border-yellow-500/30">
+                          <PhoneIncoming className="h-8 w-8 text-yellow-400" />
+                        </div>
+                      </motion.div>
+                      <p className="text-white/60 text-sm font-medium">Call in progress...</p>
+                      <p className="text-white/40 text-xs mt-1">Waiting for transcript</p>
+                    </div>
+                  ) : (
+                    // Transcript Chat Bubbles
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                      {messages.map((message, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                            <div className={`p-1.5 rounded-full flex-shrink-0 ${
+                              message.role === "user"
+                                ? "bg-blue-500/20 border border-blue-500/30"
+                                : "bg-yellow-500/20 border border-yellow-500/30"
+                            }`}>
+                              {message.role === "user" ? (
+                                <UserCircle className="h-3.5 w-3.5 text-blue-400" />
+                              ) : (
+                                <Bot className="h-3.5 w-3.5 text-yellow-400" />
+                              )}
+                            </div>
+                            <div className={`px-4 py-2.5 rounded-2xl ${
+                              message.role === "user"
+                                ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
+                                : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
+                            }`}>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-

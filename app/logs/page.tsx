@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target, Bot, UserCircle } from "lucide-react";
 import { format } from "date-fns";
@@ -108,6 +109,9 @@ function parseTranscript(transcript: string): Message[] {
 }
 
 export default function LogsPage() {
+  const searchParams = useSearchParams();
+  const callIdParam = searchParams.get("callId");
+  const callCardRef = useRef<HTMLDivElement>(null);
   const [logs, setLogs] = useState<Call[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -126,6 +130,22 @@ export default function LogsPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Scroll to specific call when callId param is present
+  useEffect(() => {
+    if (callIdParam && callCardRef.current && logs.length > 0) {
+      // Expand the card if it's not already expanded
+      setExpandedCards(prev => new Set([...prev, callIdParam]));
+      
+      // Scroll to the card after a short delay
+      setTimeout(() => {
+        callCardRef.current?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 500);
+    }
+  }, [callIdParam, logs]);
 
   useEffect(() => {
     if (!mounted) return;
