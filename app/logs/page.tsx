@@ -526,21 +526,22 @@ export default function LogsPage() {
         ) : filteredLogs.length === 0 ? (
           <div className="p-8 text-center text-white/40">No calls found</div>
         ) : (
-          paginatedLogs.map((log) => {
-            const isExpanded = expandedCards.has(log.id);
-            const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
-              ? "emerald"
-              : log.status === "active"
-              ? "yellow"
-              : "gray";
-            
-            return (
-              <motion.div
-                key={log.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl glass-strong border border-white/10 overflow-hidden hover:border-white/20 transition-all"
-              >
+                paginatedLogs.map((log) => {
+                  const isExpanded = expandedCards.has(log.id);
+                  const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
+                    ? "emerald"
+                    : log.status === "active"
+                    ? "yellow"
+                    : "gray";
+                  
+                  return (
+                    <motion.div
+                      key={log.id}
+                      ref={log.id === callIdParam ? callCardRef : null}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden hover:border-white/20 transition-all"
+                    >
                 {/* Card Header */}
                 <div 
                   className="p-6 cursor-pointer"
