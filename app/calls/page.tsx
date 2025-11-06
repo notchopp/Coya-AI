@@ -237,6 +237,24 @@ export default function LiveCallsPage() {
                   }
                   return updated;
                 });
+                
+                // Reload turns for this call when it updates (in case turns were added)
+                if (call.call_id) {
+                  supabase
+                    .from("call_turns")
+                    .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+                    .eq("call_id", call.call_id)
+                    .order("turn_number", { ascending: true })
+                    .then(({ data: turnsData, error: turnsError }) => {
+                      if (!turnsError && turnsData) {
+                        console.log(`🔄 Reloaded turns for updated call ${call.call_id}:`, turnsData.length);
+                        setCallTurns((prev) => ({
+                          ...prev,
+                          [call.call_id]: turnsData,
+                        }));
+                      }
+                    });
+                }
               }
               // Remove if no longer active
               else {
