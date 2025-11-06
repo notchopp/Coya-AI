@@ -69,7 +69,7 @@ type Insight = {
 
 type ActivityItem = {
   id: string;
-  type: "booking" | "achievement" | "streak";
+  type: "booking" | "call" | "achievement" | "streak";
   message: string;
   timestamp: Date;
   patientName?: string;
