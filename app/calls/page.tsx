@@ -54,26 +54,54 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     console.log("📝 First item keys:", transcriptJson[0] ? Object.keys(transcriptJson[0]) : "no items");
     console.log("📝 First item:", transcriptJson[0]);
     
-    const messages = transcriptJson.map((msg: any, idx: number) => {
-      // Determine role from speaker field
-      const speaker = (msg.speaker || msg.role || "").toLowerCase();
-      const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
-      
-      // Try multiple possible text field names
-      const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
-      
-      console.log(`  Item ${idx}: speaker="${speaker}", role="${role}", text="${text.substring(0, 50)}..."`);
-      
-      return { role, text };
-    }).filter((msg: Message) => {
-      const hasText = msg.text.trim().length > 0;
-      if (!hasText) {
-        console.log(`  ⚠️ Filtered out message with no text:`, msg);
-      }
-      return hasText;
-    });
+    const messages = transcriptJson
+      .filter((msg: any) => {
+        // Filter out tool calls - check for tool/function indicators
+        const role = (msg.role || msg.speaker || "").toLowerCase();
+        const isToolCall = 
+          role === "tool" || 
+          role === "function" ||
+          role === "function_call" ||
+          msg.type === "tool" ||
+          msg.type === "function" ||
+          msg.function_call ||
+          msg.tool_calls ||
+          msg.tool_call_id ||
+          (msg.content && typeof msg.content === "object" && msg.content.type === "tool");
+        
+        if (isToolCall) {
+          console.log("🚫 Filtered out tool call:", msg);
+          return false;
+        }
+        return true;
+      })
+      .map((msg: any, idx: number) => {
+        // Determine role from speaker field
+        const speaker = (msg.speaker || msg.role || "").toLowerCase();
+        const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+        
+        // Try multiple possible text field names
+        const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
+        
+        // If content is an object, try to extract text from it
+        let finalText = text;
+        if (typeof text === "object" && text !== null) {
+          finalText = text.text || text.content || text.message || JSON.stringify(text);
+        }
+        
+        console.log(`  Item ${idx}: speaker="${speaker}", role="${role}", text="${finalText.substring(0, 50)}..."`);
+        
+        return { role, text: finalText };
+      })
+      .filter((msg: Message) => {
+        const hasText = msg.text.trim().length > 0;
+        if (!hasText) {
+          console.log(`  ⚠️ Filtered out message with no text:`, msg);
+        }
+        return hasText;
+      });
     
-    console.log("✅ Parsed array messages:", messages.length, "messages");
+    console.log("✅ Parsed array messages:", messages.length, "messages (tool calls filtered out)");
     if (messages.length > 0) {
       console.log("📋 Sample messages:", messages.slice(0, 3));
     }
@@ -82,13 +110,28 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   
   // If it's an object with messages array
   if (transcriptJson.messages && Array.isArray(transcriptJson.messages)) {
-    const messages = transcriptJson.messages.map((msg: any) => {
-      const speaker = (msg.speaker || msg.role || "").toLowerCase();
-      const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
-      const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
-      return { role, text };
-    }).filter((msg: Message) => msg.text.trim().length > 0);
-    console.log("Parsed object.messages:", messages.length);
+    const messages = transcriptJson.messages
+      .filter((msg: any) => {
+        const role = (msg.role || msg.speaker || "").toLowerCase();
+        const isToolCall = 
+          role === "tool" || 
+          role === "function" ||
+          msg.type === "tool" ||
+          msg.function_call ||
+          msg.tool_calls;
+        return !isToolCall;
+      })
+      .map((msg: any) => {
+        const speaker = (msg.speaker || msg.role || "").toLowerCase();
+        const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+        let text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
+        if (typeof text === "object" && text !== null) {
+          text = text.text || text.content || text.message || JSON.stringify(text);
+        }
+        return { role, text };
+      })
+      .filter((msg: Message) => msg.text.trim().length > 0);
+    console.log("Parsed object.messages:", messages.length, "(tool calls filtered out)");
     return messages;
   }
   
@@ -106,8 +149,22 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   // If transcript_json is an object with role/text directly
   if (transcriptJson.role || transcriptJson.speaker) {
     const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
+    const isToolCall = 
+      speaker === "tool" || 
+      speaker === "function" ||
+      transcriptJson.type === "tool" ||
+      transcriptJson.function_call;
+    
+    if (isToolCall) {
+      console.log("🚫 Filtered out tool call object");
+      return [];
+    }
+    
     const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
-    const text = transcriptJson.text || transcriptJson.content || transcriptJson.message || transcriptJson.transcript || transcriptJson.text_content || transcriptJson.utterance || "";
+    let text = transcriptJson.text || transcriptJson.content || transcriptJson.message || transcriptJson.transcript || transcriptJson.text_content || transcriptJson.utterance || "";
+    if (typeof text === "object" && text !== null) {
+      text = text.text || text.content || text.message || JSON.stringify(text);
+    }
     if (text.trim().length > 0) {
       console.log("Parsed single message object:", { role, text });
       return [{ role, text }];
