@@ -251,16 +251,21 @@ export default function LiveCallsPage() {
               }
               // If call is still active, update it
               else if (call.status === "active") {
+                // Update the call in state (this will trigger re-render with new patient_name, last_intent, etc.)
                 setCalls((prev) => {
-                  const updated = prev.map((c) => (c.id === call.id ? call : c));
-                  // Also add if it wasn't in the list
-                  if (!prev.find(c => c.id === call.id)) {
-                    return [call, ...updated];
+                  const existingIndex = prev.findIndex(c => c.id === call.id);
+                  if (existingIndex >= 0) {
+                    // Update existing call
+                    const updated = [...prev];
+                    updated[existingIndex] = call;
+                    return updated;
+                  } else {
+                    // Add new call
+                    return [call, ...prev];
                   }
-                  return updated;
                 });
                 
-                // Reload turn for this call when it updates (in case transcript_json was updated)
+                // Always reload turn for this call when it updates (to get latest transcript_json)
                 if (call.call_id && effectiveBusinessId) {
                   supabase
                     .from("call_turns")
@@ -511,22 +516,39 @@ export default function LiveCallsPage() {
               >
                 {/* Call Header */}
                 <div className="p-6 border-b border-white/10">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 flex-shrink-0">
                         <PhoneIncoming className="h-5 w-5 text-yellow-400" />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-white truncate">
                           {call.patient_name || "Unknown Caller"}
                         </h3>
                         {call.phone && (
-                          <p className="text-sm text-white/60">{call.phone}</p>
+                          <p className="text-sm text-white/60 truncate">{call.phone}</p>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-white/40">
-                      {format(new Date(call.started_at), "h:mm a")}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Small "Call in progress" badge */}
+                      <motion.div
+                        animate={{
+                          opacity: [0.6, 1, 0.6],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                      >
+                        <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                        <span className="text-xs font-medium text-yellow-400">Live</span>
+                      </motion.div>
+                      <div className="text-xs text-white/40">
+                        {format(new Date(call.started_at), "h:mm a")}
+                      </div>
                     </div>
                   </div>
                   {call.last_intent && (
@@ -538,32 +560,9 @@ export default function LiveCallsPage() {
                   )}
                 </div>
 
-                {/* Call Content */}
-                <div className="p-6 relative">
-                  {!hasTranscriptContent ? (
-                    // Call in Progress Animation
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          opacity: [0.5, 1, 0.5],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="mb-4"
-                      >
-                        <div className="p-4 rounded-full bg-yellow-500/20 border border-yellow-500/30">
-                          <PhoneIncoming className="h-8 w-8 text-yellow-400" />
-                        </div>
-                      </motion.div>
-                      <p className="text-white/60 text-sm font-medium">Call in progress...</p>
-                      <p className="text-white/40 text-xs mt-1">Waiting for transcript</p>
-                    </div>
-                  ) : (
-                    // Transcript Chat Bubbles
+                {/* Call Content - Transcript */}
+                <div className="p-6">
+                  {hasTranscriptContent && messages.length > 0 ? (
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                       {messages.map((message, idx) => (
                         <motion.div
@@ -595,6 +594,10 @@ export default function LiveCallsPage() {
                           </div>
                         </motion.div>
                       ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-white/40 text-sm">
+                      Waiting for transcript...
                     </div>
                   )}
                 </div>
