@@ -337,12 +337,20 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-white">Call Logs</h1>
-                <span className="beta-badge">Beta</span>
-              </div>
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold text-white">Call Logs</h1>
+              <span className="beta-badge">Beta</span>
             </div>
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+            >
+              #Founders Program
+            </motion.span>
+          </div>
 
       {/* Search and Filters */}
       <div className="flex gap-4">
