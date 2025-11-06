@@ -1231,6 +1231,9 @@ export default function Dashboard() {
                     {activity.type === "booking" && (
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                     )}
+                    {activity.type === "call" && (
+                      <Phone className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                    )}
                     {activity.type === "streak" && (
                       <Trophy className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
                     )}
