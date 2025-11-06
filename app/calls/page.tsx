@@ -151,20 +151,58 @@ export default function LiveCallsPage() {
         return;
       }
 
+      console.log("🔍 Loading active calls for business_id:", effectiveBusinessId);
+
+      // First, check all calls for this business to see what statuses exist
+      const { data: allCallsData } = await supabase
+        .from("calls")
+        .select("id,business_id,call_id,status,patient_name")
+        .eq("business_id", effectiveBusinessId)
+        .order("started_at", { ascending: false })
+        .limit(20);
+      
+      console.log("🔍 All calls for this business:", allCallsData?.length || 0);
+      console.log("🔍 Sample calls:", allCallsData?.slice(0, 5));
+      console.log("🔍 Status values found:", allCallsData?.map(c => ({ call_id: c.call_id, status: c.status, patient_name: c.patient_name })));
+
+      // Now query for active calls (try both exact match and case-insensitive)
       const { data: callsData, error: callsError } = await supabase
         .from("calls")
         .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns,to_number")
         .eq("business_id", effectiveBusinessId)
-        .eq("status", "active")
         .order("started_at", { ascending: false });
 
       if (!isMounted) return;
       if (callsError) {
-        console.error("❌ Error loading active calls:", callsError);
+        console.error("❌ Error loading calls:", callsError);
         return;
       }
 
-      const activeCalls = (callsData || []).filter(c => c.status === "active");
+      console.log("📞 Raw calls data:", callsData);
+      console.log("📞 Total calls fetched:", callsData?.length || 0);
+
+      // Filter for active calls (check multiple variations)
+      const activeCalls = (callsData || []).filter(c => {
+        const statusLower = c.status?.toLowerCase()?.trim();
+        const isActive = statusLower === "active" || statusLower === "in-progress" || statusLower === "in_progress";
+        console.log(`Call ${c.call_id}: status="${c.status}" (lowercase: "${statusLower}"), isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
+        return isActive;
+      });
+
+      console.log("✅ Active calls after filtering:", activeCalls.length);
+      if (activeCalls.length > 0) {
+        console.log("📋 Active call details:", activeCalls.map(c => ({
+          call_id: c.call_id,
+          status: c.status,
+          patient_name: c.patient_name,
+          business_id: c.business_id
+        })));
+      } else {
+        console.warn("⚠️ No active calls found. Check:");
+        console.warn("1. Is status exactly 'active'?");
+        console.warn("2. Does business_id match?", effectiveBusinessId);
+        console.warn("3. Are there any calls at all?", callsData?.length || 0);
+      }
       
       // Load call turns for all active calls
       // Match by: call_id + business_id OR to_number (both tables have to_number)
@@ -358,35 +396,37 @@ export default function LiveCallsPage() {
                    
                    console.log("🔄 Call turn updated:", payload.eventType, turn);
                    
-                   // Reload turn for this call_id/to_number and verify it matches an active call
+                   // Reload turn and verify it matches an active call
                    if (turn?.business_id === effectiveBusinessId && (turn?.call_id || turn?.to_number)) {
-                     const { data: turnData, error: turnsError } = await supabase
+                     let query = supabase
                        .from("call_turns")
                        .select("id,business_id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
                        .eq("business_id", effectiveBusinessId);
                      
                      // Match by call_id or to_number
-                     let query = turn.call_id 
-                       ? turnData.filter((t: CallTurn) => t.call_id === turn.call_id)
-                       : turn.to_number
-                       ? turnData.filter((t: CallTurn) => t.to_number === turn.to_number)
-                       : [];
+                     if (turn.call_id) {
+                       query = query.eq("call_id", turn.call_id);
+                     } else if (turn.to_number) {
+                       query = query.eq("to_number", turn.to_number);
+                     }
                      
+                     const { data: turnData, error: turnsError } = await query.maybeSingle();
+
                      if (turnsError) {
                        console.error("❌ Error reloading turn:", turnsError);
                      } else if (turnData) {
                        // Find matching active call
                        setCalls((currentCalls) => {
                          const matchingCall = currentCalls.find(call => 
-                           (call.call_id && turn.call_id && call.call_id === turn.call_id) ||
-                           (call.to_number && turn.to_number && call.to_number === turn.to_number)
+                           (call.call_id && turnData.call_id && call.call_id === turnData.call_id) ||
+                           (call.to_number && turnData.to_number && call.to_number === turnData.to_number)
                          );
                          
                          if (matchingCall && matchingCall.call_id) {
-                           console.log(`✅ Reloaded turn for call ${matchingCall.call_id} (to_number: ${turn.to_number || 'N/A'})`);
+                           console.log(`✅ Reloaded turn for call ${matchingCall.call_id} (to_number: ${turnData.to_number || 'N/A'})`);
                            setCallTurns((prev) => ({
                              ...prev,
-                             [matchingCall.call_id]: turn,
+                             [matchingCall.call_id]: turnData,
                            }));
                          }
                          return currentCalls;
