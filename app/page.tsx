@@ -630,18 +630,48 @@ export default function Dashboard() {
         setInsights(regularInsights.slice(0, 3));
       }
 
-      // Generate activity feed
+      // Generate activity feed - include ALL recent activity
       const activities: ActivityItem[] = [];
       
-      // Group bookings by patient name for today
+      // Get all recent calls (today) - include unknown patients too
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const todayCallActivities = allCalls
+        .filter(c => {
+          const callDate = new Date(c.started_at);
+          return callDate >= today;
+        })
+        .slice(0, 10) // Get last 10 calls from today
+        .map(c => {
+          // Determine activity type
+          if (c.schedule !== null) {
+            return {
+              id: c.id,
+              type: "booking" as const,
+              message: `${c.patient_name || "Unknown caller"} booked an appointment`,
+              timestamp: new Date(c.started_at),
+              patientName: c.patient_name || undefined,
+            };
+          } else {
+            return {
+              id: c.id,
+              type: "call" as const,
+              message: `${c.patient_name || "Unknown caller"} called`,
+              timestamp: new Date(c.started_at),
+              patientName: c.patient_name || undefined,
+            };
+          }
+        });
+      
+      activities.push(...todayCallActivities);
+
+      // Group bookings by patient name for today (including unknown)
       const todayBookings = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
-        return callDate >= today && c.schedule !== null && c.patient_name;
+        return callDate >= today && c.schedule !== null;
       });
 
-      // Group by patient name
+      // Group by patient name (including "Unknown")
       const bookingsByPatient: Record<string, number> = {};
       todayBookings.forEach(c => {
         const name = c.patient_name || "Unknown";
@@ -651,32 +681,18 @@ export default function Dashboard() {
       // Create activity items for patients with multiple bookings
       Object.entries(bookingsByPatient).forEach(([name, count]) => {
         if (count > 1) {
-          activities.push({
-            id: `patient-${name}`,
-            type: "booking",
-            message: `${name} booked ${count} new ${count === 1 ? "client" : "clients"} today.`,
-            timestamp: new Date(),
-            patientName: name,
-          });
-        }
-      });
-
-      // Recent bookings (individual)
-      const recentBookings = allCalls
-        .filter(c => c.schedule !== null)
-        .slice(0, 5)
-        .map(c => ({
-          id: c.id,
-          type: "booking" as const,
-          message: `${c.patient_name || "A patient"} booked an appointment`,
-          timestamp: new Date(c.started_at),
-          patientName: c.patient_name || undefined,
-        }));
-      
-      // Add individual bookings if not already in grouped activities
-      recentBookings.forEach(booking => {
-        if (!activities.find(a => a.patientName === booking.patientName && a.type === "booking")) {
-          activities.push(booking);
+          const existingIndex = activities.findIndex(a => 
+            a.type === "booking" && a.patientName === (name === "Unknown" ? undefined : name)
+          );
+          if (existingIndex === -1) {
+            activities.push({
+              id: `patient-${name}`,
+              type: "booking",
+              message: `${name} booked ${count} new ${count === 1 ? "client" : "clients"} today.`,
+              timestamp: new Date(),
+              patientName: name === "Unknown" ? undefined : name,
+            });
+          }
         }
       });
 
@@ -693,6 +709,8 @@ export default function Dashboard() {
         });
       }
 
+      // Sort by timestamp (most recent first) and limit to 5
+      activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       setActivityFeed(activities.slice(0, 5));
 
       // Generate fun fact based on real data (changes every 24 hours)
