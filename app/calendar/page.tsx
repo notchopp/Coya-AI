@@ -167,6 +167,14 @@ export default function CalendarPage() {
           <h1 className="text-4xl font-bold text-white">Calendar</h1>
           <span className="beta-badge">Beta</span>
         </div>
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+        >
+          #Founders Program
+        </motion.span>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
