@@ -58,16 +58,19 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
       .filter((msg: any) => {
         // Filter out tool calls - check for tool/function indicators
         const role = (msg.role || msg.speaker || "").toLowerCase();
+        const msgType = (msg.type || "").toLowerCase();
         const isToolCall = 
           role === "tool" || 
           role === "function" ||
           role === "function_call" ||
-          msg.type === "tool" ||
-          msg.type === "function" ||
+          msgType === "tool" ||
+          msgType === "function" ||
+          msg.function || // Function call object (like n8n calls)
           msg.function_call ||
           msg.tool_calls ||
           msg.tool_call_id ||
-          (msg.content && typeof msg.content === "object" && msg.content.type === "tool");
+          (msg.content && typeof msg.content === "object" && msg.content.type === "tool") ||
+          (msg.content && typeof msg.content === "object" && msg.content.type === "function");
         
         if (isToolCall) {
           console.log("🚫 Filtered out tool call:", msg);
@@ -149,10 +152,13 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   // If transcript_json is an object with role/text directly
   if (transcriptJson.role || transcriptJson.speaker) {
     const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
+    const msgType = (transcriptJson.type || "").toLowerCase();
     const isToolCall = 
       speaker === "tool" || 
       speaker === "function" ||
-      transcriptJson.type === "tool" ||
+      msgType === "tool" ||
+      msgType === "function" ||
+      transcriptJson.function || // Function call object (like n8n calls)
       transcriptJson.function_call;
     
     if (isToolCall) {
