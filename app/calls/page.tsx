@@ -123,11 +123,23 @@ export default function LiveCallsPage() {
       if (activeCalls.length > 0) {
         const callIds = activeCalls.map(c => c.call_id);
         
+        console.log("🔄 Loading call turns for call_ids:", callIds);
+        
         const { data: turnsData, error: turnsError } = await supabase
           .from("call_turns")
           .select("id,call_id,turn_number,speaker,transcript_json,created_at")
           .in("call_id", callIds)
           .order("turn_number", { ascending: true });
+
+        if (turnsError) {
+          console.error("❌ Error loading call turns:", turnsError);
+        } else {
+          console.log("✅ Loaded call turns:", turnsData?.length || 0, "turns");
+          if (turnsData && turnsData.length > 0) {
+            console.log("Sample turn:", turnsData[0]);
+            console.log("Sample transcript_json:", JSON.stringify(turnsData[0].transcript_json, null, 2));
+          }
+        }
 
         if (!turnsError && turnsData) {
           // Group turns by call_id
@@ -139,7 +151,13 @@ export default function LiveCallsPage() {
             turnsByCallId[turn.call_id].push(turn);
           });
           setCallTurns(turnsByCallId);
+          console.log("📊 Grouped turns by call_id:", Object.keys(turnsByCallId));
+        } else {
+          // Clear turns if query failed or returned no data
+          setCallTurns({});
         }
+      } else {
+        setCallTurns({});
       }
 
       setCalls(activeCalls);
@@ -281,21 +299,38 @@ export default function LiveCallsPage() {
 
   function getMessagesForCall(call: Call): Message[] {
     const turns = callTurns[call.call_id] || [];
+    console.log(`📋 Getting messages for call ${call.call_id}:`, turns.length, "turns");
+    
     const allMessages: Message[] = [];
     
-    turns.forEach((turn) => {
+    turns.forEach((turn, idx) => {
+      console.log(`Turn ${idx + 1} for call ${call.call_id}:`, {
+        turn_number: turn.turn_number,
+        speaker: turn.speaker,
+        has_transcript_json: !!turn.transcript_json,
+        transcript_json_type: typeof turn.transcript_json,
+      });
+      
       if (turn.transcript_json) {
         const parsed = parseTranscriptJson(turn.transcript_json);
+        console.log(`Parsed ${parsed.length} messages from turn ${turn.turn_number}`);
         allMessages.push(...parsed);
       }
     });
     
+    console.log(`Total messages for call ${call.call_id}:`, allMessages.length);
     return allMessages;
   }
 
   function hasTranscript(call: Call): boolean {
     const turns = callTurns[call.call_id] || [];
-    return turns.length > 0 && turns.some(t => t.transcript_json);
+    const hasTranscriptData = turns.length > 0 && turns.some(t => t.transcript_json);
+    console.log(`Has transcript check for call ${call.call_id}:`, {
+      turnsCount: turns.length,
+      hasTranscriptData,
+      turns: turns.map(t => ({ turn_number: t.turn_number, has_json: !!t.transcript_json })),
+    });
+    return hasTranscriptData;
   }
 
   return (

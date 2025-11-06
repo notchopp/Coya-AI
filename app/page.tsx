@@ -854,6 +854,9 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+            {businessName && (
+              <span className="text-xl font-medium text-white/60">— {businessName}</span>
+            )}
             <span className="beta-badge">Beta</span>
           </div>
           <motion.span
