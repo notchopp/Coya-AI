@@ -215,25 +215,37 @@ export default function LiveCallsPage() {
         console.log("🔄 Using to_numbers:", toNumbers);
         
         // Query call_turns matching by call_id OR to_number (no business_id filter)
-        let query = supabase
-          .from("call_turns")
-          .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number");
+        // Try call_id first, then to_number as fallback
+        let turnsData: CallTurn[] = [];
+        let turnsError: any = null;
         
-        // Use call_id if available, otherwise use to_number
-        if (callIds.length > 0 && toNumbers.length > 0) {
-          // Try to match by both call_id and to_number
-          query = query.or(`call_id.in.(${callIds.join(',')}),to_number.in.(${toNumbers.join(',')})`);
-        } else if (callIds.length > 0) {
-          query = query.in("call_id", callIds);
-        } else if (toNumbers.length > 0) {
-          query = query.in("to_number", toNumbers);
-        } else {
-          setCallTurns({});
-          setCalls(activeCalls);
-          return;
+        if (callIds.length > 0) {
+          // Try call_id first
+          const { data, error } = await supabase
+            .from("call_turns")
+            .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
+            .in("call_id", callIds);
+          
+          turnsData = data || [];
+          turnsError = error;
+          
+          console.log("📞 Queried by call_id, found:", turnsData.length);
         }
-
-        const { data: turnsData, error: turnsError } = await query;
+        
+        // If no results by call_id and we have to_numbers, try to_number
+        if (turnsData.length === 0 && toNumbers.length > 0 && !turnsError) {
+          const { data, error } = await supabase
+            .from("call_turns")
+            .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
+            .in("to_number", toNumbers);
+          
+          if (!error && data) {
+            turnsData = [...turnsData, ...data];
+          }
+          turnsError = error || turnsError;
+          
+          console.log("📞 Queried by to_number, found:", data?.length || 0);
+        }
 
         if (turnsError) {
           console.error("❌ Error loading call turns:", turnsError);
