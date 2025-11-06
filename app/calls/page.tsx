@@ -42,21 +42,29 @@ type Message = {
 function parseTranscriptJson(transcriptJson: any): Message[] {
   if (!transcriptJson) return [];
   
+  console.log("🔍 Parsing transcript_json:", typeof transcriptJson, transcriptJson);
+  
   // Handle different JSON structures
   // If it's an array of messages
   if (Array.isArray(transcriptJson)) {
-    return transcriptJson.map((msg: any) => ({
-      role: (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot",
-      text: msg.text || msg.content || msg.message || "",
-    })).filter((msg: Message) => msg.text.trim().length > 0);
+    const messages = transcriptJson.map((msg: any) => {
+      const role = (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
+      const text = msg.text || msg.content || msg.message || "";
+      return { role, text };
+    }).filter((msg: Message) => msg.text.trim().length > 0);
+    console.log("Parsed array messages:", messages.length);
+    return messages;
   }
   
   // If it's an object with messages array
   if (transcriptJson.messages && Array.isArray(transcriptJson.messages)) {
-    return transcriptJson.messages.map((msg: any) => ({
-      role: (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot",
-      text: msg.text || msg.content || msg.message || "",
-    })).filter((msg: Message) => msg.text.trim().length > 0);
+    const messages = transcriptJson.messages.map((msg: any) => {
+      const role = (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
+      const text = msg.text || msg.content || msg.message || "";
+      return { role, text };
+    }).filter((msg: Message) => msg.text.trim().length > 0);
+    console.log("Parsed object.messages:", messages.length);
+    return messages;
   }
   
   // If it's a string, try to parse it
@@ -64,11 +72,23 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     try {
       const parsed = JSON.parse(transcriptJson);
       return parseTranscriptJson(parsed);
-    } catch {
+    } catch (e) {
+      console.log("Failed to parse string as JSON:", e);
       return [];
     }
   }
   
+  // If transcript_json is an object with role/text directly
+  if (transcriptJson.role || transcriptJson.speaker) {
+    const role = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
+    const text = transcriptJson.text || transcriptJson.content || transcriptJson.message || "";
+    if (text.trim().length > 0) {
+      console.log("Parsed single message object:", { role, text });
+      return [{ role, text }];
+    }
+  }
+  
+  console.log("No valid structure found in transcript_json");
   return [];
 }
 
