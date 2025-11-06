@@ -294,6 +294,7 @@ export default function LiveCallsPage() {
                 });
                 
                 // Always reload turn for this call when it updates (to get latest transcript_json)
+                // Use call_id + to_number to ensure correct match
                 if (call.call_id && effectiveBusinessId) {
                   supabase
                     .from("call_turns")
@@ -303,11 +304,14 @@ export default function LiveCallsPage() {
                     .maybeSingle()
                     .then(({ data: turnData, error: turnsError }) => {
                       if (!turnsError && turnData) {
-                        console.log(`🔄 Reloaded turn for updated call ${call.call_id}`);
-                        setCallTurns((prev) => ({
-                          ...prev,
-                          [call.call_id]: turnData,
-                        }));
+                        // Verify call_id matches before updating
+                        if (turnData.call_id === call.call_id) {
+                          console.log(`🔄 Reloaded turn for updated call ${call.call_id} (to_number: ${call.to_number || 'N/A'})`);
+                          setCallTurns((prev) => ({
+                            ...prev,
+                            [call.call_id]: turnData,
+                          }));
+                        }
                       }
                     });
                 }
