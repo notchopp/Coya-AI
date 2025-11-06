@@ -49,20 +49,42 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   // Handle different JSON structures
   // If it's an array of messages
   if (Array.isArray(transcriptJson)) {
-    const messages = transcriptJson.map((msg: any) => {
-      const role = (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
-      const text = msg.text || msg.content || msg.message || "";
+    console.log("📝 Array detected with", transcriptJson.length, "items");
+    console.log("📝 First item keys:", transcriptJson[0] ? Object.keys(transcriptJson[0]) : "no items");
+    console.log("📝 First item:", transcriptJson[0]);
+    
+    const messages = transcriptJson.map((msg: any, idx: number) => {
+      // Determine role from speaker field
+      const speaker = (msg.speaker || msg.role || "").toLowerCase();
+      const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+      
+      // Try multiple possible text field names
+      const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
+      
+      console.log(`  Item ${idx}: speaker="${speaker}", role="${role}", text="${text.substring(0, 50)}..."`);
+      
       return { role, text };
-    }).filter((msg: Message) => msg.text.trim().length > 0);
-    console.log("Parsed array messages:", messages.length);
+    }).filter((msg: Message) => {
+      const hasText = msg.text.trim().length > 0;
+      if (!hasText) {
+        console.log(`  ⚠️ Filtered out message with no text:`, msg);
+      }
+      return hasText;
+    });
+    
+    console.log("✅ Parsed array messages:", messages.length, "messages");
+    if (messages.length > 0) {
+      console.log("📋 Sample messages:", messages.slice(0, 3));
+    }
     return messages;
   }
   
   // If it's an object with messages array
   if (transcriptJson.messages && Array.isArray(transcriptJson.messages)) {
     const messages = transcriptJson.messages.map((msg: any) => {
-      const role = (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
-      const text = msg.text || msg.content || msg.message || "";
+      const speaker = (msg.speaker || msg.role || "").toLowerCase();
+      const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+      const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
       return { role, text };
     }).filter((msg: Message) => msg.text.trim().length > 0);
     console.log("Parsed object.messages:", messages.length);
@@ -82,15 +104,16 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   
   // If transcript_json is an object with role/text directly
   if (transcriptJson.role || transcriptJson.speaker) {
-    const role = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase().includes("user") ? "user" : "bot";
-    const text = transcriptJson.text || transcriptJson.content || transcriptJson.message || "";
+    const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
+    const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+    const text = transcriptJson.text || transcriptJson.content || transcriptJson.message || transcriptJson.transcript || transcriptJson.text_content || transcriptJson.utterance || "";
     if (text.trim().length > 0) {
       console.log("Parsed single message object:", { role, text });
       return [{ role, text }];
     }
   }
   
-  console.log("No valid structure found in transcript_json");
+  console.log("❌ No valid structure found in transcript_json");
   return [];
 }
 
@@ -98,7 +121,7 @@ export default function LiveCallsPage() {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
-  const [callTurns, setCallTurns] = useState<Record<string, CallTurn[]>>({});
+  const [callTurns, setCallTurns] = useState<Record<string, CallTurn>>({}); // Store one turn record per call_id
   const [connected, setConnected] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [endedCallId, setEndedCallId] = useState<string | null>(null);
