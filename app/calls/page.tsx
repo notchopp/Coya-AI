@@ -406,7 +406,7 @@ export default function LiveCallsPage() {
       
       channels.push(callsChannel);
 
-             // Subscribe to call_turns table changes
+             // Subscribe to call_turns table changes - this will update transcripts as they come in
              const turnsChannel = supabase
                .channel(`live-call-turns:${effectiveBusinessId}`)
                .on(
@@ -420,6 +420,12 @@ export default function LiveCallsPage() {
                    const turn = payload.new as CallTurn;
                    
                    console.log("🔄 Call turn updated:", payload.eventType, turn);
+                   console.log("🔄 Turn details:", {
+                     call_id: turn?.call_id,
+                     to_number: turn?.to_number,
+                     has_transcript_json: !!turn?.transcript_json,
+                     total_turns: turn?.total_turns
+                   });
                    
                    // Reload turn and verify it matches an active call
                    // Match by call_id OR to_number (no business_id)
@@ -442,7 +448,13 @@ export default function LiveCallsPage() {
                      if (turnsError) {
                        console.error("❌ Error reloading turn:", turnsError);
                      } else if (turnData) {
-                       // Find matching active call
+                       console.log("✅ Reloaded turn data:", {
+                         call_id: turnData.call_id,
+                         transcript_json_length: turnData.transcript_json ? (Array.isArray(turnData.transcript_json) ? turnData.transcript_json.length : 'object') : 'null',
+                         total_turns: turnData.total_turns
+                       });
+                       
+                       // Find matching active call and update immediately
                        setCalls((currentCalls) => {
                          const matchingCall = currentCalls.find(call => {
                            const callToNumber = call.to_number?.trim();
@@ -455,11 +467,13 @@ export default function LiveCallsPage() {
                          });
                          
                          if (matchingCall && matchingCall.call_id) {
-                           console.log(`✅ Reloaded turn for call ${matchingCall.call_id} (to_number: ${turnData.to_number?.trim() || 'N/A'})`);
+                           console.log(`✅ Updating transcript for call ${matchingCall.call_id} in real-time`);
                            setCallTurns((prev) => ({
                              ...prev,
                              [matchingCall.call_id]: turnData,
                            }));
+                         } else {
+                           console.log("⚠️ No matching active call found for turn:", turnData.call_id);
                          }
                          return currentCalls;
                        });
@@ -474,8 +488,11 @@ export default function LiveCallsPage() {
       channels.push(turnsChannel);
 
       // Poll for updates every 2 seconds to catch transcript changes
+      // This ensures we catch any updates even if real-time subscription misses them
       const pollInterval = setInterval(() => {
-        loadActiveCalls();
+        if (isMounted) {
+          loadActiveCalls();
+        }
       }, 2000);
 
       return () => {
