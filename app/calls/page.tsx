@@ -116,10 +116,13 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     const messages = transcriptJson.messages
       .filter((msg: any) => {
         const role = (msg.role || msg.speaker || "").toLowerCase();
+        const msgType = (msg.type || "").toLowerCase();
         const isToolCall = 
           role === "tool" || 
           role === "function" ||
-          msg.type === "tool" ||
+          msgType === "tool" ||
+          msgType === "function" ||
+          msg.function || // Function call object (like n8n calls)
           msg.function_call ||
           msg.tool_calls;
         return !isToolCall;
