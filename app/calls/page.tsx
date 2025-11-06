@@ -256,37 +256,44 @@ export default function LiveCallsPage() {
       
       channels.push(callsChannel);
 
-      // Subscribe to call_turns table changes
-      const turnsChannel = supabase
-        .channel(`live-call-turns:${effectiveBusinessId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "call_turns",
-          },
-          async (payload) => {
-            const turn = payload.new as CallTurn;
-            
-            // Reload turns for this call_id
-            if (turn?.call_id) {
-              const { data: turnsData } = await supabase
-                .from("call_turns")
-                .select("id,call_id,turn_number,speaker,transcript_json,created_at")
-                .eq("call_id", turn.call_id)
-                .order("turn_number", { ascending: true });
+             // Subscribe to call_turns table changes
+             const turnsChannel = supabase
+               .channel(`live-call-turns:${effectiveBusinessId}`)
+               .on(
+                 "postgres_changes",
+                 {
+                   event: "*",
+                   schema: "public",
+                   table: "call_turns",
+                 },
+                 async (payload) => {
+                   const turn = payload.new as CallTurn;
+                   
+                   console.log("🔄 Call turn updated:", payload.eventType, turn);
+                   
+                   // Reload turns for this call_id
+                   if (turn?.call_id) {
+                     const { data: turnsData, error: turnsError } = await supabase
+                       .from("call_turns")
+                       .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+                       .eq("call_id", turn.call_id)
+                       .order("turn_number", { ascending: true });
 
-              if (turnsData) {
-                setCallTurns((prev) => ({
-                  ...prev,
-                  [turn.call_id]: turnsData,
-                }));
-              }
-            }
-          }
-        )
-        .subscribe();
+                     if (turnsError) {
+                       console.error("❌ Error reloading turns:", turnsError);
+                     } else if (turnsData) {
+                       console.log(`✅ Reloaded ${turnsData.length} turns for call ${turn.call_id}`);
+                       setCallTurns((prev) => ({
+                         ...prev,
+                         [turn.call_id]: turnsData,
+                       }));
+                     }
+                   }
+                 }
+               )
+               .subscribe((status) => {
+                 console.log("Call turns channel subscription status:", status);
+               });
       
       channels.push(turnsChannel);
 
