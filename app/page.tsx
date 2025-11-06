@@ -854,23 +854,16 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-bold text-white">Dashboard</h1>
-            {businessName && (
-              <span className="text-xl font-medium text-white/60">— {businessName}</span>
-            )}
             <span className="beta-badge">Beta</span>
           </div>
-          {businessName && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mt-1"
-            >
-              <span className="text-xs font-medium text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)] animate-pulse">
-                #Founders Program
-              </span>
-            </motion.div>
-          )}
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+          >
+            #Founders Program
+          </motion.span>
         </div>
         {userName && (
           <motion.div
