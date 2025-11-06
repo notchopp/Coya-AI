@@ -633,66 +633,47 @@ export default function Dashboard() {
       // Generate activity feed - include ALL recent activity
       const activities: ActivityItem[] = [];
       
-      // Get all recent calls (today) - include unknown patients too
+      // Get all recent calls from today - include ALL calls (bookings and regular calls)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayCallActivities = allCalls
+      
+      // Get all calls from today, sorted by most recent first
+      const todayCalls = allCalls
         .filter(c => {
           const callDate = new Date(c.started_at);
           return callDate >= today;
         })
-        .slice(0, 10) // Get last 10 calls from today
-        .map(c => {
-          // Determine activity type
-          if (c.schedule !== null) {
-            return {
-              id: c.id,
-              type: "booking" as const,
-              message: `${c.patient_name || "Unknown caller"} booked an appointment`,
-              timestamp: new Date(c.started_at),
-              patientName: c.patient_name || undefined,
-            };
-          } else {
-            return {
-              id: c.id,
-              type: "call" as const,
-              message: `${c.patient_name || "Unknown caller"} called`,
-              timestamp: new Date(c.started_at),
-              patientName: c.patient_name || undefined,
-            };
-          }
-        });
+        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+        .slice(0, 10); // Get last 10 calls from today
       
-      activities.push(...todayCallActivities);
-
-      // Group bookings by patient name for today (including unknown)
-      const todayBookings = allCalls.filter(c => {
-        const callDate = new Date(c.started_at);
-        return callDate >= today && c.schedule !== null;
-      });
-
-      // Group by patient name (including "Unknown")
-      const bookingsByPatient: Record<string, number> = {};
-      todayBookings.forEach(c => {
-        const name = c.patient_name || "Unknown";
-        bookingsByPatient[name] = (bookingsByPatient[name] || 0) + 1;
-      });
-
-      // Create activity items for patients with multiple bookings
-      Object.entries(bookingsByPatient).forEach(([name, count]) => {
-        if (count > 1) {
-          const existingIndex = activities.findIndex(a => 
-            a.type === "booking" && a.patientName === (name === "Unknown" ? undefined : name)
-          );
-          if (existingIndex === -1) {
-            activities.push({
-              id: `patient-${name}`,
-              type: "booking",
-              message: `${name} booked ${count} new ${count === 1 ? "client" : "clients"} today.`,
-              timestamp: new Date(),
-              patientName: name === "Unknown" ? undefined : name,
-            });
-          }
+      console.log("📋 Today's calls for activity feed:", todayCalls.length);
+      console.log("📋 Sample calls:", todayCalls.slice(0, 3).map(c => ({
+        call_id: c.id,
+        patient_name: c.patient_name || "Unknown",
+        has_schedule: !!c.schedule,
+        started_at: c.started_at
+      })));
+      
+      // Create activity items for each call
+      todayCalls.forEach(c => {
+        if (c.schedule !== null) {
+          // Booking
+          activities.push({
+            id: `booking-${c.id}`,
+            type: "booking",
+            message: `${c.patient_name || "Unknown caller"} booked an appointment`,
+            timestamp: new Date(c.started_at),
+            patientName: c.patient_name || undefined,
+          });
+        } else {
+          // Just a call, no booking
+          activities.push({
+            id: `call-${c.id}`,
+            type: "call",
+            message: `${c.patient_name || "Unknown caller"} called`,
+            timestamp: new Date(c.started_at),
+            patientName: c.patient_name || undefined,
+          });
         }
       });
 
@@ -711,6 +692,12 @@ export default function Dashboard() {
 
       // Sort by timestamp (most recent first) and limit to 5
       activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      console.log("✅ Final activity feed items:", activities.length);
+      console.log("✅ Activity items:", activities.map(a => ({
+        type: a.type,
+        message: a.message,
+        timestamp: format(a.timestamp, "h:mm a")
+      })));
       setActivityFeed(activities.slice(0, 5));
 
       // Generate fun fact based on real data (changes every 24 hours)
