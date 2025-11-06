@@ -349,7 +349,7 @@ export default function LiveCallsPage() {
                    
                    console.log("🔄 Call turn updated:", payload.eventType, turn);
                    
-                   // Reload turn for this call_id
+                   // Reload turn for this call_id and verify it matches an active call
                    if (turn?.call_id && turn?.business_id === effectiveBusinessId) {
                      const { data: turnData, error: turnsError } = await supabase
                        .from("call_turns")
@@ -361,6 +361,7 @@ export default function LiveCallsPage() {
                      if (turnsError) {
                        console.error("❌ Error reloading turn:", turnsError);
                      } else if (turnData) {
+                       // Update call_turns state - the component will match it to active calls
                        console.log(`✅ Reloaded turn for call ${turn.call_id}`);
                        setCallTurns((prev) => ({
                          ...prev,
