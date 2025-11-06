@@ -4,6 +4,7 @@
 ALTER TABLE public.call_turns ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see call_turns for calls from their business
+-- This links call_turns to calls table via call_id, and checks business_id through calls
 CREATE POLICY "Users can view call_turns for their business calls"
 ON public.call_turns
 FOR SELECT
@@ -12,6 +13,12 @@ USING (
     SELECT business_id
     FROM public.users
     WHERE auth_user_id = auth.uid()
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM public.calls
+    WHERE calls.call_id = call_turns.call_id
+    AND calls.business_id = call_turns.business_id
   )
 );
 
@@ -33,10 +40,13 @@ WITH CHECK (auth.role() = 'service_role');
 --     FROM public.users
 --     WHERE auth_user_id = auth.uid()
 --   )
+--   AND EXISTS (
+--     SELECT 1
+--     FROM public.calls
+--     WHERE calls.call_id = call_turns.call_id
+--     AND calls.business_id = call_turns.business_id
+--   )
 -- );
 
--- Create index for faster queries on call_id (already exists in schema, but keeping for reference)
--- CREATE INDEX IF NOT EXISTS idx_call_turns_call_id ON public.call_turns(call_id);
--- CREATE INDEX IF NOT EXISTS idx_call_turns_business_id ON public.call_turns(business_id);
--- CREATE INDEX IF NOT EXISTS idx_call_turns_created_at ON public.call_turns(created_at DESC);
+-- Note: Indexes already exist in schema (call_id, business_id, created_at)
 

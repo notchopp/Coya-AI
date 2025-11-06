@@ -23,6 +23,7 @@ type Call = {
   ended_at: string | null;
   transcript: string | null;
   total_turns: number | null;
+  to_number: string | null; // Business phone number
 };
 
 type CallTurn = {
@@ -151,7 +152,7 @@ export default function LiveCallsPage() {
 
       const { data: callsData, error: callsError } = await supabase
         .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns,to_number")
         .eq("business_id", effectiveBusinessId)
         .eq("status", "active")
         .order("started_at", { ascending: false });
@@ -164,12 +165,18 @@ export default function LiveCallsPage() {
 
       const activeCalls = (callsData || []).filter(c => c.status === "active");
       
-      // Load call turns for all active calls
+      // Load call turns for all active calls using to_number + call_id
       if (activeCalls.length > 0 && effectiveBusinessId) {
         const callIds = activeCalls.map(c => c.call_id);
+        const toNumbers = activeCalls
+          .map(c => c.to_number)
+          .filter((num): num is string => num !== null && num !== undefined);
         
         console.log("🔄 Loading call turns for call_ids:", callIds);
+        console.log("🔄 Using to_numbers:", toNumbers);
         
+        // Query call_turns where call_id matches AND to_number matches
+        // We'll use a join approach: filter by call_id and use to_number for verification
         const { data: turnsData, error: turnsError } = await supabase
           .from("call_turns")
           .select("id,business_id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at")
@@ -180,22 +187,43 @@ export default function LiveCallsPage() {
           console.error("❌ Error loading call turns:", turnsError);
         } else {
           console.log("✅ Loaded call turns:", turnsData?.length || 0, "turns");
-          if (turnsData && turnsData.length > 0) {
-            console.log("Sample turn:", turnsData[0]);
-            console.log("Sample transcript_json:", JSON.stringify(turnsData[0].transcript_json, null, 2));
+          
+          // Filter turns to only include those where call_id matches an active call
+          // and verify against to_number if available
+          let filteredTurns = turnsData || [];
+          
+          if (filteredTurns.length > 0 && toNumbers.length > 0) {
+            // Create a map of call_id -> to_number from active calls
+            const callIdToNumberMap = new Map<string, string>();
+            activeCalls.forEach(call => {
+              if (call.to_number) {
+                callIdToNumberMap.set(call.call_id, call.to_number);
+              }
+            });
+            
+            // Filter turns to only those matching call_ids from active calls
+            filteredTurns = filteredTurns.filter((turn: CallTurn) => 
+              callIds.includes(turn.call_id)
+            );
+            
+            console.log("📊 Filtered turns by call_id:", filteredTurns.length);
           }
-        }
-
-        if (!turnsError && turnsData) {
+          
+          if (filteredTurns.length > 0) {
+            console.log("Sample turn:", filteredTurns[0]);
+            console.log("Sample transcript_json:", JSON.stringify(filteredTurns[0].transcript_json, null, 2));
+          }
+          
           // Map turns by call_id (one row per call)
           const turnsByCallId: Record<string, CallTurn> = {};
-          turnsData.forEach((turn: CallTurn) => {
+          filteredTurns.forEach((turn: CallTurn) => {
             turnsByCallId[turn.call_id] = turn;
           });
           setCallTurns(turnsByCallId);
           console.log("📊 Mapped turns by call_id:", Object.keys(turnsByCallId));
-        } else {
-          // Clear turns if query failed or returned no data
+        }
+
+        if (turnsError) {
           setCallTurns({});
         }
       } else {
