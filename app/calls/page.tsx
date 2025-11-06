@@ -156,11 +156,12 @@ export default function LiveCallsPage() {
 
     loadActiveCalls();
 
-    // Set up real-time subscription
+    // Set up real-time subscription for calls
     const channels: ReturnType<typeof supabase.channel>[] = [];
 
     if (effectiveBusinessId) {
-      const channel = supabase
+      // Subscribe to calls table changes
+      const callsChannel = supabase
         .channel(`live-calls:${effectiveBusinessId}`)
         .on(
           "postgres_changes",
@@ -215,7 +216,41 @@ export default function LiveCallsPage() {
           setConnected(status === "SUBSCRIBED");
         });
       
-      channels.push(channel);
+      channels.push(callsChannel);
+
+      // Subscribe to call_turns table changes
+      const turnsChannel = supabase
+        .channel(`live-call-turns:${effectiveBusinessId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "call_turns",
+          },
+          async (payload) => {
+            const turn = payload.new as CallTurn;
+            
+            // Reload turns for this call_id
+            if (turn?.call_id) {
+              const { data: turnsData } = await supabase
+                .from("call_turns")
+                .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+                .eq("call_id", turn.call_id)
+                .order("turn_number", { ascending: true });
+
+              if (turnsData) {
+                setCallTurns((prev) => ({
+                  ...prev,
+                  [turn.call_id]: turnsData,
+                }));
+              }
+            }
+          }
+        )
+        .subscribe();
+      
+      channels.push(turnsChannel);
 
       // Poll for updates every 2 seconds to catch transcript changes
       const pollInterval = setInterval(() => {
@@ -244,8 +279,23 @@ export default function LiveCallsPage() {
     setEndedCallId(null);
   }
 
+  function getMessagesForCall(call: Call): Message[] {
+    const turns = callTurns[call.call_id] || [];
+    const allMessages: Message[] = [];
+    
+    turns.forEach((turn) => {
+      if (turn.transcript_json) {
+        const parsed = parseTranscriptJson(turn.transcript_json);
+        allMessages.push(...parsed);
+      }
+    });
+    
+    return allMessages;
+  }
+
   function hasTranscript(call: Call): boolean {
-    return !!(call.transcript && call.transcript.trim().length > 0) || (call.total_turns !== null && call.total_turns > 0);
+    const turns = callTurns[call.call_id] || [];
+    return turns.length > 0 && turns.some(t => t.transcript_json);
   }
 
   return (
