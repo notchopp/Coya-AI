@@ -25,93 +25,58 @@ type Call = {
   total_turns: number | null;
 };
 
+type CallTurn = {
+  id: string;
+  call_id: string;
+  turn_number: number;
+  speaker: string;
+  transcript_json: any;
+  created_at: string;
+};
+
 type Message = {
   role: "user" | "bot";
   text: string;
 };
 
-function parseTranscript(transcript: string): Message[] {
-  if (!transcript) return [];
+function parseTranscriptJson(transcriptJson: any): Message[] {
+  if (!transcriptJson) return [];
   
-  const messages: Message[] = [];
-  const lines = transcript.split("\n").filter(line => line.trim());
+  // Handle different JSON structures
+  // If it's an array of messages
+  if (Array.isArray(transcriptJson)) {
+    return transcriptJson.map((msg: any) => ({
+      role: (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot",
+      text: msg.text || msg.content || msg.message || "",
+    })).filter((msg: Message) => msg.text.trim().length > 0);
+  }
   
-  let currentRole: "user" | "bot" | null = null;
-  let currentText = "";
+  // If it's an object with messages array
+  if (transcriptJson.messages && Array.isArray(transcriptJson.messages)) {
+    return transcriptJson.messages.map((msg: any) => ({
+      role: (msg.role || msg.speaker || "").toLowerCase().includes("user") ? "user" : "bot",
+      text: msg.text || msg.content || msg.message || "",
+    })).filter((msg: Message) => msg.text.trim().length > 0);
+  }
   
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    // Detect role indicators
-    const userPatterns = [
-      /^(user|caller|patient|client):\s*/i,
-      /^\[user\]/i,
-      /^\(user\)/i,
-    ];
-    
-    const botPatterns = [
-      /^(bot|ai|assistant|agent|nia):\s*/i,
-      /^\[bot\]/i,
-      /^\[ai\]/i,
-      /^\(bot\)/i,
-      /^\(assistant\)/i,
-    ];
-    
-    const isUser = userPatterns.some(pattern => pattern.test(trimmed));
-    const isBot = botPatterns.some(pattern => pattern.test(trimmed));
-    
-    if (isUser || isBot) {
-      // Save previous message if exists
-      if (currentRole && currentText.trim()) {
-        messages.push({ role: currentRole, text: currentText.trim() });
-      }
-      
-      // Start new message
-      currentRole = isUser ? "user" : "bot";
-      currentText = trimmed.replace(/^(user|caller|patient|client|bot|ai|assistant|agent|nia):\s*/i, "")
-        .replace(/^\[(user|bot|ai)\]\s*/i, "")
-        .replace(/^\((user|bot|assistant)\)\s*/i, "")
-        .trim();
-    } else if (currentRole) {
-      // Continue current message
-      currentText += (currentText ? " " : "") + trimmed;
-    } else {
-      // If no role detected yet, try to infer from context
-      if (messages.length === 0) {
-        const lower = trimmed.toLowerCase();
-        if (lower.includes("hello") || lower.includes("hi") || lower.includes("thank you") || 
-            lower.includes("how can i") || lower.includes("i can help")) {
-          currentRole = "bot";
-          currentText = trimmed;
-        } else {
-          currentRole = "user";
-          currentText = trimmed;
-        }
-      } else {
-        // Continue with last role
-        currentRole = messages[messages.length - 1].role;
-        currentText = trimmed;
-      }
+  // If it's a string, try to parse it
+  if (typeof transcriptJson === "string") {
+    try {
+      const parsed = JSON.parse(transcriptJson);
+      return parseTranscriptJson(parsed);
+    } catch {
+      return [];
     }
   }
   
-  // Save last message
-  if (currentRole && currentText.trim()) {
-    messages.push({ role: currentRole, text: currentText.trim() });
-  }
-  
-  // If no messages parsed, return the whole transcript as a single bot message
-  if (messages.length === 0 && transcript.trim()) {
-    return [{ role: "bot", text: transcript.trim() }];
-  }
-  
-  return messages;
+  return [];
 }
 
 export default function LiveCallsPage() {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
+  const [callTurns, setCallTurns] = useState<Record<string, CallTurn[]>>({});
   const [connected, setConnected] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [endedCallId, setEndedCallId] = useState<string | null>(null);
@@ -139,24 +104,47 @@ export default function LiveCallsPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data: callsData, error: callsError } = await supabase
         .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,total_turns")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns")
         .eq("business_id", effectiveBusinessId)
         .eq("status", "active")
         .order("started_at", { ascending: false });
 
       if (!isMounted) return;
-      if (error) {
-        console.error("❌ Error loading active calls:", error);
+      if (callsError) {
+        console.error("❌ Error loading active calls:", callsError);
         return;
       }
 
-      // Check for calls that just ended
-      const activeCalls = (data || []).filter(c => c.status === "active");
+      const activeCalls = (callsData || []).filter(c => c.status === "active");
+      
+      // Load call turns for all active calls
+      if (activeCalls.length > 0) {
+        const callIds = activeCalls.map(c => c.call_id);
+        
+        const { data: turnsData, error: turnsError } = await supabase
+          .from("call_turns")
+          .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+          .in("call_id", callIds)
+          .order("turn_number", { ascending: true });
+
+        if (!turnsError && turnsData) {
+          // Group turns by call_id
+          const turnsByCallId: Record<string, CallTurn[]> = {};
+          turnsData.forEach((turn: CallTurn) => {
+            if (!turnsByCallId[turn.call_id]) {
+              turnsByCallId[turn.call_id] = [];
+            }
+            turnsByCallId[turn.call_id].push(turn);
+          });
+          setCallTurns(turnsByCallId);
+        }
+      }
+
       setCalls(activeCalls);
 
-      // Check if any call just ended (was in state but no longer active)
+      // Check if any call just ended
       const previousCallIds = calls.map(c => c.id);
       const currentCallIds = activeCalls.map(c => c.id);
       const endedCalls = previousCallIds.filter(id => !currentCallIds.includes(id));
@@ -350,9 +338,7 @@ export default function LiveCallsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {calls.map((call, index) => {
             const hasTranscriptContent = hasTranscript(call);
-            const messages = hasTranscriptContent && call.transcript 
-              ? parseTranscript(call.transcript) 
-              : [];
+            const messages = hasTranscriptContent ? getMessagesForCall(call) : [];
 
             return (
               <motion.div

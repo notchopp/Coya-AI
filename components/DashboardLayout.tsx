@@ -72,6 +72,11 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Global Header with Business Name and Founders Program */}
+        <header className="hidden lg:block p-6 border-b border-yellow-500/20 glass-strong">
+          <BusinessHeader />
+        </header>
+        
         {/* Mobile header */}
         <header className="lg:hidden flex items-center justify-between p-4 border-b border-yellow-500/20 glass-strong">
           <button
@@ -356,6 +361,66 @@ function SidebarContent({
         </button>
       </div>
     </>
+  );
+}
+
+function BusinessHeader() {
+  const [businessName, setBusinessName] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    async function loadBusinessName() {
+      const supabase = getSupabaseClient();
+      const businessId = sessionStorage.getItem("business_id");
+
+      if (!businessId) {
+        setBusinessName("");
+        return;
+      }
+
+      const { data: businessDataRaw } = await supabase
+        .from("businesses")
+        .select("name")
+        .eq("id", businessId)
+        .maybeSingle();
+
+      const businessData = businessDataRaw as { name: string | null } | null;
+
+      if (businessData?.name) {
+        setBusinessName(businessData.name);
+      }
+    }
+
+    loadBusinessName();
+    // Refresh business name every 30 seconds to catch updates
+    const interval = setInterval(loadBusinessName, 30000);
+    return () => clearInterval(interval);
+  }, [mounted]);
+
+  if (!businessName) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col gap-2"
+    >
+      <h2 className="text-2xl font-bold text-white">{businessName}</h2>
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="text-xs font-medium text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)] animate-pulse w-fit"
+      >
+        #Founders Program
+      </motion.span>
+    </motion.div>
   );
 }
 
