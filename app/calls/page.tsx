@@ -27,11 +27,13 @@ type Call = {
 
 type CallTurn = {
   id: string;
+  business_id: string;
   call_id: string;
-  turn_number: number;
-  speaker: string;
+  total_turns: number | null;
+  duration_sec: number | null;
   transcript_json: any;
   created_at: string;
+  updated_at: string | null;
 };
 
 type Message = {
@@ -140,16 +142,16 @@ export default function LiveCallsPage() {
       const activeCalls = (callsData || []).filter(c => c.status === "active");
       
       // Load call turns for all active calls
-      if (activeCalls.length > 0) {
+      if (activeCalls.length > 0 && effectiveBusinessId) {
         const callIds = activeCalls.map(c => c.call_id);
         
         console.log("🔄 Loading call turns for call_ids:", callIds);
         
         const { data: turnsData, error: turnsError } = await supabase
           .from("call_turns")
-          .select("id,call_id,turn_number,speaker,transcript_json,created_at")
-          .in("call_id", callIds)
-          .order("turn_number", { ascending: true });
+          .select("id,business_id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at")
+          .eq("business_id", effectiveBusinessId)
+          .in("call_id", callIds);
 
         if (turnsError) {
           console.error("❌ Error loading call turns:", turnsError);
@@ -162,16 +164,13 @@ export default function LiveCallsPage() {
         }
 
         if (!turnsError && turnsData) {
-          // Group turns by call_id
-          const turnsByCallId: Record<string, CallTurn[]> = {};
+          // Map turns by call_id (one row per call)
+          const turnsByCallId: Record<string, CallTurn> = {};
           turnsData.forEach((turn: CallTurn) => {
-            if (!turnsByCallId[turn.call_id]) {
-              turnsByCallId[turn.call_id] = [];
-            }
-            turnsByCallId[turn.call_id].push(turn);
+            turnsByCallId[turn.call_id] = turn;
           });
           setCallTurns(turnsByCallId);
-          console.log("📊 Grouped turns by call_id:", Object.keys(turnsByCallId));
+          console.log("📊 Mapped turns by call_id:", Object.keys(turnsByCallId));
         } else {
           // Clear turns if query failed or returned no data
           setCallTurns({});
@@ -238,19 +237,20 @@ export default function LiveCallsPage() {
                   return updated;
                 });
                 
-                // Reload turns for this call when it updates (in case turns were added)
-                if (call.call_id) {
+                // Reload turn for this call when it updates (in case transcript_json was updated)
+                if (call.call_id && effectiveBusinessId) {
                   supabase
                     .from("call_turns")
-                    .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+                    .select("id,business_id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at")
+                    .eq("business_id", effectiveBusinessId)
                     .eq("call_id", call.call_id)
-                    .order("turn_number", { ascending: true })
-                    .then(({ data: turnsData, error: turnsError }) => {
-                      if (!turnsError && turnsData) {
-                        console.log(`🔄 Reloaded turns for updated call ${call.call_id}:`, turnsData.length);
+                    .maybeSingle()
+                    .then(({ data: turnData, error: turnsError }) => {
+                      if (!turnsError && turnData) {
+                        console.log(`🔄 Reloaded turn for updated call ${call.call_id}`);
                         setCallTurns((prev) => ({
                           ...prev,
-                          [call.call_id]: turnsData,
+                          [call.call_id]: turnData,
                         }));
                       }
                     });
@@ -289,21 +289,22 @@ export default function LiveCallsPage() {
                    
                    console.log("🔄 Call turn updated:", payload.eventType, turn);
                    
-                   // Reload turns for this call_id
-                   if (turn?.call_id) {
-                     const { data: turnsData, error: turnsError } = await supabase
+                   // Reload turn for this call_id
+                   if (turn?.call_id && turn?.business_id === effectiveBusinessId) {
+                     const { data: turnData, error: turnsError } = await supabase
                        .from("call_turns")
-                       .select("id,call_id,turn_number,speaker,transcript_json,created_at")
+                       .select("id,business_id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at")
+                       .eq("business_id", effectiveBusinessId)
                        .eq("call_id", turn.call_id)
-                       .order("turn_number", { ascending: true });
+                       .maybeSingle();
 
                      if (turnsError) {
-                       console.error("❌ Error reloading turns:", turnsError);
-                     } else if (turnsData) {
-                       console.log(`✅ Reloaded ${turnsData.length} turns for call ${turn.call_id}`);
+                       console.error("❌ Error reloading turn:", turnsError);
+                     } else if (turnData) {
+                       console.log(`✅ Reloaded turn for call ${turn.call_id}`);
                        setCallTurns((prev) => ({
                          ...prev,
-                         [turn.call_id]: turnsData,
+                         [turn.call_id]: turnData,
                        }));
                      }
                    }
@@ -343,37 +344,36 @@ export default function LiveCallsPage() {
   }
 
   function getMessagesForCall(call: Call): Message[] {
-    const turns = callTurns[call.call_id] || [];
-    console.log(`📋 Getting messages for call ${call.call_id}:`, turns.length, "turns");
+    const turn = callTurns[call.call_id];
     
-    const allMessages: Message[] = [];
+    if (!turn) {
+      console.log(`📋 No turn data found for call ${call.call_id}`);
+      return [];
+    }
     
-    turns.forEach((turn, idx) => {
-      console.log(`Turn ${idx + 1} for call ${call.call_id}:`, {
-        turn_number: turn.turn_number,
-        speaker: turn.speaker,
-        has_transcript_json: !!turn.transcript_json,
-        transcript_json_type: typeof turn.transcript_json,
-      });
-      
-      if (turn.transcript_json) {
-        const parsed = parseTranscriptJson(turn.transcript_json);
-        console.log(`Parsed ${parsed.length} messages from turn ${turn.turn_number}`);
-        allMessages.push(...parsed);
-      }
+    console.log(`📋 Getting messages for call ${call.call_id}:`, {
+      total_turns: turn.total_turns,
+      has_transcript_json: !!turn.transcript_json,
+      transcript_json_type: typeof turn.transcript_json,
     });
     
-    console.log(`Total messages for call ${call.call_id}:`, allMessages.length);
-    return allMessages;
+    if (turn.transcript_json) {
+      const parsed = parseTranscriptJson(turn.transcript_json);
+      console.log(`Parsed ${parsed.length} messages from transcript_json`);
+      return parsed;
+    }
+    
+    console.log(`No transcript_json found for call ${call.call_id}`);
+    return [];
   }
 
   function hasTranscript(call: Call): boolean {
-    const turns = callTurns[call.call_id] || [];
-    const hasTranscriptData = turns.length > 0 && turns.some(t => t.transcript_json);
+    const turn = callTurns[call.call_id];
+    const hasTranscriptData = !!turn && !!turn.transcript_json;
     console.log(`Has transcript check for call ${call.call_id}:`, {
-      turnsCount: turns.length,
+      hasTurn: !!turn,
       hasTranscriptData,
-      turns: turns.map(t => ({ turn_number: t.turn_number, has_json: !!t.transcript_json })),
+      total_turns: turn?.total_turns || 0,
     });
     return hasTranscriptData;
   }

@@ -8,15 +8,10 @@ CREATE POLICY "Users can view call_turns for their business calls"
 ON public.call_turns
 FOR SELECT
 USING (
-  EXISTS (
-    SELECT 1
-    FROM public.calls
-    WHERE calls.id = call_turns.call_id
-    AND calls.business_id IN (
-      SELECT business_id
-      FROM public.users
-      WHERE auth_user_id = auth.uid()
-    )
+  business_id IN (
+    SELECT business_id
+    FROM public.users
+    WHERE auth_user_id = auth.uid()
   )
 );
 
@@ -33,19 +28,15 @@ WITH CHECK (auth.role() = 'service_role');
 -- ON public.call_turns
 -- FOR INSERT
 -- WITH CHECK (
---   EXISTS (
---     SELECT 1
---     FROM public.calls
---     WHERE calls.id = call_turns.call_id
---     AND calls.business_id IN (
---       SELECT business_id
---       FROM public.users
---       WHERE auth_user_id = auth.uid()
---     )
+--   business_id IN (
+--     SELECT business_id
+--     FROM public.users
+--     WHERE auth_user_id = auth.uid()
 --   )
 -- );
 
--- Create index for faster queries on call_id
-CREATE INDEX IF NOT EXISTS idx_call_turns_call_id ON public.call_turns(call_id);
-CREATE INDEX IF NOT EXISTS idx_call_turns_turn_number ON public.call_turns(call_id, turn_number);
+-- Create index for faster queries on call_id (already exists in schema, but keeping for reference)
+-- CREATE INDEX IF NOT EXISTS idx_call_turns_call_id ON public.call_turns(call_id);
+-- CREATE INDEX IF NOT EXISTS idx_call_turns_business_id ON public.call_turns(business_id);
+-- CREATE INDEX IF NOT EXISTS idx_call_turns_created_at ON public.call_turns(created_at DESC);
 
