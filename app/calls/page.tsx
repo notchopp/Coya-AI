@@ -868,28 +868,28 @@ export default function LiveCallsPage() {
                 className="rounded-2xl glass-strong border border-white/10 overflow-hidden"
               >
                 {/* Call Header */}
-                <div className="p-6 border-b border-white/10">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="p-4 sm:p-6 border-b border-white/10">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                       <div 
-                        className="p-2 rounded-xl border flex-shrink-0"
+                        className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border flex-shrink-0"
                         style={{
                           backgroundColor: `${accentColor}33`,
                           borderColor: `${accentColor}4D`,
                         }}
                       >
-                        <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
+                        <PhoneIncoming className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-white truncate">
+                        <h3 className="text-base sm:text-lg font-bold text-white truncate">
                           {call.patient_name || "Unknown Caller"}
                         </h3>
                         {call.phone && (
-                          <p className="text-sm text-white/60 truncate">{call.phone}</p>
+                          <p className="text-xs sm:text-sm text-white/60 truncate">{call.phone}</p>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
                       {/* Small "Call in progress" badge */}
                       <motion.div
                         animate={{
@@ -900,7 +900,7 @@ export default function LiveCallsPage() {
                           repeat: Infinity,
                           ease: "easeInOut",
                         }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
+                        className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border"
                         style={{
                           backgroundColor: `${accentColor}33`,
                           borderColor: `${accentColor}4D`,
