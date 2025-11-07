@@ -11,10 +11,11 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const isLoginPage = pathname === "/login";
+  const isAuthCallback = pathname === "/auth/callback";
 
   useEffect(() => {
     async function checkAuth() {
-      if (isLoginPage) {
+      if (isLoginPage || isAuthCallback) {
         setLoading(false);
         return;
       }
@@ -78,7 +79,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage) {
+  if (isLoginPage || isAuthCallback) {
     return <>{children}</>;
   }
 
