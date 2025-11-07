@@ -294,7 +294,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     }
     
     const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
-    const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+    const role: "user" | "bot" = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
     let text = transcriptJson.text || transcriptJson.content || transcriptJson.message || transcriptJson.transcript || transcriptJson.text_content || transcriptJson.utterance || "";
     if (typeof text === "object" && text !== null) {
       text = text.text || text.content || text.message || JSON.stringify(text);
