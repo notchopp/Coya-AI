@@ -584,15 +584,14 @@ export default function LogsPage() {
             )}
           </AnimatePresence>
         </div>
-          <button
-            onClick={exportToCSV}
-            className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
-          </button>
-        </div>
+        <button
+          onClick={exportToCSV}
+          className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export CSV</span>
+          <span className="sm:hidden">Export</span>
+        </button>
       </div>
 
       {/* Results Count */}
