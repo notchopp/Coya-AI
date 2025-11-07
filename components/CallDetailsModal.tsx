@@ -166,7 +166,8 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
     if (scheduleDate) {
       // Format date as YYYY-MM-DD for query parameter
       const dateStr = format(scheduleDate, "yyyy-MM-dd");
-      router.push(`/calendar?date=${dateStr}`);
+      // Also pass call_id to highlight the specific booking
+      router.push(`/calendar?date=${dateStr}&callId=${call.id}`);
       onClose();
     }
   }

@@ -21,6 +21,7 @@ export default function CalendarPage() {
   const { accentColor } = useAccentColor();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [highlightedCallId, setHighlightedCallId] = useState<string | null>(null);
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -29,9 +30,11 @@ export default function CalendarPage() {
     setMounted(true);
   }, []);
 
-  // Handle date query parameter from call log navigation
+  // Handle date and callId query parameters from call log navigation
   useEffect(() => {
     const dateParam = searchParams.get("date");
+    const callIdParam = searchParams.get("callId");
+    
     if (dateParam) {
       try {
         const date = new Date(dateParam);
@@ -41,6 +44,12 @@ export default function CalendarPage() {
       } catch (e) {
         console.error("Invalid date parameter:", dateParam);
       }
+    }
+    
+    if (callIdParam) {
+      setHighlightedCallId(callIdParam);
+      // Clear highlight after 3 seconds
+      setTimeout(() => setHighlightedCallId(null), 3000);
     }
   }, [searchParams]);
 
@@ -356,13 +365,24 @@ export default function CalendarPage() {
             ) : selectedDateCalls.length === 0 ? (
               <div className="text-white/40 text-center py-8">No bookings on this date</div>
             ) : (
-              selectedDateCalls.map((call) => (
+              selectedDateCalls.map((call) => {
+                const isHighlighted = highlightedCallId === call.id;
+                return (
                 <motion.div
                   key={call.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                    className="p-4 rounded-xl glass border border-white/10 hover:border-yellow-500/50 transition-all"
-                  >
+                  className={`p-4 rounded-xl glass border transition-all ${
+                    isHighlighted
+                      ? ""
+                      : "border-white/10 hover:border-yellow-500/50"
+                  }`}
+                  style={isHighlighted ? {
+                    borderColor: `${accentColor}80`,
+                    backgroundColor: `${accentColor}20`,
+                    boxShadow: `0 0 20px ${accentColor}40`,
+                  } : {}}
+                >
                     <div className="mb-3">
                       <div className="font-semibold text-white text-base mb-1">
                         {call.patient_name || "Unknown"}
@@ -377,7 +397,8 @@ export default function CalendarPage() {
                       </p>
                     )}
                 </motion.div>
-              ))
+              );
+              })
             )}
           </div>
         </motion.div>
