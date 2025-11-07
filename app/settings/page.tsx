@@ -1046,6 +1046,8 @@ export default function SettingsPage() {
             )}
           </div>
         </motion.div>
+          </motion.div>
+        )}
         {activeTab === "appearance" && (
           <motion.div
             key="appearance"
