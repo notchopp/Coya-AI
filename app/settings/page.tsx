@@ -647,89 +647,89 @@ export default function SettingsPage() {
                 </div>
                 <h2 className="text-lg font-semibold text-white">Business Information</h2>
               </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Business Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
-                placeholder="Your Business Name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Vertical/Industry
-              </label>
-              <input
-                type="text"
-                value={formData.vertical}
-                onChange={(e) => setFormData({ ...formData, vertical: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
-                placeholder="e.g., Healthcare, Legal, Dental"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Address
-              </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
-                placeholder="Business Address"
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white/80">
-                  Services
-                </label>
-                <button
-                  type="button"
-                  onClick={addService}
-                  className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Service
-                </button>
-              </div>
-              {formData.services.length === 0 ? (
-                <p className="text-white/40 text-sm py-2">No services added yet. Click "Add Service" to create one.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {formData.services.map((service, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex items-center gap-2 group"
-                    >
-                      <input
-                        type="text"
-                        value={service}
-                        onChange={(e) => updateService(index, e.target.value)}
-                        className="px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
-                        placeholder="Service name"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeService(index)}
-                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </motion.div>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Business Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                    placeholder="Your Business Name"
+                  />
                 </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Vertical/Industry
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.vertical}
+                    onChange={(e) => setFormData({ ...formData, vertical: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                    placeholder="e.g., Healthcare, Legal, Dental"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                    placeholder="Business Address"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-white/80">
+                      Services
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addService}
+                      className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Service
+                    </button>
+                  </div>
+                  {formData.services.length === 0 ? (
+                    <p className="text-white/40 text-sm py-2">No services added yet. Click "Add Service" to create one.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.services.map((service, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center gap-2 group"
+                        >
+                          <input
+                            type="text"
+                            value={service}
+                            onChange={(e) => updateService(index, e.target.value)}
+                            className="px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
+                            placeholder="Service name"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeService(index)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
