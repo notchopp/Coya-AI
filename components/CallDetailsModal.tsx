@@ -264,14 +264,22 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                           )}
                         </div>
 
-                        {/* Summary */}
+                        {/* Summary - Main Focus */}
                         {call.last_summary && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <FileText className="h-4 w-4 text-white/60" />
-                              <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Summary</div>
+                          <div className="p-6 rounded-xl glass border border-white/10 bg-white/5">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div 
+                                className="p-2 rounded-lg border"
+                                style={{
+                                  backgroundColor: `${accentColor}33`,
+                                  borderColor: `${accentColor}4D`,
+                                }}
+                              >
+                                <FileText className="h-5 w-5" style={{ color: accentColor }} />
+                              </div>
+                              <div className="text-base font-bold text-white uppercase tracking-wider">Summary</div>
                             </div>
-                            <p className="text-sm text-white/80 leading-relaxed p-4 rounded-xl glass border border-white/10">{call.last_summary}</p>
+                            <p className="text-lg text-white leading-relaxed">{call.last_summary}</p>
                           </div>
                         )}
                         

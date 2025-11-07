@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp, Phone, Mail, Clock, User, FileText, Target, Bot, UserCircle } from "lucide-react";
+import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronRight, Phone, Mail, Clock, User, FileText, Target, Bot, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import CallDetailsModal from "@/components/CallDetailsModal";
 
 // Component for auto-scrolling transcript
 function TranscriptScrollContainer({ children, isExpanded }: { children: React.ReactNode; isExpanded: boolean }) {
@@ -147,7 +148,8 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [filters, setFilters] = useState<FilterState>({
@@ -298,14 +300,9 @@ export default function LogsPage() {
     setCurrentPage(1);
   }, [search, filters]);
 
-  function toggleCard(callId: string) {
-    setExpandedCards(prev => {
-      // Only allow one card open at a time
-      if (prev.has(callId)) {
-        return new Set(); // Close if already open
-      }
-      return new Set([callId]); // Open only this card
-    });
+  function handleCardClick(call: Call) {
+    setSelectedCall(call);
+    setIsModalOpen(true);
   }
 
   function exportToCSV() {
@@ -677,7 +674,7 @@ export default function LogsPage() {
                 {/* Card Header */}
                 <div 
                   className="p-6 cursor-pointer"
-                  onClick={() => toggleCard(log.id)}
+                  onClick={() => handleCardClick(log)}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -780,152 +777,12 @@ export default function LogsPage() {
                       )}
                     </div>
                     
-                    {/* Expand Button */}
-                    <button className="p-2 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0">
-                      {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-white/60" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-white/60" />
-                      )}
-                    </button>
+                    {/* View Details Indicator */}
+                    <div className="p-2 rounded-lg flex-shrink-0">
+                      <ChevronRight className="h-5 w-5 text-white/40" />
+                    </div>
                   </div>
                 </div>
-                
-                {/* Expanded Content */}
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="border-t border-white/10 overflow-hidden"
-                    >
-                      <div className="p-6 space-y-6">
-                        {/* Summary - Main Focus */}
-                        {log.last_summary && (
-                          <div className="p-6 rounded-xl glass border border-white/10 bg-white/5">
-                            <div className="flex items-center gap-3 mb-4">
-                              <div 
-                                className="p-2 rounded-lg border"
-                                style={{
-                                  backgroundColor: `${accentColor}33`,
-                                  borderColor: `${accentColor}4D`,
-                                }}
-                              >
-                                <FileText className="h-5 w-5" style={{ color: accentColor }} />
-                              </div>
-                              <div className="text-base font-bold text-white uppercase tracking-wider">Summary</div>
-                            </div>
-                            <p className="text-lg text-white leading-relaxed">{log.last_summary}</p>
-                          </div>
-                        )}
-                        
-                        {/* Contact Information - Compact */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {log.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-xs text-white/60 truncate">Phone</div>
-                                <div className="text-xs text-white truncate">{log.phone}</div>
-                              </div>
-                            </div>
-                          )}
-                          {log.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-xs text-white/60 truncate">Email</div>
-                                <div className="text-xs text-white truncate">{log.email}</div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
-                            <div className="min-w-0">
-                              <div className="text-xs text-white/60 truncate">Started</div>
-                              <div className="text-xs text-white truncate">{format(new Date(log.started_at), "MMM d, h:mm a")}</div>
-                            </div>
-                          </div>
-                          {log.ended_at && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-xs text-white/60 truncate">Ended</div>
-                                <div className="text-xs text-white truncate">{format(new Date(log.ended_at), "MMM d, h:mm a")}</div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Transcript - Condensed with Auto-scroll */}
-                        {log.transcript && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <div 
-                                className="p-1.5 rounded-lg border"
-                                style={{
-                                  backgroundColor: `${accentColor}33`,
-                                  borderColor: `${accentColor}4D`,
-                                }}
-                              >
-                                <FileText className="h-4 w-4" style={{ color: accentColor }} />
-                              </div>
-                              <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
-                            </div>
-                            <TranscriptScrollContainer isExpanded={isExpanded}>
-                              {parseTranscript(log.transcript).map((message, idx) => (
-                                <motion.div
-                                  key={idx}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: idx * 0.05 }}
-                                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                                >
-                                  <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                                    <div 
-                                      className={`p-1.5 rounded-full flex-shrink-0 border ${
-                                        message.role === "user"
-                                          ? ""
-                                          : ""
-                                      }`}
-                                      style={message.role === "user" ? {
-                                        backgroundColor: "rgba(59, 130, 246, 0.2)",
-                                        borderColor: "rgba(59, 130, 246, 0.3)",
-                                      } : {
-                                        backgroundColor: `${accentColor}33`,
-                                        borderColor: `${accentColor}4D`,
-                                      }}
-                                    >
-                                      {message.role === "user" ? (
-                                        <UserCircle className="h-3.5 w-3.5 text-blue-400" />
-                                      ) : (
-                                        <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
-                                      )}
-                                    </div>
-                                    <div className={`px-3 py-2 rounded-xl text-xs ${
-                                      message.role === "user"
-                                        ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
-                                        : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
-                                    }`}>
-                                      <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </TranscriptScrollContainer>
-                          </div>
-                        )}
-                        
-                        {/* Call ID */}
-                        <div className="pt-2 border-t border-white/10">
-                          <div className="text-xs text-white/40">Call ID: {log.call_id}</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             );
           })
@@ -992,6 +849,16 @@ export default function LogsPage() {
           </button>
         </div>
       )}
+
+      {/* Call Details Modal */}
+      <CallDetailsModal
+        call={selectedCall}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedCall(null);
+        }}
+      />
     </div>
   );
 }
