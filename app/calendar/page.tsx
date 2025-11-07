@@ -25,6 +25,7 @@ export default function CalendarPage() {
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const highlightedCallRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -37,19 +38,35 @@ export default function CalendarPage() {
     
     if (dateParam) {
       try {
-        const date = new Date(dateParam);
+        // Parse date string (YYYY-MM-DD)
+        const [year, month, day] = dateParam.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
+          console.log("📅 Setting calendar date to:", date);
           setSelectedDate(date);
         }
       } catch (e) {
-        console.error("Invalid date parameter:", dateParam);
+        console.error("Invalid date parameter:", dateParam, e);
       }
     }
     
     if (callIdParam) {
+      console.log("🎯 Highlighting call:", callIdParam);
       setHighlightedCallId(callIdParam);
-      // Clear highlight after 3 seconds
-      setTimeout(() => setHighlightedCallId(null), 3000);
+      // Scroll to highlighted booking after a short delay
+      setTimeout(() => {
+        if (highlightedCallRef.current) {
+          highlightedCallRef.current.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "center" 
+          });
+        }
+      }, 300);
+      // Clear highlight after 5 seconds
+      setTimeout(() => {
+        setHighlightedCallId(null);
+        console.log("✨ Cleared highlight");
+      }, 5000);
     }
   }, [searchParams]);
 
@@ -370,17 +387,23 @@ export default function CalendarPage() {
                 return (
                 <motion.div
                   key={call.id}
+                  ref={isHighlighted ? highlightedCallRef : null}
                   initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`p-4 rounded-xl glass border transition-all ${
+                  animate={{ 
+                    opacity: 1, 
+                    x: 0,
+                    scale: isHighlighted ? 1.02 : 1,
+                  }}
+                  transition={{ duration: 0.2 }}
+                  className={`p-4 rounded-xl glass transition-all ${
                     isHighlighted
                       ? ""
-                      : "border-white/10 hover:border-yellow-500/50"
+                      : "border border-white/10 hover:border-yellow-500/50"
                   }`}
                   style={isHighlighted ? {
-                    borderColor: `${accentColor}80`,
-                    backgroundColor: `${accentColor}20`,
-                    boxShadow: `0 0 20px ${accentColor}40`,
+                    border: `2px solid ${accentColor}`,
+                    backgroundColor: `${accentColor}15`,
+                    boxShadow: `0 0 0 2px ${accentColor}40, 0 4px 12px ${accentColor}30`,
                   } : {}}
                 >
                     <div className="mb-3">
