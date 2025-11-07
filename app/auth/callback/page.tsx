@@ -39,29 +39,26 @@ export default function AuthCallbackPage() {
 
         if (exchangeError) {
           console.error("Auth exchange error:", exchangeError);
-          
-          // Check if user needs to set password
-          if (exchangeError.message.includes("password") || exchangeError.message.includes("set password")) {
-            // Get email from the error or from the user data if available
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user?.email) {
-              setEmail(user.email);
-              setNeedsPassword(true);
-              setLoading(false);
-              return;
-            }
-          }
-          
           setError(exchangeError.message || "Failed to verify invitation. Please try again.");
           setLoading(false);
           return;
         }
 
         if (data?.user) {
-          // Check if user needs to set password (user exists but password is null)
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          // After exchanging code, check if user needs to set password
+          // For invite flow, user might not have a password set yet
+          const { data: { user: currentUser }, error: getUserError } = await supabase.auth.getUser();
           
-          if (currentUser && !currentUser.email_confirmed_at) {
+          if (getUserError) {
+            console.error("Get user error:", getUserError);
+            setError("Failed to retrieve user information.");
+            setLoading(false);
+            return;
+          }
+
+          // Check if this is an invite flow - user might need to set password
+          // Supabase invite users typically don't have email_confirmed_at set until password is set
+          if (currentUser && (!currentUser.email_confirmed_at || type === "invite")) {
             // User needs to set password
             setEmail(currentUser.email || "");
             setNeedsPassword(true);
