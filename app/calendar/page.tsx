@@ -277,7 +277,19 @@ export default function CalendarPage() {
     const scheduleDate = getScheduleDate(call);
     if (scheduleDate) {
       try {
-        return format(scheduleDate, "MMM d, yyyy 'at' h:mm a");
+        // Format using UTC methods to preserve the original booking time
+        // This ensures the time shown matches what was booked, not converted to local timezone
+        const year = scheduleDate.getUTCFullYear();
+        const month = scheduleDate.getUTCMonth();
+        const day = scheduleDate.getUTCDate();
+        const hours = scheduleDate.getUTCHours();
+        const minutes = scheduleDate.getUTCMinutes();
+        
+        // Create a date object in local timezone but with UTC values
+        // This way format() will show the correct time
+        const localDate = new Date(year, month, day, hours, minutes);
+        
+        return format(localDate, "MMM d, yyyy 'at' h:mm a");
       } catch (e) {
         console.error("❌ Failed to format schedule date:", e);
         return "Date unavailable";
