@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Calendar from "react-calendar";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -18,6 +19,7 @@ type Call = {
 
 export default function CalendarPage() {
   const { accentColor } = useAccentColor();
+  const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,21 @@ export default function CalendarPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Handle date query parameter from call log navigation
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      try {
+        const date = new Date(dateParam);
+        if (!isNaN(date.getTime())) {
+          setSelectedDate(date);
+        }
+      } catch (e) {
+        console.error("Invalid date parameter:", dateParam);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!mounted) return;

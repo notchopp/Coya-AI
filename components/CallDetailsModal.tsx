@@ -2,7 +2,8 @@
 
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Phone, User, MessageSquare, CheckCircle, XCircle, Mail, Clock, FileText, Bot, UserCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Phone, User, MessageSquare, CheckCircle, XCircle, Mail, Clock, FileText, Bot, UserCircle, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
@@ -120,7 +121,55 @@ type CallDetailsModalProps = {
 
 export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsModalProps) {
   const { accentColor } = useAccentColor();
+  const router = useRouter();
   if (!call) return null;
+
+  // Extract date from schedule JSONB - handle various structures
+  function getScheduleDate(): Date | null {
+    if (!call.schedule) return null;
+    
+    const schedule = call.schedule;
+    
+    // Try various common date field names
+    const dateFields = [
+      schedule.date,
+      schedule.appointment_date,
+      schedule.datetime,
+      schedule.appointment_datetime,
+      schedule.time,
+      schedule.scheduled_time,
+      schedule.start_time,
+      schedule.start_date,
+    ].filter(Boolean);
+    
+    if (dateFields.length === 0) {
+      // If no date field found, check if schedule is a string
+      if (typeof schedule === "string") {
+        try {
+          return new Date(schedule);
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+    
+    try {
+      return new Date(dateFields[0]);
+    } catch {
+      return null;
+    }
+  }
+
+  function handleViewCalendar() {
+    const scheduleDate = getScheduleDate();
+    if (scheduleDate) {
+      // Format date as YYYY-MM-DD for query parameter
+      const dateStr = format(scheduleDate, "yyyy-MM-dd");
+      router.push(`/calendar?date=${dateStr}`);
+      onClose();
+    }
+  }
 
   return (
     <>
@@ -259,7 +308,23 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                 <MessageSquare className="h-4 w-4" style={{ color: accentColor }} />
                                 <span className="text-sm text-white/60">Intent</span>
                               </div>
-                              <div className="text-white font-medium">{call.last_intent}</div>
+                              <div className="flex items-center justify-between">
+                                <div className="text-white font-medium">{call.last_intent}</div>
+                                {call.schedule && (
+                                  <button
+                                    onClick={handleViewCalendar}
+                                    className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80 flex items-center gap-1.5"
+                                    style={{
+                                      backgroundColor: `${accentColor}33`,
+                                      color: accentColor,
+                                      borderColor: `${accentColor}66`,
+                                    }}
+                                  >
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    See Calendar
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
