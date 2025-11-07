@@ -913,12 +913,12 @@ export default function LogsPage() {
                                         <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
                                       )}
                                     </div>
-                                    <div className={`px-4 py-2.5 rounded-2xl ${
+                                    <div className={`px-3 py-2 rounded-xl text-xs ${
                                       message.role === "user"
                                         ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
                                         : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
                                     }`}>
-                                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                                      <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
                                     </div>
                                   </div>
                                 </motion.div>
