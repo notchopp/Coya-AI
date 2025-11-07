@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { BadgeCheck, PhoneIncoming, PhoneOff, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,7 @@ type Props = {
   businessId?: string;
 };
 
-export default function RealtimeCalls({ businessId }: Props) {
+function RealtimeCalls({ businessId }: Props) {
   const { accentColor } = useAccentColor();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
@@ -245,11 +245,13 @@ export default function RealtimeCalls({ businessId }: Props) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {calls.length === 0 && (
               <motion.div
+                key="empty-state"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10"
               >
                 No calls yet.
@@ -366,5 +368,7 @@ export default function RealtimeCalls({ businessId }: Props) {
     </>
   );
 }
+
+export default memo(RealtimeCalls);
 
 

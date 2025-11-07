@@ -97,21 +97,21 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
               width: size, 
               height: size, 
               background: "transparent",
-              filter: colorFilter, // Apply color filter to match accent color
+              // No filter - logo stays golden/yellow by default
             }}
           />
         </motion.div>
       );
     }
     
-    // For images (PNG, GIF, etc.)
+    // For images (PNG, GIF, etc.) - Keep logo golden/yellow by default (no accent color tint)
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className={className}
-        style={{ width: size, height: size, position: "relative" }}
+        style={{ width: size, height: size, position: "relative", background: "transparent" }}
       >
         <Image
           src={src}
@@ -120,7 +120,10 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
           height={size}
           className="object-contain"
           unoptimized={src.endsWith('.gif')} // Allow GIF animations
-          style={{ filter: colorFilter }} // Apply color filter to match accent color
+          style={{ 
+            background: "transparent",
+            // No filter - logo stays golden/yellow by default
+          }}
         />
       </motion.div>
     );

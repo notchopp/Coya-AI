@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import RealtimeCalls from "@/components/RealtimeCalls";
 import LiveContextRibbon from "@/components/LiveContextRibbon";
@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [successStreak, setSuccessStreak] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   const [funFact, setFunFact] = useState<string>("");
   const [businessName, setBusinessName] = useState<string>("");
@@ -230,11 +231,30 @@ export default function Dashboard() {
 
       if (callsError) {
         console.error("Error loading calls:", callsError);
+        setError("Failed to load dashboard data. Please refresh the page.");
         setLoading(false);
         setInsights([]);
         setActivityFeed([]);
+        // Set error state for UI display
+        setPerformance({
+          totalCallsHandled: 0,
+          bookingsThisWeek: 0,
+          bookingsLastWeek: 0,
+          conversionRate: 0,
+          conversionRateLastMonth: 0,
+          timeSavedHours: 0,
+          handledCalls: 0,
+          missedCalls: 0,
+          newPatients: 0,
+          repeatPatients: 0,
+          estimatedSavings: 0,
+          bookingsThisWeekTrend: [],
+        });
         return;
       }
+      
+      // Clear any previous errors
+      setError(null);
 
       const allCalls = (allCallsData || []) as DashboardCall[];
 
@@ -831,24 +851,44 @@ export default function Dashboard() {
     setFunFact(facts[factIndex]);
   }
 
-  const conversionTrend = performance.conversionRate - performance.conversionRateLastMonth;
-  const handledRatio = performance.handledCalls + performance.missedCalls > 0
-    ? (performance.handledCalls / (performance.handledCalls + performance.missedCalls)) * 100
-    : 100;
+  // Memoize expensive calculations
+  const conversionTrend = useMemo(() => 
+    performance.conversionRate - performance.conversionRateLastMonth,
+    [performance.conversionRate, performance.conversionRateLastMonth]
+  );
 
-  const bookingsTrend = performance.bookingsThisWeek - performance.bookingsLastWeek;
-  const bookingsTrendPercent = performance.bookingsLastWeek > 0
-    ? ((bookingsTrend / performance.bookingsLastWeek) * 100)
-    : 0;
+  const handledRatio = useMemo(() => 
+    performance.handledCalls + performance.missedCalls > 0
+      ? (performance.handledCalls / (performance.handledCalls + performance.missedCalls)) * 100
+      : 100,
+    [performance.handledCalls, performance.missedCalls]
+  );
+
+  const bookingsTrend = useMemo(() => 
+    performance.bookingsThisWeek - performance.bookingsLastWeek,
+    [performance.bookingsThisWeek, performance.bookingsLastWeek]
+  );
+
+  const bookingsTrendPercent = useMemo(() => 
+    performance.bookingsLastWeek > 0
+      ? ((bookingsTrend / performance.bookingsLastWeek) * 100)
+      : 0,
+    [bookingsTrend, performance.bookingsLastWeek]
+  );
 
   // Calculate total bookings for savings display (estimatedSavings / 300)
-  const totalBookings = Math.round(performance.estimatedSavings / 300);
+  const totalBookings = useMemo(() => 
+    Math.round(performance.estimatedSavings / 300),
+    [performance.estimatedSavings]
+  );
 
   // Humanize metrics
-  const successfulBookings = Math.round(performance.conversionRate * performance.handledCalls / 100);
-  const humanizedConversion = performance.handledCalls > 0
-    ? `${successfulBookings} new patient${successfulBookings !== 1 ? 's' : ''} booked — ${performance.missedCalls} missed opportunity${performance.missedCalls !== 1 ? 'ies' : 'y'}`
-    : "No calls yet";
+  const humanizedConversion = useMemo(() => {
+    const successfulBookings = Math.round(performance.conversionRate * performance.handledCalls / 100);
+    return performance.handledCalls > 0
+      ? `${successfulBookings} new patient${successfulBookings !== 1 ? 's' : ''} booked — ${performance.missedCalls} missed opportunity${performance.missedCalls !== 1 ? 'ies' : 'y'}`
+      : "No calls yet";
+  }, [performance.conversionRate, performance.handledCalls, performance.missedCalls]);
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
@@ -900,6 +940,26 @@ export default function Dashboard() {
         )}
       </motion.div>
 
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-between"
+          role="alert"
+          aria-live="polite"
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/40 transition-colors text-sm font-medium"
+            aria-label="Reload page"
+          >
+            Reload
+          </button>
+        </motion.div>
+      )}
+
       {/* Performance Overview */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -929,6 +989,7 @@ export default function Dashboard() {
               <button
                 key={period}
                 onClick={() => setTimePeriod(period)}
+                aria-label={`Switch to ${period} view`}
                 className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-all min-h-[44px] ${
                   timePeriod === period
                     ? "border"

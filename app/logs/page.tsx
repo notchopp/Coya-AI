@@ -377,6 +377,8 @@ export default function LogsPage() {
         <div className="relative">
           <button
             onClick={() => setShowFilter(!showFilter)}
+            aria-label={showFilter ? "Close filters" : "Open filters"}
+            aria-expanded={showFilter}
             className={`px-4 py-3 rounded-xl glass border transition-colors flex items-center gap-2 text-white ${
               hasActiveFilters
                 ? "border"
@@ -586,6 +588,7 @@ export default function LogsPage() {
         </div>
         <button
           onClick={exportToCSV}
+          aria-label="Export call logs to CSV"
           className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
         >
           <Download className="h-4 w-4" />

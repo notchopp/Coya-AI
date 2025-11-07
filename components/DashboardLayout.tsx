@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useTheme } from "@/components/ThemeProvider";
-import { usePremiumMode } from "@/components/usePremiumMode";
+import { usePremiumMode } from "@/components/PremiumModeProvider";
 import { ChartsPage } from "@/components/ChartsPage";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import Coyalogo from "@/components/Coyalogo";
@@ -46,9 +46,9 @@ export default function DashboardLayout({
   const { accentColor } = useAccentColor();
   const { theme } = useTheme();
   const mobileMiddleColor = theme === "light" ? "#000000" : "#ffffff";
-  // Premium mode only on dashboard
+  // Premium mode available on all pages
   const isDashboard = pathname === "/";
-  const showPremium = isPremium && isDashboard;
+  const showPremium = isPremium; // Available everywhere, not just dashboard
 
   return (
     <div className="flex h-screen bg-black text-white overflow-hidden relative">
@@ -71,7 +71,7 @@ export default function DashboardLayout({
               className="fixed inset-y-0 left-0 z-50 w-[280px] glass-strong border-r lg:hidden"
               style={{ borderColor: `${accentColor}33` }}
             >
-              <SidebarContent pathname={pathname} onNavigate={() => setSidebarOpen(false)} isPremium={showPremium} />
+              <SidebarContent pathname={pathname} onNavigate={() => setSidebarOpen(false)} />
             </motion.div>
           </>
         )}
@@ -79,7 +79,7 @@ export default function DashboardLayout({
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-col border-r glass-strong relative z-10" style={{ borderColor: `${accentColor}33` }}>
-        <SidebarContent pathname={pathname} isPremium={showPremium} />
+        <SidebarContent pathname={pathname} />
       </aside>
 
       {/* Main content */}
@@ -108,10 +108,10 @@ export default function DashboardLayout({
             </motion.div>
             <div className="flex items-center gap-2">
               <span 
-                       className="font-semibold text-white text-sm bg-clip-text text-transparent"
-                       style={{
-                         background: `linear-gradient(to right, ${accentColor}, ${mobileMiddleColor}, ${accentColor})`,
-                       }}
+                className="font-semibold text-sm bg-clip-text text-transparent"
+                style={{
+                  background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
+                }}
               >
                 COYA AI
               </span>
@@ -131,7 +131,7 @@ export default function DashboardLayout({
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              {showPremium && isDashboard ? (
+              {isPremium && isDashboard ? (
                 <ChartsPage />
               ) : (
                 children
@@ -139,6 +139,42 @@ export default function DashboardLayout({
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Floating AI Insights Toggle - Mobile Only, Dashboard Only */}
+        {isDashboard && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={togglePremium}
+            className="lg:hidden fixed bottom-20 right-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
+            style={{
+              borderColor: isPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: isPremium ? `${accentColor}33` : 'rgba(255, 255, 255, 0.1)',
+              boxShadow: isPremium ? `0 8px 32px ${accentColor}40` : '0 8px 32px rgba(0, 0, 0, 0.3)',
+            }}
+            aria-label={isPremium ? "Turn off AI Insights" : "Turn on AI Insights"}
+          >
+            <motion.div
+              animate={isPremium ? { rotate: 360 } : { rotate: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Brain 
+                className="h-6 w-6" 
+                style={{ color: isPremium ? accentColor : 'rgba(255, 255, 255, 0.8)' }} 
+              />
+            </motion.div>
+            {isPremium && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 h-3 w-3 rounded-full"
+                style={{ backgroundColor: accentColor }}
+              />
+            )}
+          </motion.button>
+        )}
       </div>
     </div>
   );
@@ -147,18 +183,17 @@ export default function DashboardLayout({
 function SidebarContent({
   pathname,
   onNavigate,
-  isPremium = false,
 }: {
   pathname: string;
   onNavigate?: () => void;
-  isPremium?: boolean;
 }) {
   const { theme, toggleTheme } = useTheme();
   const { accentColor } = useAccentColor();
-  const { isPremium: premiumState, isLocalhost, togglePremium } = usePremiumMode();
+  // Use context for premium mode - shared state across all components
+  const { isPremium, togglePremium } = usePremiumMode();
   const middleColor = theme === "light" ? "#000000" : "#ffffff"; // Black in light mode, white in dark mode
   const isDashboard = pathname === "/";
-  const showPremium = premiumState && isDashboard;
+  const showPremium = isPremium; // Use context state directly
   const [sidebarStats, setSidebarStats] = useState({
     activeCalls: 0,
     bookings: 0,
@@ -236,13 +271,13 @@ function SidebarContent({
   return (
     <>
       <motion.div
-        initial={isPremium ? { opacity: 0, y: -30 } : { opacity: 0, y: -20 }}
-        animate={isPremium ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
-        transition={isPremium ? { duration: 0.8, ease: [0.16, 1, 0.3, 1] } : { duration: 0.5 }}
+        initial={showPremium ? { opacity: 0, y: -30 } : { opacity: 0, y: -20 }}
+        animate={showPremium ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
+        transition={showPremium ? { duration: 0.8, ease: [0.16, 1, 0.3, 1] } : { duration: 0.5 }}
         className="p-6 border-b relative overflow-hidden"
         style={{ borderColor: `${accentColor}33` }}
       >
-        {isPremium && (
+        {showPremium && (
           <motion.div
             className="absolute inset-0"
             style={{
@@ -259,9 +294,9 @@ function SidebarContent({
           />
         )}
         <motion.div
-          initial={isPremium ? { opacity: 0, scale: 0.8 } : false}
-          animate={isPremium ? { opacity: 1, scale: 1 } : {}}
-          transition={isPremium ? { delay: 0.2, type: "spring", stiffness: 200 } : {}}
+          initial={showPremium ? { opacity: 0, scale: 0.8 } : false}
+          animate={showPremium ? { opacity: 1, scale: 1 } : {}}
+          transition={showPremium ? { delay: 0.2, type: "spring", stiffness: 200 } : {}}
           className="flex items-center gap-3 relative z-10"
         >
           <motion.div
@@ -274,20 +309,20 @@ function SidebarContent({
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            whileHover={isPremium ? { scale: 1.1, rotate: 10 } : {}}
+            whileHover={showPremium ? { scale: 1.1, rotate: 10 } : {}}
           >
             <Coyalogo src="/logo.gif" size={60} />
           </motion.div>
           <motion.div
-            initial={isPremium ? { opacity: 0, x: -10 } : false}
-            animate={isPremium ? { opacity: 1, x: 0 } : {}}
-            transition={isPremium ? { delay: 0.3 } : {}}
+            initial={showPremium ? { opacity: 0, x: -10 } : false}
+            animate={showPremium ? { opacity: 1, x: 0 } : {}}
+            transition={showPremium ? { delay: 0.3 } : {}}
           >
             <div className="flex items-center gap-2">
               <span 
                 className="font-bold text-lg bg-clip-text text-transparent"
                 style={{
-                  background: `linear-gradient(to right, ${accentColor}, ${middleColor}, ${accentColor})`,
+                  background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}
@@ -296,21 +331,21 @@ function SidebarContent({
               </span>
               <motion.span
                 className="beta-badge"
-                initial={isPremium ? { scale: 0 } : false}
-                animate={isPremium ? { scale: 1 } : {}}
-                transition={isPremium ? { type: "spring", delay: 0.4 } : {}}
-                whileHover={isPremium ? { scale: 1.1 } : {}}
+                initial={showPremium ? { scale: 0 } : false}
+                animate={showPremium ? { scale: 1 } : {}}
+                transition={showPremium ? { type: "spring", delay: 0.4 } : {}}
+                whileHover={showPremium ? { scale: 1.1 } : {}}
               >
                 Beta
               </motion.span>
             </div>
             <motion.div
-              initial={isPremium ? { opacity: 0 } : false}
-              animate={isPremium ? { opacity: 1 } : {}}
-              transition={isPremium ? { delay: 0.5 } : {}}
+              initial={showPremium ? { opacity: 0 } : false}
+              animate={showPremium ? { opacity: 1 } : {}}
+              transition={showPremium ? { delay: 0.5 } : {}}
               className="text-xs bg-clip-text text-transparent mt-0.5"
               style={{
-                background: `linear-gradient(to right, ${accentColor}B3, rgba(255,255,255,0.7), ${accentColor}B3)`,
+                background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
@@ -323,9 +358,9 @@ function SidebarContent({
 
       {/* Real-time Stats */}
       <motion.div
-        initial={isPremium ? { opacity: 0, y: 20 } : false}
-        animate={isPremium ? { opacity: 1, y: 0 } : {}}
-        transition={isPremium ? { delay: 0.6, duration: 0.5 } : {}}
+        initial={showPremium ? { opacity: 0, y: 20 } : false}
+        animate={showPremium ? { opacity: 1, y: 0 } : {}}
+        transition={showPremium ? { delay: 0.6, duration: 0.5 } : {}}
         className="p-4 border-b space-y-2"
         style={{ borderColor: `${accentColor}33` }}
       >
@@ -543,11 +578,11 @@ function SidebarContent({
           onClick={togglePremium}
           className="w-full px-3 py-2 rounded-lg glass border hover:bg-white/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
           style={{
-            borderColor: isPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.1)',
-            backgroundColor: isPremium ? `${accentColor}15` : undefined,
+            borderColor: showPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: showPremium ? `${accentColor}15` : undefined,
           }}
         >
-          {isPremium && (
+          {showPremium && (
             <motion.div
               className="absolute inset-0"
               initial={{ x: "-100%" }}
@@ -559,12 +594,12 @@ function SidebarContent({
             />
           )}
           <motion.div
-            animate={isPremium ? { rotate: isPremium ? 360 : 0 } : {}}
-            transition={isPremium ? { duration: 0.5 } : {}}
+            animate={showPremium ? { rotate: 360 } : { rotate: 0 }}
+            transition={{ duration: 0.5 }}
             className="relative z-10"
           >
-            <Brain className="h-4 w-4" style={{ color: isPremium ? accentColor : 'rgba(255, 255, 255, 0.6)' }} />
-            <span className="ml-2">{isPremium ? "AI Insights ON" : "AI Insights OFF"}</span>
+            <Brain className="h-4 w-4" style={{ color: showPremium ? accentColor : 'rgba(255, 255, 255, 0.6)' }} />
+            <span className="ml-2">{showPremium ? "AI Insights ON" : "AI Insights OFF"}</span>
           </motion.div>
         </motion.button>
 
