@@ -6,6 +6,7 @@ import { BadgeCheck, PhoneIncoming, PhoneOff, ChevronRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion";
 import CallDetailsModal from "./CallDetailsModal";
 import { format } from "date-fns";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type Call = {
   id: string;
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export default function RealtimeCalls({ businessId }: Props) {
+  const { accentColor } = useAccentColor();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
   const [connected, setConnected] = useState<boolean>(false);
@@ -262,13 +264,28 @@ export default function RealtimeCalls({ businessId }: Props) {
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ scale: 1.02, y: -2 }}
                 onClick={() => handleCallClick(c)}
-                className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:border-yellow-500/50 hover:bg-white/10 transition-all duration-300"
+                className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10 transition-all duration-300"
+                style={{
+                  borderColor: "rgba(255, 255, 255, 0.1)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = `${accentColor}80`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {c.status === "active" ? (
-                      <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30">
-                        <PhoneIncoming className="h-5 w-5 text-yellow-400" />
+                      <div 
+                        className="p-2 rounded-xl border"
+                        style={{
+                          backgroundColor: `${accentColor}33`,
+                          borderColor: `${accentColor}4D`,
+                        }}
+                      >
+                        <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
                       </div>
                     ) : (
                       <div className="p-2 rounded-xl bg-white/10">
@@ -284,12 +301,28 @@ export default function RealtimeCalls({ businessId }: Props) {
                       )}
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-white/40 group-hover:text-yellow-400 transition-colors flex-shrink-0" />
+                  <ChevronRight 
+                    className="h-5 w-5 text-white/40 transition-colors flex-shrink-0" 
+                    style={{ color: "rgba(255, 255, 255, 0.4)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = accentColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "rgba(255, 255, 255, 0.4)";
+                    }}
+                  />
                 </div>
 
                 {c.last_intent && (
                   <div className="mb-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-medium border border-yellow-500/30">
+                    <span 
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium border"
+                      style={{
+                        backgroundColor: `${accentColor}33`,
+                        color: accentColor,
+                        borderColor: `${accentColor}4D`,
+                      }}
+                    >
                       {c.last_intent}
                     </span>
                   </div>

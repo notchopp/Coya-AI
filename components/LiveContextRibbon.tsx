@@ -4,12 +4,14 @@ import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
 import { Phone, CheckCircle2, TrendingUp } from "lucide-react";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type LiveContextRibbonProps = {
   businessId?: string;
 };
 
 export default function LiveContextRibbon({ businessId }: LiveContextRibbonProps) {
+  const { accentColor } = useAccentColor();
   const [mounted, setMounted] = useState(false);
   const [liveStats, setLiveStats] = useState({
     activeCalls: 0,
@@ -89,7 +91,10 @@ export default function LiveContextRibbon({ businessId }: LiveContextRibbonProps
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-yellow-500/20 glass-strong">
+    <div 
+      className="fixed bottom-0 left-0 right-0 z-40 border-t glass-strong"
+      style={{ borderColor: `${accentColor}33` }}
+    >
       <div className="max-w-7xl mx-auto px-6 py-2">
         <div className="flex items-center justify-between text-xs">
           <motion.div
@@ -101,7 +106,8 @@ export default function LiveContextRibbon({ businessId }: LiveContextRibbonProps
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="w-2 h-2 rounded-full bg-yellow-400"
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: accentColor }}
               />
               <span className="font-medium">Nia is live</span>
             </div>
