@@ -610,7 +610,6 @@ export default function LogsPage() {
           <div className="col-span-full p-8 text-center text-white/40">No calls found</div>
         ) : (
                 paginatedLogs.map((log) => {
-                  const isExpanded = expandedCards.has(log.id);
                   const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
                     ? "emerald"
                     : log.status === "active"
