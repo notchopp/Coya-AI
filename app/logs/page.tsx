@@ -632,8 +632,8 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Logs Cards - 3D Floating Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: "1000px" }}>
+      {/* Logs Cards - Floating Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full p-8 text-center text-white/40">Loading...</div>
         ) : filteredLogs.length === 0 ? (
@@ -651,24 +651,18 @@ export default function LogsPage() {
                     <motion.div
                       key={log.id}
                       ref={log.id === callIdParam ? callCardRef : null}
-                      initial={{ opacity: 0, y: 20, rotateX: -10 }}
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ 
                         opacity: 1, 
-                        y: 0, 
-                        rotateX: 0,
-                        rotateY: 0,
-                        z: 0,
+                        y: 0,
                       }}
                       whileHover={{ 
                         y: -8, 
-                        scale: 1.03,
-                        rotateY: 2,
-                        z: 20,
+                        scale: 1.02,
                       }}
                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                       className="rounded-2xl glass-strong border border-white/10 overflow-hidden transition-all cursor-pointer"
                       style={{
-                        transformStyle: "preserve-3d",
                         boxShadow: "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)",
                       }}
                       onMouseEnter={(e) => {
