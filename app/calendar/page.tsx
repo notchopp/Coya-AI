@@ -118,9 +118,13 @@ export default function CalendarPage() {
 
   // Extract date from schedule JSONB - handle various structures
   function getScheduleDate(call: Call): Date | null {
-    if (!call.schedule) return null;
+    if (!call.schedule) {
+      console.log("⚠️ No schedule data for call:", call.id);
+      return null;
+    }
     
     const schedule = call.schedule;
+    console.log("📋 Schedule for call:", call.id, schedule);
     
     // Try various common date field names
     const dateFields = [
@@ -132,27 +136,61 @@ export default function CalendarPage() {
       schedule.scheduled_time,
       schedule.start_time,
       schedule.start_date,
+      schedule.start,
+      schedule.appointmentDate,
+      schedule.appointmentTime,
     ].filter(Boolean);
+    
+    console.log("📅 Found date fields:", dateFields);
     
     if (dateFields.length === 0) {
       // If no date field found, check if schedule is a string
       if (typeof schedule === "string") {
         try {
-          return new Date(schedule);
-        } catch {
-          // Fallback to started_at if schedule string parsing fails
-          return new Date(call.started_at);
+          const date = new Date(schedule);
+          if (!isNaN(date.getTime())) {
+            console.log("✅ Parsed string date:", date);
+            return date;
+          }
+        } catch (e) {
+          console.error("❌ Failed to parse string date:", e);
         }
       }
-      // If schedule object exists but no date field, use started_at as fallback
-      return new Date(call.started_at);
+      // If it's an object, try to iterate through all keys to find date-like values
+      try {
+        for (const key in schedule) {
+          if (schedule[key] && (typeof schedule[key] === "string" || schedule[key] instanceof Date)) {
+            try {
+              const date = new Date(schedule[key]);
+              if (!isNaN(date.getTime())) {
+                console.log("✅ Found date in key:", key, date);
+                return date;
+              }
+            } catch (e) {
+              // Continue searching
+            }
+          }
+        }
+      } catch (e) {
+        console.error("❌ Failed to parse schedule object:", e);
+      }
+      // DO NOT fallback to started_at - return null if no date found in schedule
+      console.error("❌ No valid date found in schedule, returning null");
+      return null;
     }
     
     try {
-      return new Date(dateFields[0]);
-    } catch {
-      // Fallback to started_at if date parsing fails
-      return new Date(call.started_at);
+      const date = new Date(dateFields[0]);
+      if (isNaN(date.getTime())) {
+        console.error("❌ Invalid date:", dateFields[0]);
+        return null;
+      }
+      console.log("✅ Parsed date from field:", date);
+      return date;
+    } catch (e) {
+      console.error("❌ Failed to parse date:", e);
+      // DO NOT fallback to started_at - return null if parsing fails
+      return null;
     }
   }
 
@@ -195,12 +233,14 @@ export default function CalendarPage() {
     if (scheduleDate) {
       try {
         return format(scheduleDate, "MMM d, yyyy 'at' h:mm a");
-      } catch {
-        return format(new Date(call.started_at), "MMM d, yyyy 'at' h:mm a");
+      } catch (e) {
+        console.error("❌ Failed to format schedule date:", e);
+        return "Date unavailable";
       }
     }
     
-    return format(new Date(call.started_at), "MMM d, yyyy 'at' h:mm a");
+    // If no schedule date found, show that instead of call time
+    return "Date unavailable";
   }
 
   return (
