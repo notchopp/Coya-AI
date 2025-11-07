@@ -140,6 +140,24 @@ export default function DashboardLayout({
           </AnimatePresence>
         </main>
 
+        {/* Floating Sidebar Toggle - Mobile Only */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setSidebarOpen(true)}
+          className="lg:hidden fixed bottom-4 left-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
+          style={{
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          }}
+          aria-label="Open sidebar"
+        >
+          <Menu className="h-6 w-6 text-white" />
+        </motion.button>
+
         {/* Floating AI Insights Toggle - Mobile Only, Dashboard Only */}
         {isDashboard && (
           <motion.button
@@ -148,7 +166,7 @@ export default function DashboardLayout({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={togglePremium}
-            className="lg:hidden fixed bottom-20 right-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
+            className="lg:hidden fixed bottom-4 right-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
             style={{
               borderColor: isPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.2)',
               backgroundColor: isPremium ? `${accentColor}33` : 'rgba(255, 255, 255, 0.1)',

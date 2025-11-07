@@ -198,12 +198,13 @@ html {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent-color, #eab308) 60%, transparent);
-  opacity: 0.7;
+  color: #eab308; /* Always golden, matching COYA AI */
+  opacity: 0.9;
 }
 
 .light .beta-badge {
-  color: color-mix(in srgb, var(--accent-color, #eab308) 80%, transparent);
+  color: #eab308; /* Always golden */
+  opacity: 1;
 }
 
 /* Animated sparkle */
