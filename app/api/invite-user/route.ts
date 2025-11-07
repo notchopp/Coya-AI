@@ -37,11 +37,25 @@ export async function POST(request: NextRequest) {
     try {
       supabaseAdmin = getSupabaseAdminClient();
     } catch (adminError) {
-      console.error("Failed to create Supabase admin client:", adminError);
+      const errorMessage = adminError instanceof Error ? adminError.message : "Failed to initialize admin client";
+      console.error("❌ Failed to create Supabase admin client:", errorMessage);
+      console.error("Full error:", adminError);
+      
+      // Check if it's specifically about missing env vars
+      if (errorMessage.includes("SUPABASE_SERVICE_ROLE_KEY") || errorMessage.includes("Missing Supabase admin envs")) {
+        return NextResponse.json(
+          { 
+            error: "Server configuration error", 
+            details: "SUPABASE_SERVICE_ROLE_KEY is not set. Please add it to your .env.local file and restart your dev server. Get it from Supabase Dashboard → Settings → API → service_role key."
+          },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
         { 
           error: "Server configuration error", 
-          details: adminError instanceof Error ? adminError.message : "Failed to initialize admin client. Check SUPABASE_SERVICE_ROLE_KEY environment variable."
+          details: errorMessage
         },
         { status: 500 }
       );

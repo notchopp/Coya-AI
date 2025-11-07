@@ -539,6 +539,9 @@ export default function SettingsPage() {
           responseBody: result,
           rawResponse: responseText,
         });
+        console.error("Full error object:", JSON.stringify(result, null, 2));
+        console.error("Error details:", result?.details);
+        console.error("Error message:", result?.error);
         throw new Error(errorMessage);
       }
 
