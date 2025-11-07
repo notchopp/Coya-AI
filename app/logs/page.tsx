@@ -757,9 +757,6 @@ export default function LogsPage() {
                           </span>
                         </div>
                       )}
-                          </div>
-                        </div>
-                      </div>
                       
                       {/* Status Badge */}
                       <div className="flex items-center gap-2 mb-2">
