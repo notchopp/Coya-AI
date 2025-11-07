@@ -122,7 +122,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 pb-24 relative z-10">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 pb-20 sm:pb-24 relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}

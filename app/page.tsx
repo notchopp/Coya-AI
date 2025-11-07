@@ -851,18 +851,18 @@ export default function Dashboard() {
     : "No calls yet";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between"
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
       >
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Dashboard</h1>
             {businessName && (
-              <span className="text-xl font-medium text-white/60">— {businessName}</span>
+              <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {businessName}</span>
             )}
             <span className="beta-badge">Beta</span>
           </div>
@@ -881,9 +881,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col items-end gap-1"
+            className="flex flex-col items-start sm:items-end gap-1 flex-shrink-0"
           >
-            <div className="text-white/60 text-lg">
+            <div className="text-white/60 text-base sm:text-lg">
               Hey, <span className="font-medium" style={{ color: accentColor }}>{userName.split(' ')[0]}</span>
             </div>
             {funFact && (
@@ -891,7 +891,7 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-white/50 text-sm italic"
+                className="text-white/50 text-xs sm:text-sm italic max-w-[200px] sm:max-w-none"
               >
                 {funFact}
               </motion.div>
@@ -905,31 +905,31 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="p-6 rounded-2xl glass-strong border border-white/10"
+        className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div 
-              className="p-2 rounded-xl border"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border"
               style={{
                 background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
                 borderColor: `${accentColor}4D`,
               }}
             >
-              <Trophy className="h-5 w-5" style={{ color: accentColor }} />
+              <Trophy className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Performance Overview</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Performance Overview</h2>
             </div>
           </div>
           
           {/* Time Period Toggle */}
-          <div className="flex items-center gap-2 p-1 rounded-lg glass border border-white/10">
+          <div className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-lg glass border border-white/10">
             {(["daily", "weekly", "monthly"] as const).map((period) => (
               <button
                 key={period}
                 onClick={() => setTimePeriod(period)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-all min-h-[44px] ${
                   timePeriod === period
                     ? "border"
                     : "text-white/60 hover:text-white/80"
@@ -946,13 +946,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
           <motion.div 
             key={`totalCalls-${metricKey}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="p-4 rounded-xl glass border border-white/10"
+            className="p-3 sm:p-4 rounded-lg sm:rounded-xl glass border border-white/10"
           >
             <div className="text-xs text-white/60 mb-1">Total Calls Handled</div>
             <motion.div 
@@ -960,7 +960,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="text-2xl font-bold text-white"
+              className="text-xl sm:text-2xl font-bold text-white"
             >
               {loading ? "..." : performance.totalCallsHandled.toLocaleString()}
             </motion.div>
@@ -1117,27 +1117,27 @@ export default function Dashboard() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="p-6 rounded-2xl glass-strong border"
+          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border"
           style={{
             borderColor: `${accentColor}4D`,
             background: `linear-gradient(to right, ${accentColor}1A, ${accentColor}33)`,
           }}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div 
-              className="p-3 rounded-xl border"
+              className="p-2 sm:p-3 rounded-lg sm:rounded-xl border flex-shrink-0"
               style={{
                 backgroundColor: `${accentColor}33`,
                 borderColor: `${accentColor}4D`,
               }}
             >
-              <Sparkles className="h-6 w-6" style={{ color: accentColor }} />
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: accentColor }} />
             </div>
-            <div className="flex-1">
-              <div className="text-lg font-bold text-white">
+            <div className="flex-1 min-w-0">
+              <div className="text-base sm:text-lg font-bold text-white">
                 Success Streak: {successStreak} calls handled flawlessly this month!
               </div>
-              <div className="text-sm text-white/60 mt-1">
+              <div className="text-xs sm:text-sm text-white/60 mt-1">
                 Keep up the excellent work!
               </div>
             </div>
@@ -1146,26 +1146,26 @@ export default function Dashboard() {
       )}
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Contextual Insights */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="lg:col-span-2 p-6 rounded-2xl glass-strong border border-white/10"
+          className="lg:col-span-2 p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div 
-              className="p-2 rounded-xl border"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border"
               style={{
                 background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
                 borderColor: `${accentColor}4D`,
               }}
             >
-              <Lightbulb className="h-5 w-5" style={{ color: accentColor }} />
+              <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
             </div>
           <div>
-            <h2 className="text-xl font-bold text-white">AI Insights</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white">AI Insights</h2>
           </div>
           </div>
 
@@ -1183,7 +1183,7 @@ export default function Dashboard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.1 }}
-                    className={`p-4 rounded-xl glass border flex items-start gap-3 ${
+                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl glass border flex items-start gap-2 sm:gap-3 ${
                       insight.actionable 
                         ? "border" 
                         : "border-white/10"
@@ -1224,20 +1224,20 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="p-6 rounded-2xl glass-strong border border-white/10"
+          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div 
-              className="p-2 rounded-xl border"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border"
               style={{
                 background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
                 borderColor: `${accentColor}4D`,
               }}
             >
-              <Zap className="h-5 w-5" style={{ color: accentColor }} />
+              <Zap className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
             </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Activity Feed</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white">Activity Feed</h2>
           </div>
           </div>
 

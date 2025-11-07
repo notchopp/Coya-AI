@@ -301,13 +301,13 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-4xl font-bold text-white">Calendar</h1>
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Calendar</h1>
           <span className="beta-badge">Beta</span>
         </div>
         <motion.span
@@ -321,14 +321,14 @@ export default function CalendarPage() {
         </motion.span>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Calendar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-2"
         >
-          <div className="p-6 rounded-2xl glass-strong border border-white/10">
+          <div className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10">
             <style jsx global>{`
               :root {
                 --calendar-accent: ${accentColor};
@@ -492,7 +492,7 @@ export default function CalendarPage() {
                     scale: isHighlighted ? 1.02 : 1,
                   }}
                   transition={{ duration: 0.2 }}
-                  className={`p-4 rounded-xl glass transition-all ${
+                  className={`p-3 sm:p-4 rounded-lg sm:rounded-xl glass transition-all ${
                     isHighlighted
                       ? ""
                       : "border border-white/10 hover:border-yellow-500/50"
@@ -503,17 +503,17 @@ export default function CalendarPage() {
                     boxShadow: `0 0 0 2px ${accentColor}40, 0 4px 12px ${accentColor}30`,
                   } : {}}
                 >
-                    <div className="mb-3">
-                      <div className="font-semibold text-white text-base mb-1">
+                    <div className="mb-2 sm:mb-3">
+                      <div className="font-semibold text-white text-sm sm:text-base mb-1">
                         {call.patient_name || "Unknown"}
                       </div>
-                      <div className="text-sm text-white/60">
+                      <div className="text-xs sm:text-sm text-white/60">
                         {getBookingDate(call)}
                       </div>
                     </div>
                     {call.last_summary && (
                       <p 
-                        className="text-white/70 text-sm line-clamp-3 cursor-pointer hover:text-white transition-colors"
+                        className="text-white/70 text-xs sm:text-sm line-clamp-3 cursor-pointer hover:text-white transition-colors"
                         onClick={() => {
                           setSelectedBooking(call);
                           setIsBookingModalOpen(true);

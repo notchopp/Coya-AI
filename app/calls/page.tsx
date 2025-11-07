@@ -749,8 +749,8 @@ export default function LiveCallsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-4xl font-bold text-white">Live Calls</h1>
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Live Calls</h1>
           <span className="beta-badge">Beta</span>
         </div>
         <motion.span
@@ -854,7 +854,7 @@ export default function LiveCallsPage() {
           No active calls
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {calls.map((call, index) => {
             const hasTranscriptContent = hasTranscript(call);
             const messages = hasTranscriptContent ? getMessagesForCall(call) : [];
@@ -942,9 +942,9 @@ export default function LiveCallsPage() {
                           transition={{ delay: idx * 0.05 }}
                           className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                         >
-                          <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                          <div className={`flex items-start gap-1.5 sm:gap-2 max-w-[85%] sm:max-w-[80%] ${message.role === "user" ? "flex-row-reverse ml-auto" : ""}`}>
                             <div 
-                              className={`p-1.5 rounded-full flex-shrink-0 border ${
+                              className={`p-1 sm:p-1.5 rounded-full flex-shrink-0 border ${
                                 message.role === "user"
                                   ? ""
                                   : ""
@@ -958,17 +958,17 @@ export default function LiveCallsPage() {
                               }}
                             >
                               {message.role === "user" ? (
-                                <UserCircle className="h-3.5 w-3.5 text-blue-400" />
+                                <UserCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" />
                               ) : (
-                                <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" style={{ color: accentColor }} />
                               )}
                             </div>
-                            <div className={`px-4 py-2.5 rounded-2xl ${
+                            <div className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl ${
                               message.role === "user"
                                 ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
                                 : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
                             }`}>
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                              <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
                             </div>
                           </div>
                         </motion.div>

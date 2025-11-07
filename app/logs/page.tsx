@@ -584,26 +584,28 @@ export default function LogsPage() {
             )}
           </AnimatePresence>
         </div>
-        <button
-          onClick={exportToCSV}
-          className="px-4 py-3 rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2 text-white"
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </button>
+          <button
+            onClick={exportToCSV}
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
+          </button>
+        </div>
       </div>
 
       {/* Results Count */}
       {!loading && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-white/60">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="text-xs sm:text-sm text-white/60">
             Showing {startIndex + 1}–{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} calls
           </div>
         </div>
       )}
 
       {/* Logs Cards - Floating Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {loading ? (
           <div className="col-span-full p-8 text-center text-white/40">Loading...</div>
         ) : filteredLogs.length === 0 ? (
@@ -645,14 +647,14 @@ export default function LogsPage() {
                     >
                 {/* Card Header */}
                 <div 
-                  className="p-6 cursor-pointer"
+                  className="p-4 sm:p-6 cursor-pointer"
                   onClick={() => handleCardClick(log)}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                         <div 
-                          className={`p-2 rounded-xl border ${
+                          className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border flex-shrink-0 ${
                             statusColor === "emerald"
                               ? "bg-emerald-500/20 border-emerald-500/30"
                               : statusColor === "yellow"
@@ -665,7 +667,7 @@ export default function LogsPage() {
                           } : {}}
                         >
                           <Phone 
-                            className={`h-5 w-5 ${
+                            className={`h-4 w-4 sm:h-5 sm:w-5 ${
                               statusColor === "emerald"
                                 ? "text-emerald-400"
                                 : statusColor === "yellow"
@@ -676,17 +678,17 @@ export default function LogsPage() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold text-white truncate">
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                            <h3 className="text-base sm:text-lg font-bold text-white truncate">
                               {log.patient_name || "Unknown Caller"}
                             </h3>
                             {log.success !== null && (
-                              <span className={`${log.success ? "text-emerald-400" : "text-red-400"}`}>
-                                {log.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                              <span className={`flex-shrink-0 ${log.success ? "text-emerald-400" : "text-red-400"}`}>
+                                {log.success ? <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-white/60">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-white/60">
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {format(new Date(log.started_at), "MMM d, h:mm a")}
@@ -694,7 +696,7 @@ export default function LogsPage() {
                             {log.phone && (
                               <div className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
-                                {log.phone}
+                                <span className="truncate max-w-[120px] sm:max-w-none">{log.phone}</span>
                               </div>
                             )}
                           </div>

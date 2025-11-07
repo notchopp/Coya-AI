@@ -494,7 +494,7 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex gap-2 border-b border-white/10"
+        className="flex gap-1 sm:gap-2 border-b border-white/10 overflow-x-auto"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -503,7 +503,7 @@ export default function SettingsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="relative px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2"
+              className="relative px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 sm:gap-2 min-h-[44px] whitespace-nowrap"
             >
               {isActive && (
                 <motion.div
@@ -537,9 +537,9 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <div 
                   className="p-2 rounded-xl border"
                   style={{
@@ -639,9 +639,9 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <div 
                   className="p-2 rounded-xl border"
                   style={{
@@ -752,9 +752,9 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <div 
                   className="p-2 rounded-xl border"
                   style={{
@@ -826,7 +826,7 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -921,7 +921,7 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -998,7 +998,7 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -1084,7 +1084,7 @@ export default function SettingsPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 rounded-2xl glass-strong border border-white/10"
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
             >
               <ColorPicker />
             </motion.div>
