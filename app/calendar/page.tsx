@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Calendar from "react-calendar";
 import { getSupabaseClient } from "@/lib/supabase";
 import { format, isSameDay } from "date-fns";
+import { useAccentColor } from "@/components/AccentColorProvider";
 import "react-calendar/dist/Calendar.css";
 
 type Call = {
@@ -16,6 +17,7 @@ type Call = {
 };
 
 export default function CalendarPage() {
+  const { accentColor } = useAccentColor();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,11 +136,12 @@ export default function CalendarPage() {
         {dayCalls.slice(0, 3).map((_, i) => (
           <div
             key={i}
-            className="w-1 h-1 rounded-full bg-yellow-400 dark:bg-yellow-400"
+            className="w-1 h-1 rounded-full"
+            style={{ backgroundColor: accentColor }}
           />
         ))}
         {dayCalls.length > 3 && (
-          <div className="text-[8px] text-yellow-400 dark:text-yellow-400">+{dayCalls.length - 3}</div>
+          <div className="text-[8px]" style={{ color: accentColor }}>+{dayCalls.length - 3}</div>
         )}
       </div>
     );
@@ -171,7 +174,8 @@ export default function CalendarPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+          className="text-xs font-medium"
+          style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
         >
           #Founders Program
         </motion.span>
@@ -186,6 +190,9 @@ export default function CalendarPage() {
         >
           <div className="p-6 rounded-2xl glass-strong border border-white/10">
             <style jsx global>{`
+              :root {
+                --calendar-accent: ${accentColor};
+              }
               .react-calendar {
                 background: transparent;
                 border: none;
@@ -266,39 +273,39 @@ export default function CalendarPage() {
               }
               .react-calendar__tile:enabled:hover,
               .react-calendar__tile:enabled:focus {
-                background: rgba(234, 179, 8, 0.2);
+                background: color-mix(in srgb, var(--calendar-accent) 20%, transparent);
                 color: white;
               }
               .light .react-calendar__tile:enabled:hover,
               .light .react-calendar__tile:enabled:focus {
-                background: rgba(234, 179, 8, 0.15);
+                background: color-mix(in srgb, var(--calendar-accent) 15%, transparent);
                 color: #1a1a1a;
               }
               .react-calendar__tile--now {
-                background: rgba(234, 179, 8, 0.3);
+                background: color-mix(in srgb, var(--calendar-accent) 30%, transparent);
                 color: white;
                 font-weight: 600;
               }
               .light .react-calendar__tile--now {
-                background: rgba(234, 179, 8, 0.2);
+                background: color-mix(in srgb, var(--calendar-accent) 20%, transparent);
                 color: #1a1a1a;
               }
               .react-calendar__tile--active {
-                background: rgba(234, 179, 8, 0.4);
+                background: color-mix(in srgb, var(--calendar-accent) 40%, transparent);
                 color: white;
                 font-weight: 600;
               }
               .light .react-calendar__tile--active {
-                background: rgba(234, 179, 8, 0.3);
+                background: color-mix(in srgb, var(--calendar-accent) 30%, transparent);
                 color: #1a1a1a;
               }
               .react-calendar__tile--active:enabled:hover,
               .react-calendar__tile--active:enabled:focus {
-                background: rgba(234, 179, 8, 0.5);
+                background: color-mix(in srgb, var(--calendar-accent) 50%, transparent);
               }
               .light .react-calendar__tile--active:enabled:hover,
               .light .react-calendar__tile--active:enabled:focus {
-                background: rgba(234, 179, 8, 0.4);
+                background: color-mix(in srgb, var(--calendar-accent) 40%, transparent);
               }
             `}</style>
             <Calendar

@@ -192,18 +192,18 @@ html {
   color: rgba(26, 26, 26, 0.4) !important;
 }
 
-/* Beta badge */
+/* Beta badge - uses CSS variable for accent color */
 .beta-badge {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(234, 179, 8, 0.6);
+  color: color-mix(in srgb, var(--accent-color, #eab308) 60%, transparent);
   opacity: 0.7;
 }
 
 .light .beta-badge {
-  color: rgba(234, 179, 8, 0.8);
+  color: color-mix(in srgb, var(--accent-color, #eab308) 80%, transparent);
 }
 
 /* Animated sparkle */

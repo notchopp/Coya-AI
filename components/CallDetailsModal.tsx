@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Phone, User, MessageSquare, CheckCircle, XCircle, Mail, Clock, FileText, Bot, UserCircle } from "lucide-react";
 import { format } from "date-fns";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type Call = {
   id: string;
@@ -118,6 +119,7 @@ type CallDetailsModalProps = {
 };
 
 export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsModalProps) {
+  const { accentColor } = useAccentColor();
   if (!call) return null;
 
   return (
@@ -148,8 +150,14 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                     {/* Header */}
                     <div className="p-6 border-b border-white/10 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                          <Phone className="h-6 w-6 text-yellow-400" />
+                        <div 
+                          className="p-3 rounded-xl border"
+                          style={{
+                            background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                            borderColor: `${accentColor}4D`,
+                          }}
+                        >
+                          <Phone className="h-6 w-6" style={{ color: accentColor }} />
                         </div>
                         <div>
                           <h2 className="text-xl font-bold text-white">
@@ -215,13 +223,18 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                             <div className="text-sm text-white/60 mb-2">Status</div>
                             <div className="flex items-center gap-2">
                               <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                className={`px-3 py-1 rounded-full text-xs font-medium border ${
                                   call.status === "active"
-                                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                    ? ""
                                     : call.status === "ended"
-                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                    : "bg-white/10 text-white/80 border border-white/10"
+                                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                    : "bg-white/10 text-white/80 border-white/10"
                                 }`}
+                                style={call.status === "active" ? {
+                                  backgroundColor: `${accentColor}33`,
+                                  color: accentColor,
+                                  borderColor: `${accentColor}4D`,
+                                } : {}}
                               >
                                 {call.status || "unknown"}
                               </span>
@@ -235,9 +248,15 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                             </div>
                           </div>
                           {call.last_intent && (
-                            <div className="p-4 rounded-xl bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/20">
+                            <div 
+                              className="p-4 rounded-xl border"
+                              style={{
+                                background: `linear-gradient(to right, ${accentColor}1A, ${accentColor}26)`,
+                                borderColor: `${accentColor}33`,
+                              }}
+                            >
                               <div className="flex items-center gap-2 mb-2">
-                                <MessageSquare className="h-4 w-4 text-yellow-400" />
+                                <MessageSquare className="h-4 w-4" style={{ color: accentColor }} />
                                 <span className="text-sm text-white/60">Intent</span>
                               </div>
                               <div className="text-white font-medium">{call.last_intent}</div>
@@ -273,15 +292,24 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                                 >
                                   <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                                    <div className={`p-1.5 rounded-full flex-shrink-0 ${
-                                      message.role === "user"
-                                        ? "bg-blue-500/20 border border-blue-500/30"
-                                        : "bg-yellow-500/20 border border-yellow-500/30"
-                                    }`}>
+                                    <div 
+                                      className={`p-1.5 rounded-full flex-shrink-0 border ${
+                                        message.role === "user"
+                                          ? ""
+                                          : ""
+                                      }`}
+                                      style={message.role === "user" ? {
+                                        backgroundColor: "rgba(59, 130, 246, 0.2)",
+                                        borderColor: "rgba(59, 130, 246, 0.3)",
+                                      } : {
+                                        backgroundColor: `${accentColor}33`,
+                                        borderColor: `${accentColor}4D`,
+                                      }}
+                                    >
                                       {message.role === "user" ? (
                                         <UserCircle className="h-3.5 w-3.5 text-blue-400" />
                                       ) : (
-                                        <Bot className="h-3.5 w-3.5 text-yellow-400" />
+                                        <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
                                       )}
                                     </div>
                                     <div className={`px-4 py-2.5 rounded-2xl ${

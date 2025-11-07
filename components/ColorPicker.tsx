@@ -103,7 +103,7 @@ export function ColorPicker() {
       </div>
 
       {/* Preview */}
-      <div className="mt-4 p-4 rounded-lg glass border" style={{ borderColor: `${accentColor}33` }}>
+      <div className="mt-4">
         <p className="text-xs text-white/60 mb-2">Preview</p>
         <div className="flex items-center gap-3">
           <div 
@@ -111,7 +111,6 @@ export function ColorPicker() {
             style={{ 
               backgroundColor: `${accentColor}20`,
               color: accentColor,
-              border: `1px solid ${accentColor}40`,
             }}
           >
             COYA AI

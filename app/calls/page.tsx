@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type Call = {
   id: string;
@@ -185,6 +186,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
 }
 
 export default function LiveCallsPage() {
+  const { accentColor } = useAccentColor();
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
@@ -629,7 +631,8 @@ export default function LiveCallsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+            className="text-xs font-medium"
+            style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
         >
           #Founders Program
         </motion.span>
@@ -673,7 +676,8 @@ export default function LiveCallsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-2xl p-6 max-w-md w-full border border-yellow-500/30"
+              className="glass-strong rounded-2xl p-6 max-w-md w-full border"
+              style={{ borderColor: `${accentColor}4D` }}
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-white">Call Ended</h3>
@@ -690,7 +694,18 @@ export default function LiveCallsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleViewFullLog(endedCallId)}
-                  className="flex-1 px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 rounded-lg border font-medium transition-colors flex items-center justify-center gap-2"
+                  style={{
+                    backgroundColor: `${accentColor}33`,
+                    borderColor: `${accentColor}4D`,
+                    color: accentColor,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = `${accentColor}4D`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = `${accentColor}33`;
+                  }}
                 >
                   <ExternalLink className="h-4 w-4" />
                   View Full Log
@@ -730,8 +745,14 @@ export default function LiveCallsPage() {
                 <div className="p-6 border-b border-white/10">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 flex-shrink-0">
-                        <PhoneIncoming className="h-5 w-5 text-yellow-400" />
+                      <div 
+                        className="p-2 rounded-xl border flex-shrink-0"
+                        style={{
+                          backgroundColor: `${accentColor}33`,
+                          borderColor: `${accentColor}4D`,
+                        }}
+                      >
+                        <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-bold text-white truncate">
@@ -753,10 +774,14 @@ export default function LiveCallsPage() {
                           repeat: Infinity,
                           ease: "easeInOut",
                         }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
+                        style={{
+                          backgroundColor: `${accentColor}33`,
+                          borderColor: `${accentColor}4D`,
+                        }}
                       >
-                        <div className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
-                        <span className="text-xs font-medium text-yellow-400">Live</span>
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                        <span className="text-xs font-medium" style={{ color: accentColor }}>Live</span>
                       </motion.div>
                       <div className="text-xs text-white/40">
                         {format(new Date(call.started_at), "h:mm a")}
@@ -765,7 +790,14 @@ export default function LiveCallsPage() {
                   </div>
                   {call.last_intent && (
                     <div className="mt-3">
-                      <span className="px-2.5 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 text-xs font-medium border border-yellow-500/30">
+                      <span 
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium border"
+                        style={{
+                          backgroundColor: `${accentColor}33`,
+                          color: accentColor,
+                          borderColor: `${accentColor}4D`,
+                        }}
+                      >
                         {call.last_intent}
                       </span>
                     </div>
@@ -785,15 +817,24 @@ export default function LiveCallsPage() {
                           className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                         >
                           <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                            <div className={`p-1.5 rounded-full flex-shrink-0 ${
-                              message.role === "user"
-                                ? "bg-blue-500/20 border border-blue-500/30"
-                                : "bg-yellow-500/20 border border-yellow-500/30"
-                            }`}>
+                            <div 
+                              className={`p-1.5 rounded-full flex-shrink-0 border ${
+                                message.role === "user"
+                                  ? ""
+                                  : ""
+                              }`}
+                              style={message.role === "user" ? {
+                                backgroundColor: "rgba(59, 130, 246, 0.2)",
+                                borderColor: "rgba(59, 130, 246, 0.3)",
+                              } : {
+                                backgroundColor: `${accentColor}33`,
+                                borderColor: `${accentColor}4D`,
+                              }}
+                            >
                               {message.role === "user" ? (
                                 <UserCircle className="h-3.5 w-3.5 text-blue-400" />
                               ) : (
-                                <Bot className="h-3.5 w-3.5 text-yellow-400" />
+                                <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
                               )}
                             </div>
                             <div className={`px-4 py-2.5 rounded-2xl ${
