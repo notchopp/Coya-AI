@@ -126,9 +126,13 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
 
   // Extract date from schedule JSONB - handle various structures
   function getScheduleDate(): Date | null {
-    if (!call.schedule) return null;
+    if (!call.schedule) {
+      console.log("⚠️ No schedule data");
+      return null;
+    }
     
     const schedule = call.schedule;
+    console.log("📋 Schedule object:", schedule);
     
     // Try various common date field names
     const dateFields = [
@@ -140,23 +144,55 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
       schedule.scheduled_time,
       schedule.start_time,
       schedule.start_date,
+      schedule.start,
+      schedule.appointmentDate,
+      schedule.appointmentTime,
     ].filter(Boolean);
+    
+    console.log("📅 Found date fields:", dateFields);
     
     if (dateFields.length === 0) {
       // If no date field found, check if schedule is a string
       if (typeof schedule === "string") {
         try {
-          return new Date(schedule);
-        } catch {
+          const date = new Date(schedule);
+          console.log("✅ Parsed string date:", date);
+          return date;
+        } catch (e) {
+          console.error("❌ Failed to parse string date:", e);
           return null;
         }
+      }
+      // If it's an object, try to stringify and parse
+      try {
+        const scheduleStr = JSON.stringify(schedule);
+        const parsed = JSON.parse(scheduleStr);
+        // Try to find any date-like value
+        for (const key in parsed) {
+          if (parsed[key] && (typeof parsed[key] === "string" || parsed[key] instanceof Date)) {
+            const date = new Date(parsed[key]);
+            if (!isNaN(date.getTime())) {
+              console.log("✅ Found date in key:", key, date);
+              return date;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("❌ Failed to parse schedule object:", e);
       }
       return null;
     }
     
     try {
-      return new Date(dateFields[0]);
-    } catch {
+      const date = new Date(dateFields[0]);
+      if (isNaN(date.getTime())) {
+        console.error("❌ Invalid date:", dateFields[0]);
+        return null;
+      }
+      console.log("✅ Parsed date from field:", date);
+      return date;
+    } catch (e) {
+      console.error("❌ Failed to parse date:", e);
       return null;
     }
   }
