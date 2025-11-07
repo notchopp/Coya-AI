@@ -43,6 +43,59 @@ type Message = {
   text: string;
 };
 
+// Helper function to check if a message is a tool call
+function isToolCall(msg: any): boolean {
+  if (!msg || typeof msg !== "object") return false;
+  
+  const role = (msg.role || msg.speaker || "").toLowerCase();
+  const msgType = (msg.type || "").toLowerCase();
+  
+  // Check for tool/function indicators
+  return (
+    role === "tool" || 
+    role === "function" ||
+    role === "function_call" ||
+    msgType === "tool" ||
+    msgType === "function" ||
+    !!msg.function || // Function call object (like n8n calls)
+    !!msg.function_call ||
+    !!msg.tool_calls ||
+    !!msg.tool_call_id ||
+    (msg.content && typeof msg.content === "object" && (msg.content.type === "tool" || msg.content.type === "function")) ||
+    // Check if it's a JSON string that represents a tool call
+    (typeof msg === "string" && msg.trim().startsWith("{") && (
+      msg.includes('"type":"function"') ||
+      msg.includes('"type":"tool"') ||
+      msg.includes('"function":{') ||
+      msg.includes('"function_call"')
+    ))
+  );
+}
+
+// Helper function to filter tool calls from a string transcript
+function filterToolCallsFromString(transcript: string): string {
+  if (!transcript || typeof transcript !== "string") return transcript;
+  
+  // Pattern to match JSON objects that look like tool calls
+  // Matches: {"id":"...","type":"function",...} or similar patterns
+  const toolCallPattern = /\{[^{}]*"type"\s*:\s*"(function|tool)"[^{}]*\}/g;
+  
+  // Also match objects with "function" property
+  const functionCallPattern = /\{[^{}]*"function"\s*:\s*\{[^{}]*\}[^{}]*\}/g;
+  
+  let filtered = transcript;
+  
+  // Remove tool call JSON objects
+  filtered = filtered.replace(toolCallPattern, "");
+  filtered = filtered.replace(functionCallPattern, "");
+  
+  // Clean up any double newlines or extra whitespace left behind
+  filtered = filtered.replace(/\n\s*\n\s*\n/g, "\n\n");
+  filtered = filtered.trim();
+  
+  return filtered;
+}
+
 function parseTranscriptJson(transcriptJson: any): Message[] {
   if (!transcriptJson) return [];
   
@@ -57,23 +110,8 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     
     const messages = transcriptJson
       .filter((msg: any) => {
-        // Filter out tool calls - check for tool/function indicators
-        const role = (msg.role || msg.speaker || "").toLowerCase();
-        const msgType = (msg.type || "").toLowerCase();
-        const isToolCall = 
-          role === "tool" || 
-          role === "function" ||
-          role === "function_call" ||
-          msgType === "tool" ||
-          msgType === "function" ||
-          msg.function || // Function call object (like n8n calls)
-          msg.function_call ||
-          msg.tool_calls ||
-          msg.tool_call_id ||
-          (msg.content && typeof msg.content === "object" && msg.content.type === "tool") ||
-          (msg.content && typeof msg.content === "object" && msg.content.type === "function");
-        
-        if (isToolCall) {
+        // Filter out tool calls
+        if (isToolCall(msg)) {
           console.log("🚫 Filtered out tool call:", msg);
           return false;
         }
@@ -85,13 +123,15 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
         
         // Try multiple possible text field names
-        const text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
+        let text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
         
         // If content is an object, try to extract text from it
-        let finalText = text;
         if (typeof text === "object" && text !== null) {
-          finalText = text.text || text.content || text.message || JSON.stringify(text);
+          text = text.text || text.content || text.message || JSON.stringify(text);
         }
+        
+        // If text is a string, filter out any embedded tool call JSON objects
+        let finalText = typeof text === "string" ? filterToolCallsFromString(text) : text;
         
         console.log(`  Item ${idx}: speaker="${speaker}", role="${role}", text="${finalText.substring(0, 50)}..."`);
         
@@ -155,26 +195,19 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   
   // If transcript_json is an object with role/text directly
   if (transcriptJson.role || transcriptJson.speaker) {
-    const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
-    const msgType = (transcriptJson.type || "").toLowerCase();
-    const isToolCall = 
-      speaker === "tool" || 
-      speaker === "function" ||
-      msgType === "tool" ||
-      msgType === "function" ||
-      transcriptJson.function || // Function call object (like n8n calls)
-      transcriptJson.function_call;
-    
-    if (isToolCall) {
+    if (isToolCall(transcriptJson)) {
       console.log("🚫 Filtered out tool call object");
       return [];
     }
     
+    const speaker = (transcriptJson.role || transcriptJson.speaker || "").toLowerCase();
     const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
     let text = transcriptJson.text || transcriptJson.content || transcriptJson.message || transcriptJson.transcript || transcriptJson.text_content || transcriptJson.utterance || "";
     if (typeof text === "object" && text !== null) {
       text = text.text || text.content || text.message || JSON.stringify(text);
     }
+    // Filter tool calls from text string
+    text = typeof text === "string" ? filterToolCallsFromString(text) : text;
     if (text.trim().length > 0) {
       console.log("Parsed single message object:", { role, text });
       return [{ role, text }];
