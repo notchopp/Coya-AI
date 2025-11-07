@@ -780,25 +780,21 @@ export default function LiveCallsPage() {
                 Do you want to see the full log?
               </p>
               <div className="flex gap-3">
-                <button
+                <motion.button
                   onClick={() => handleViewFullLog(endedCallId)}
-                  className="flex-1 px-4 py-2 rounded-lg border font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 rounded-lg border font-medium flex items-center justify-center gap-2"
                   style={{
                     backgroundColor: `${accentColor}33`,
                     borderColor: `${accentColor}4D`,
                     color: accentColor,
-                    transition: "background-color 0.2s ease",
                   }}
-                  onHoverStart={(e) => {
-                    e.currentTarget.style.backgroundColor = `${accentColor}4D`;
-                  }}
-                  onHoverEnd={(e) => {
-                    e.currentTarget.style.backgroundColor = `${accentColor}33`;
-                  }}
+                  whileHover={{ backgroundColor: `${accentColor}4D` }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <ExternalLink className="h-4 w-4" />
                   View Full Log
-                </button>
+                </motion.button>
                 <button
                   onClick={() => setEndedCallId(null)}
                   className="px-4 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 text-white/80 transition-colors"
