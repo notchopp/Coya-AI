@@ -277,10 +277,16 @@ function RealtimeCalls({ businessId }: Props) {
                   transition: "border-color 0.2s ease, background-color 0.2s ease",
                 }}
                 onHoverStart={(e) => {
-                  e.currentTarget.style.borderColor = `${accentColor}80`;
+                  const target = e.currentTarget as HTMLElement;
+                  if (target) {
+                    target.style.borderColor = `${accentColor}80`;
+                  }
                 }}
                 onHoverEnd={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                  const target = e.currentTarget as HTMLElement;
+                  if (target) {
+                    target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                  }
                 }}
               >
                 <div className="flex items-start justify-between mb-3">

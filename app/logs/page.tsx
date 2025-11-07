@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -635,14 +635,18 @@ export default function LogsPage() {
                         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                       }}
                       onHoverStart={(e) => {
-                        const target = e.currentTarget;
-                        target.style.borderColor = `${accentColor}80`;
-                        target.style.boxShadow = `0 12px 20px -4px rgba(0, 0, 0, 0.25), 0 6px 12px -3px rgba(0, 0, 0, 0.15), 0 0 0 1px ${accentColor}80`;
+                        const target = e.currentTarget as HTMLElement;
+                        if (target) {
+                          target.style.borderColor = `${accentColor}80`;
+                          target.style.boxShadow = `0 12px 20px -4px rgba(0, 0, 0, 0.25), 0 6px 12px -3px rgba(0, 0, 0, 0.15), 0 0 0 1px ${accentColor}80`;
+                        }
                       }}
                       onHoverEnd={(e) => {
-                        const target = e.currentTarget;
-                        target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                        target.style.boxShadow = "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)";
+                        const target = e.currentTarget as HTMLElement;
+                        if (target) {
+                          target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                          target.style.boxShadow = "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)";
+                        }
                       }}
                     >
                 {/* Card Header */}
