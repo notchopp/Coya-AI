@@ -32,12 +32,13 @@ async function inviteUser(email: string, businessId: string, role: string = "use
     let userId: string | null = null;
 
     if (existingUser) {
-      if (existingUser.auth_user_id) {
+      const user = existingUser as { id: string; email: string; auth_user_id: string | null; business_id: string };
+      if (user.auth_user_id) {
         console.log("❌ User already exists and has an account");
         return;
       }
       console.log("✅ User exists in users table, will link auth_user_id after invite");
-      userId = existingUser.id;
+      userId = user.id;
     } else {
       // Step 2: Create user record
       console.log("📝 Creating user record in users table...");
@@ -48,7 +49,7 @@ async function inviteUser(email: string, businessId: string, role: string = "use
           business_id: businessId,
           is_active: true,
           role: role,
-        })
+        } as any)
         .select("id")
         .single();
 
@@ -56,7 +57,7 @@ async function inviteUser(email: string, businessId: string, role: string = "use
         throw new Error(`Failed to create user record: ${createError.message}`);
       }
 
-      userId = newUser.id;
+      userId = (newUser as { id: string }).id;
       console.log("✅ User record created");
     }
 
@@ -85,10 +86,11 @@ async function inviteUser(email: string, businessId: string, role: string = "use
     console.log("✅ Invitation sent successfully");
 
     // Step 4: Link auth_user_id if user was created
-    if (inviteData?.user && !existingUser?.auth_user_id) {
+    const user = existingUser as { id: string; auth_user_id: string | null } | null;
+    if (inviteData?.user && (!user || !user.auth_user_id)) {
       console.log("🔗 Linking auth_user_id to user record...");
-      const { error: updateError } = await supabaseAdmin
-        .from("users")
+      const { error: updateError } = await (supabaseAdmin
+        .from("users") as any)
         .update({ auth_user_id: inviteData.user.id })
         .eq("id", userId);
 

@@ -45,7 +45,11 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       // User exists in users table
-      if (existingUser.auth_user_id) {
+      // Type assertion needed because Supabase types can be complex
+      const user = existingUser as { id: string; email: string; auth_user_id: string | null; business_id: string };
+      const hasAuthAccount = user.auth_user_id !== null && user.auth_user_id !== undefined;
+      
+      if (hasAuthAccount) {
         // User already has auth account
         return NextResponse.json(
           { error: "User already exists and has an account. They can sign in directly." },
@@ -53,7 +57,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // User exists but no auth_user_id - we'll update it after invite
-      userId = existingUser.id;
+      userId = user.id;
     } else {
       // Step 2: Create user record in users table (without auth_user_id initially)
       const { data: newUser, error: createError } = await supabaseAdmin
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
           business_id: business_id,
           is_active: true,
           role: role || "user",
-        })
+        } as any)
         .select("id")
         .single();
 
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      userId = newUser.id;
+      userId = (newUser as { id: string }).id;
     }
 
     // Step 3: Invite the user via Supabase Auth with business_id in metadata
@@ -108,16 +112,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 4: If user was created, update it with auth_user_id
-    if (inviteData?.user && !existingUser?.auth_user_id) {
-      const { error: updateError } = await supabaseAdmin
-        .from("users")
-        .update({ auth_user_id: inviteData.user.id })
-        .eq("id", userId);
+    if (inviteData?.user && userId) {
+      const user = existingUser as { id: string; auth_user_id: string | null } | null;
+      const needsAuthLink = !user || !user.auth_user_id;
+      
+      if (needsAuthLink) {
+        const { error: updateError } = await (supabaseAdmin
+          .from("users") as any)
+          .update({ auth_user_id: inviteData.user.id })
+          .eq("id", userId);
 
-      if (updateError) {
-        console.error("Error updating user auth_user_id:", updateError);
-        // Don't fail the request, but log the error
-        // The callback page will handle linking by email
+        if (updateError) {
+          console.error("Error updating user auth_user_id:", updateError);
+          // Don't fail the request, but log the error
+          // The callback page will handle linking by email
+        }
       }
     }
 
