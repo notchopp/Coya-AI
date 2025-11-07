@@ -23,6 +23,7 @@ import {
   Users
 } from "lucide-react";
 import { format, startOfWeek, startOfMonth, subMonths, subWeeks } from "date-fns";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type DashboardCall = {
   id: string;
@@ -76,6 +77,7 @@ type ActivityItem = {
 };
 
 export default function Dashboard() {
+  const { accentColor } = useAccentColor();
   const [mounted, setMounted] = useState(false);
   const [performance, setPerformance] = useState<PerformanceMetrics>({
     totalCallsHandled: 0,
@@ -868,7 +870,8 @@ export default function Dashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+            className="text-xs font-medium"
+            style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
           >
             #Founders Program
           </motion.span>
@@ -881,7 +884,7 @@ export default function Dashboard() {
             className="flex flex-col items-end gap-1"
           >
             <div className="text-white/60 text-lg">
-              Hey, <span className="text-white/80 font-medium">{userName.split(' ')[0]}</span>
+              Hey, <span className="font-medium" style={{ color: accentColor }}>{userName.split(' ')[0]}</span>
             </div>
             {funFact && (
               <motion.div
@@ -906,8 +909,14 @@ export default function Dashboard() {
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-              <Trophy className="h-5 w-5 text-yellow-400" />
+            <div 
+              className="p-2 rounded-xl border"
+              style={{
+                background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                borderColor: `${accentColor}4D`,
+              }}
+            >
+              <Trophy className="h-5 w-5" style={{ color: accentColor }} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Performance Overview</h2>
@@ -922,9 +931,14 @@ export default function Dashboard() {
                 onClick={() => setTimePeriod(period)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   timePeriod === period
-                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                    ? "border"
                     : "text-white/60 hover:text-white/80"
                 }`}
+                style={timePeriod === period ? {
+                  backgroundColor: `${accentColor}33`,
+                  color: accentColor,
+                  borderColor: `${accentColor}4D`,
+                } : {}}
               >
                 {period.charAt(0).toUpperCase() + period.slice(1)}
               </button>
@@ -997,7 +1011,7 @@ export default function Dashboard() {
                   data={performance.bookingsThisWeekTrend} 
                   width={50} 
                   height={16}
-                  color={bookingsTrend > 0 ? "#10b981" : bookingsTrend < 0 ? "#ef4444" : "#eab308"}
+                  color={bookingsTrend > 0 ? "#10b981" : bookingsTrend < 0 ? "#ef4444" : accentColor}
                 />
               </div>
             )}
@@ -1056,7 +1070,7 @@ export default function Dashboard() {
             className="p-4 rounded-xl glass border border-white/10"
           >
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-3 w-3 text-yellow-400" />
+              <DollarSign className="h-3 w-3" style={{ color: accentColor }} />
               <div className="text-xs text-white/60">Estimated Savings</div>
             </div>
             <motion.div 
@@ -1103,11 +1117,21 @@ export default function Dashboard() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="p-6 rounded-2xl glass-strong border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10"
+          className="p-6 rounded-2xl glass-strong border"
+          style={{
+            borderColor: `${accentColor}4D`,
+            background: `linear-gradient(to right, ${accentColor}1A, ${accentColor}33)`,
+          }}
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-yellow-500/20 border border-yellow-500/30">
-              <Sparkles className="h-6 w-6 text-yellow-400" />
+            <div 
+              className="p-3 rounded-xl border"
+              style={{
+                backgroundColor: `${accentColor}33`,
+                borderColor: `${accentColor}4D`,
+              }}
+            >
+              <Sparkles className="h-6 w-6" style={{ color: accentColor }} />
             </div>
             <div className="flex-1">
               <div className="text-lg font-bold text-white">
@@ -1131,8 +1155,14 @@ export default function Dashboard() {
           className="lg:col-span-2 p-6 rounded-2xl glass-strong border border-white/10"
         >
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-              <Lightbulb className="h-5 w-5 text-yellow-400" />
+            <div 
+              className="p-2 rounded-xl border"
+              style={{
+                background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                borderColor: `${accentColor}4D`,
+              }}
+            >
+              <Lightbulb className="h-5 w-5" style={{ color: accentColor }} />
             </div>
           <div>
             <h2 className="text-xl font-bold text-white">AI Insights</h2>
@@ -1155,13 +1185,18 @@ export default function Dashboard() {
                     transition={{ delay: 0.3 + index * 0.1 }}
                     className={`p-4 rounded-xl glass border flex items-start gap-3 ${
                       insight.actionable 
-                        ? "border-yellow-500/30 bg-yellow-500/5" 
+                        ? "border" 
                         : "border-white/10"
                     }`}
+                    style={insight.actionable ? {
+                      borderColor: `${accentColor}4D`,
+                      backgroundColor: `${accentColor}0D`,
+                    } : {}}
                   >
-                    <Icon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                      insight.actionable ? "text-yellow-400" : "text-yellow-400/70"
-                    }`} />
+                    <Icon 
+                      className="h-5 w-5 mt-0.5 flex-shrink-0" 
+                      style={{ color: insight.actionable ? accentColor : `${accentColor}B3` }}
+                    />
                     <div className="flex-1">
                       <p className={`text-sm ${
                         insight.actionable 
@@ -1171,7 +1206,7 @@ export default function Dashboard() {
                         {insight.message}
                       </p>
                       {insight.actionable && (
-                        <div className="mt-2 text-xs text-yellow-400/70 flex items-center gap-1">
+                        <div className="mt-2 text-xs flex items-center gap-1" style={{ color: `${accentColor}B3` }}>
                           <Lightbulb className="h-3 w-3" />
                           <span>AI recommendation</span>
                         </div>
@@ -1192,8 +1227,14 @@ export default function Dashboard() {
           className="p-6 rounded-2xl glass-strong border border-white/10"
         >
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-              <Zap className="h-5 w-5 text-yellow-400" />
+            <div 
+              className="p-2 rounded-xl border"
+              style={{
+                background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                borderColor: `${accentColor}4D`,
+              }}
+            >
+              <Zap className="h-5 w-5" style={{ color: accentColor }} />
             </div>
           <div>
             <h2 className="text-xl font-bold text-white">Activity Feed</h2>
@@ -1219,10 +1260,10 @@ export default function Dashboard() {
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                     )}
                     {activity.type === "call" && (
-                      <Phone className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: accentColor }} />
                     )}
                     {activity.type === "streak" && (
-                      <Trophy className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <Trophy className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: accentColor }} />
                     )}
                     {activity.type === "achievement" && (
                       <Sparkles className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
