@@ -923,7 +923,7 @@ export default function LogsPage() {
                                   </div>
                                 </motion.div>
                               ))}
-                            </div>
+                            </TranscriptScrollContainer>
                           </div>
                         )}
                         
