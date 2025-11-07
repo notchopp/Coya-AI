@@ -154,6 +154,7 @@ function SidebarContent({
   const { theme, toggleTheme } = useTheme();
   const { accentColor } = useAccentColor();
   const { isPremium: premiumState, isLocalhost, togglePremium } = usePremiumMode();
+  const middleColor = theme === "light" ? "#000000" : "#ffffff"; // Black in light mode, white in dark mode
   const isDashboard = pathname === "/";
   const showPremium = premiumState && isDashboard;
   const [sidebarStats, setSidebarStats] = useState({
