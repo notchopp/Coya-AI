@@ -3,7 +3,17 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      console.error("Failed to parse request body:", jsonError);
+      return NextResponse.json(
+        { error: "Invalid request body", details: "Request must be valid JSON" },
+        { status: 400 }
+      );
+    }
+    
     const { email, business_id, role } = body;
 
     // Validate input
@@ -23,7 +33,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdminClient();
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (adminError) {
+      console.error("Failed to create Supabase admin client:", adminError);
+      return NextResponse.json(
+        { 
+          error: "Server configuration error", 
+          details: adminError instanceof Error ? adminError.message : "Failed to initialize admin client. Check SUPABASE_SERVICE_ROLE_KEY environment variable."
+        },
+        { status: 500 }
+      );
+    }
 
     // Step 1: Check if user already exists in users table
     const { data: existingUser, error: checkError } = await supabaseAdmin

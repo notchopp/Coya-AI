@@ -516,20 +516,28 @@ export default function SettingsPage() {
         }),
       });
 
-      let result;
+      // Get response text first to handle both JSON and non-JSON responses
+      const responseText = await response.text();
+      let result: any = {};
+      
       try {
-        result = await response.json();
+        if (responseText) {
+          result = JSON.parse(responseText);
+        }
       } catch (jsonError) {
-        console.error("Failed to parse response:", jsonError);
-        throw new Error("Invalid response from server. Please check the console for details.");
+        console.error("Failed to parse response as JSON:", jsonError);
+        console.error("Response text:", responseText);
+        throw new Error(`Server returned invalid response: ${response.status} ${response.statusText}`);
       }
 
       if (!response.ok) {
-        const errorMessage = result?.error || result?.details || `Server error: ${response.status} ${response.statusText}`;
-        console.error("API Error:", {
+        const errorMessage = result?.error || result?.details || result?.message || `Server error: ${response.status} ${response.statusText}`;
+        console.error("API Error Details:", {
           status: response.status,
           statusText: response.statusText,
-          error: result,
+          statusCode: response.status,
+          responseBody: result,
+          rawResponse: responseText,
         });
         throw new Error(errorMessage);
       }
