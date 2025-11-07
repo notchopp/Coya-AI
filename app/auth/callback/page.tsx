@@ -25,13 +25,46 @@ export default function AuthCallbackPage() {
         const supabase = getSupabaseClient();
         
         // Get the code and type from URL params
-        const code = searchParams.get("code");
-        const type = searchParams.get("type");
+        // Supabase can pass code in different ways: as query param or hash fragment
+        let code = searchParams.get("code");
+        let type = searchParams.get("type");
+        
+        // If not in query params, check hash fragment (Supabase sometimes uses this)
+        if (!code && typeof window !== "undefined") {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          code = hashParams.get("code") || code;
+          type = hashParams.get("type") || type;
+        }
+        
+        // Debug logging
+        if (typeof window !== "undefined") {
+          console.log("🔍 Full URL:", window.location.href);
+          console.log("🔍 Hash:", window.location.hash);
+          console.log("🔍 Search:", window.location.search);
+          console.log("🔍 Code found:", code);
+          console.log("🔍 Type found:", type);
+        }
         
         if (!code) {
-          setError("Invalid invitation link. No code provided.");
-          setLoading(false);
-          return;
+          // Try using Supabase's built-in session recovery
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (session && session.user) {
+            console.log("✅ Found existing session, user:", session.user.email);
+            // User already has a session, proceed with password setup if needed
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user && (!user.email_confirmed_at || type === "invite")) {
+              setEmail(user.email || "");
+              setNeedsPassword(true);
+              setLoading(false);
+              return;
+            }
+          } else {
+            setError("Invalid invitation link. No code provided. Please check that the redirect URL is correctly configured in Supabase Dashboard → Authentication → URL Configuration.");
+            setLoading(false);
+            return;
+          }
         }
 
         // Exchange the code for a session
