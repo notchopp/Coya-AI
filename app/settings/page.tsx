@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette } from "lucide-react";
+import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette, Mail, UserPlus } from "lucide-react";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
@@ -58,7 +58,12 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content" | "appearance">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content" | "appearance" | "team">("profile");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
+  const [inviting, setInviting] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<"idle" | "success" | "error">("idle");
+  const [inviteError, setInviteError] = useState("");
   const [userName, setUserName] = useState<string>("");
   const [savingUserName, setSavingUserName] = useState(false);
   const [userNameSaveStatus, setUserNameSaveStatus] = useState<"idle" | "success" | "error">("idle");
@@ -463,8 +468,77 @@ export default function SettingsPage() {
     { id: "info" as const, label: "Business Info", icon: Building2 },
     { id: "hours" as const, label: "Hours & Staff", icon: Clock },
     { id: "content" as const, label: "Content", icon: Tag },
+    { id: "team" as const, label: "Team", icon: Users },
     { id: "appearance" as const, label: "Appearance", icon: Palette },
   ];
+
+  async function handleInviteUser() {
+    if (!inviteEmail.trim()) {
+      setInviteStatus("error");
+      setInviteError("Email is required");
+      setTimeout(() => {
+        setInviteStatus("idle");
+        setInviteError("");
+      }, 3000);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail.trim())) {
+      setInviteStatus("error");
+      setInviteError("Invalid email format");
+      setTimeout(() => {
+        setInviteStatus("idle");
+        setInviteError("");
+      }, 3000);
+      return;
+    }
+
+    setInviting(true);
+    setInviteStatus("idle");
+    setInviteError("");
+
+    try {
+      const businessId = sessionStorage.getItem("business_id");
+      if (!businessId) {
+        throw new Error("Business ID not found");
+      }
+
+      const response = await fetch("/api/invite-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          business_id: businessId,
+          role: inviteRole,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to send invitation");
+      }
+
+      setInviteStatus("success");
+      setInviteEmail("");
+      setTimeout(() => {
+        setInviteStatus("idle");
+      }, 3000);
+    } catch (error) {
+      console.error("Error inviting user:", error);
+      setInviteStatus("error");
+      setInviteError(error instanceof Error ? error.message : "Failed to send invitation");
+      setTimeout(() => {
+        setInviteStatus("idle");
+        setInviteError("");
+      }, 5000);
+    } finally {
+      setInviting(false);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -1068,6 +1142,131 @@ export default function SettingsPage() {
         </motion.div>
           </motion.div>
         )}
+        {activeTab === "team" && (
+          <motion.div
+            key="team"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+            >
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div 
+                  className="p-2 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                    borderColor: `${accentColor}4D`,
+                  }}
+                >
+                  <UserPlus className="h-5 w-5" style={{ color: accentColor }} />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Invite Team Member</h2>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = `${accentColor}80`;
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                    placeholder="user@example.com"
+                    disabled={inviting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Role
+                  </label>
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = `${accentColor}80`;
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                    disabled={inviting}
+                  >
+                    <option value="user" className="bg-black text-white">User</option>
+                    <option value="admin" className="bg-black text-white">Admin</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <AnimatePresence>
+                    {inviteStatus === "success" && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Invitation sent successfully!
+                      </motion.div>
+                    )}
+                    {inviteStatus === "error" && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        {inviteError || "Failed to send invitation"}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <motion.button
+                    onClick={handleInviteUser}
+                    disabled={inviting || !inviteEmail.trim()}
+                    whileHover={{ scale: inviting || !inviteEmail.trim() ? 1 : 1.02 }}
+                    whileTap={{ scale: inviting || !inviteEmail.trim() ? 1 : 0.98 }}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {inviting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4" />
+                        Send Invitation
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+                <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/60">
+                    The user will receive an email invitation to join your team. They'll be able to set their password and access the dashboard.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {activeTab === "appearance" && (
           <motion.div
             key="appearance"
