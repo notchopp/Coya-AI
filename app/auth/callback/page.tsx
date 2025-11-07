@@ -26,8 +26,8 @@ export default function AuthCallbackPage() {
         
         // Get the code and type from URL params
         // Supabase can pass code in different ways: as query param or hash fragment
-        let code = searchParams.get("code");
-        let type = searchParams.get("type");
+        let code: string | null = searchParams.get("code");
+        let type: string | null = searchParams.get("type");
         
         // If not in query params, check hash fragment (Supabase sometimes uses this)
         if (!code && typeof window !== "undefined") {
@@ -65,9 +65,12 @@ export default function AuthCallbackPage() {
             setLoading(false);
             return;
           }
+          // If we reach here, we should have returned above
+          return;
         }
 
         // Exchange the code for a session
+        // TypeScript now knows code is string (not null) due to the check above
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
         if (exchangeError) {
