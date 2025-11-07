@@ -8,6 +8,34 @@ import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronDow
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
+// Component for auto-scrolling transcript
+function TranscriptScrollContainer({ children, isExpanded }: { children: React.ReactNode; isExpanded: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isExpanded && scrollRef.current) {
+      // Auto-scroll to bottom when expanded
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 150);
+    }
+  }, [isExpanded]);
+
+  return (
+    <div 
+      ref={scrollRef}
+      className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"
+      style={{
+        scrollBehavior: "smooth",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 type Call = {
   id: string;
   business_id: string;
@@ -272,13 +300,11 @@ export default function LogsPage() {
 
   function toggleCard(callId: string) {
     setExpandedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(callId)) {
-        newSet.delete(callId);
-      } else {
-        newSet.add(callId);
+      // Only allow one card open at a time
+      if (prev.has(callId)) {
+        return new Set(); // Close if already open
       }
-      return newSet;
+      return new Set([callId]); // Open only this card
     });
   }
 
@@ -606,8 +632,8 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Logs Cards - Floating Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Logs Cards - 3D Floating Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ perspective: "1000px" }}>
         {loading ? (
           <div className="col-span-full p-8 text-center text-white/40">Loading...</div>
         ) : filteredLogs.length === 0 ? (
@@ -625,20 +651,33 @@ export default function LogsPage() {
                     <motion.div
                       key={log.id}
                       ref={log.id === callIdParam ? callCardRef : null}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      whileHover={{ y: -4, scale: 1.02 }}
-                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden transition-all cursor-pointer shadow-lg hover:shadow-xl"
+                      initial={{ opacity: 0, y: 20, rotateX: -10 }}
+                      animate={{ 
+                        opacity: 1, 
+                        y: 0, 
+                        rotateX: 0,
+                        rotateY: 0,
+                        z: 0,
+                      }}
+                      whileHover={{ 
+                        y: -8, 
+                        scale: 1.03,
+                        rotateY: 2,
+                        z: 20,
+                      }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden transition-all cursor-pointer"
                       style={{
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                        transformStyle: "preserve-3d",
+                        boxShadow: "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = `${accentColor}66`;
-                        e.currentTarget.style.boxShadow = `0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px ${accentColor}66`;
+                        e.currentTarget.style.borderColor = `${accentColor}80`;
+                        e.currentTarget.style.boxShadow = `0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1), 0 0 0 2px ${accentColor}80`;
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                        e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+                        e.currentTarget.style.boxShadow = "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)";
                       }}
                     >
                 {/* Card Header */}
@@ -695,21 +734,29 @@ export default function LogsPage() {
                                 {log.phone}
                               </div>
                             )}
-                            {log.last_intent && (
-                              <div className="flex items-center gap-1">
-                                <Target className="h-3 w-3" />
-                                <span 
-                                  className="px-2 py-0.5 rounded-full text-xs border"
-                                  style={{
-                                    backgroundColor: `${accentColor}33`,
-                                    color: accentColor,
-                                    borderColor: `${accentColor}4D`,
-                                  }}
-                                >
-                                  {log.last_intent}
-                                </span>
-                              </div>
-                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Intent - Prominent Display */}
+                      {log.last_intent && (
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Target className="h-4 w-4" style={{ color: accentColor }} />
+                            <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Intent</span>
+                          </div>
+                          <span 
+                            className="px-3 py-1.5 rounded-lg text-sm font-semibold border inline-block"
+                            style={{
+                              backgroundColor: `${accentColor}33`,
+                              color: accentColor,
+                              borderColor: `${accentColor}66`,
+                            }}
+                          >
+                            {log.last_intent}
+                          </span>
+                        </div>
+                      )}
                           </div>
                         </div>
                       </div>
@@ -763,64 +810,93 @@ export default function LogsPage() {
                       transition={{ duration: 0.2 }}
                       className="border-t border-white/10 overflow-hidden"
                     >
-                      <div className="p-6 space-y-4">
-                        {/* Contact Information */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-6 space-y-6">
+                        {/* Summary - Main Focus */}
+                        {log.last_summary && (
+                          <div className="p-5 rounded-xl glass border border-white/10 bg-white/5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div 
+                                className="p-1.5 rounded-lg border"
+                                style={{
+                                  backgroundColor: `${accentColor}33`,
+                                  borderColor: `${accentColor}4D`,
+                                }}
+                              >
+                                <FileText className="h-4 w-4" style={{ color: accentColor }} />
+                              </div>
+                              <div className="text-sm font-semibold text-white uppercase tracking-wider">Summary</div>
+                            </div>
+                            <p className="text-base text-white leading-relaxed">{log.last_summary}</p>
+                          </div>
+                        )}
+                        
+                        {/* Contact Information - Compact */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {log.phone && (
-                            <div className="flex items-start gap-3">
-                              <Phone className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
-                              <div>
-                                <div className="text-xs text-white/60 mb-1">Phone</div>
-                                <div className="text-sm text-white">{log.phone}</div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs text-white/60 truncate">Phone</div>
+                                <div className="text-xs text-white truncate">{log.phone}</div>
                               </div>
                             </div>
                           )}
                           {log.email && (
-                            <div className="flex items-start gap-3">
-                              <Mail className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
-                              <div>
-                                <div className="text-xs text-white/60 mb-1">Email</div>
-                                <div className="text-sm text-white">{log.email}</div>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs text-white/60 truncate">Email</div>
+                                <div className="text-xs text-white truncate">{log.email}</div>
                               </div>
                             </div>
                           )}
-                          <div className="flex items-start gap-3">
-                            <Clock className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
-                            <div>
-                              <div className="text-xs text-white/60 mb-1">Started</div>
-                              <div className="text-sm text-white">{format(new Date(log.started_at), "MMM d, yyyy 'at' h:mm a")}</div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs text-white/60 truncate">Started</div>
+                              <div className="text-xs text-white truncate">{format(new Date(log.started_at), "MMM d, h:mm a")}</div>
                             </div>
                           </div>
                           {log.ended_at && (
-                            <div className="flex items-start gap-3">
-                              <Clock className="h-4 w-4 text-white/40 mt-1 flex-shrink-0" />
-                              <div>
-                                <div className="text-xs text-white/60 mb-1">Ended</div>
-                                <div className="text-sm text-white">{format(new Date(log.ended_at), "MMM d, yyyy 'at' h:mm a")}</div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs text-white/60 truncate">Ended</div>
+                                <div className="text-xs text-white truncate">{format(new Date(log.ended_at), "MMM d, h:mm a")}</div>
                               </div>
                             </div>
                           )}
                         </div>
                         
-                        {/* Full Summary */}
-                        {log.last_summary && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <FileText className="h-4 w-4 text-white/60" />
-                              <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Summary</div>
-                            </div>
-                            <p className="text-sm text-white/80 leading-relaxed">{log.last_summary}</p>
-                          </div>
-                        )}
-                        
-                        {/* Transcript */}
+                        {/* Transcript - Condensed with Auto-scroll */}
                         {log.transcript && (
                           <div>
-                            <div className="flex items-center gap-2 mb-4">
-                              <FileText className="h-4 w-4 text-white/60" />
+                            <div className="flex items-center gap-2 mb-3">
+                              <div 
+                                className="p-1.5 rounded-lg border"
+                                style={{
+                                  backgroundColor: `${accentColor}33`,
+                                  borderColor: `${accentColor}4D`,
+                                }}
+                              >
+                                <FileText className="h-4 w-4" style={{ color: accentColor }} />
+                              </div>
                               <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
                             </div>
-                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            <div 
+                              className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"
+                              style={{
+                                scrollBehavior: "smooth",
+                              }}
+                              ref={(el) => {
+                                if (el && isExpanded) {
+                                  // Auto-scroll to bottom when expanded
+                                  setTimeout(() => {
+                                    el.scrollTop = el.scrollHeight;
+                                  }, 100);
+                                }
+                              }}
+                            >
                               {parseTranscript(log.transcript).map((message, idx) => (
                                 <motion.div
                                   key={idx}
