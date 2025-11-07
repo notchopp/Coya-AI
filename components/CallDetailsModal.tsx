@@ -283,14 +283,14 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                           </div>
                         )}
                         
-                        {/* Transcript */}
+                        {/* Transcript - Condensed with Scroll */}
                         {call.transcript && (
                           <div>
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-4 w-4 text-white/60" />
                               <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
                             </div>
-                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                               {parseTranscript(call.transcript).map((message, idx) => (
                                 <motion.div
                                   key={idx}

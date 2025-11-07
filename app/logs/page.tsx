@@ -9,33 +9,6 @@ import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import CallDetailsModal from "@/components/CallDetailsModal";
 
-// Component for auto-scrolling transcript
-function TranscriptScrollContainer({ children, isExpanded }: { children: React.ReactNode; isExpanded: boolean }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isExpanded && scrollRef.current) {
-      // Auto-scroll to bottom when expanded
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 150);
-    }
-  }, [isExpanded]);
-
-  return (
-    <div 
-      ref={scrollRef}
-      className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"
-      style={{
-        scrollBehavior: "smooth",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 type Call = {
   id: string;
