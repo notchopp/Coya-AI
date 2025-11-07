@@ -44,6 +44,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { isPremium, isLocalhost, togglePremium } = usePremiumMode();
   const { accentColor } = useAccentColor();
+  const { theme } = useTheme();
+  const mobileMiddleColor = theme === "light" ? "#000000" : "#ffffff";
   // Premium mode only on dashboard
   const isDashboard = pathname === "/";
   const showPremium = isPremium && isDashboard;
@@ -108,7 +110,7 @@ export default function DashboardLayout({
               <span 
                        className="font-semibold text-white text-sm bg-clip-text text-transparent"
                        style={{
-                         background: `linear-gradient(to right, ${accentColor}, ${middleColor}, ${accentColor})`,
+                         background: `linear-gradient(to right, ${accentColor}, ${mobileMiddleColor}, ${accentColor})`,
                        }}
               >
                 COYA AI
