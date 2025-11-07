@@ -140,9 +140,24 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("Unexpected error in invite-user API:", error);
+    
+    // Check if it's a missing env variable error
+    if (error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return NextResponse.json(
+        { 
+          error: "Server configuration error", 
+          details: "SUPABASE_SERVICE_ROLE_KEY is not set. Please add it to your .env.local file and Vercel environment variables." 
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "An unexpected error occurred", details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: "An unexpected error occurred", 
+        details: error instanceof Error ? error.message : String(error) 
+      },
       { status: 500 }
     );
   }

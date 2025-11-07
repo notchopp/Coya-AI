@@ -516,10 +516,22 @@ export default function SettingsPage() {
         }),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error("Failed to parse response:", jsonError);
+        throw new Error("Invalid response from server. Please check the console for details.");
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to send invitation");
+        const errorMessage = result?.error || result?.details || `Server error: ${response.status} ${response.statusText}`;
+        console.error("API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: result,
+        });
+        throw new Error(errorMessage);
       }
 
       setInviteStatus("success");
