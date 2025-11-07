@@ -1,26 +1,41 @@
-# Supabase Invitation Email Template Setup
+# Supabase Email Templates Setup
 
-This guide shows you how to replace the default Supabase invitation email with the custom COYA AI branded template.
+This guide shows you how to replace the default Supabase email templates with custom COYA AI branded templates.
+
+## Available Templates
+
+We have 5 professional email templates ready:
+
+1. **Invite user** (`invite-user.html`) - For sending invitations
+2. **Confirm signup** (`confirm-signup.html`) - For email confirmation
+3. **Magic link** (`magic-link.html`) - For passwordless login
+4. **Change email** (`change-email.html`) - For email address changes
+5. **Reset password** (`reset-password.html`) - For password resets
 
 ## Step 1: Copy the HTML Template
 
-1. Open the file `email-templates/invite-user.html`
+1. Open the template file you want to use (e.g., `email-templates/invite-user.html`)
 2. Copy the entire HTML content
 
 ## Step 2: Configure in Supabase Dashboard
 
 1. Go to your Supabase project dashboard
 2. Navigate to **Authentication** → **Email Templates**
-3. Find the **Invite user** template
+3. Find the template you want to customize:
+   - **Invite user** → Use `invite-user.html`
+   - **Confirm signup** → Use `confirm-signup.html`
+   - **Magic Link** → Use `magic-link.html`
+   - **Change email address** → Use `change-email.html`
+   - **Reset password** → Use `reset-password.html`
 4. Click **Edit** or **Customize**
 
 ## Step 3: Replace the Template
 
 1. In the email template editor, select **HTML** mode
 2. Delete the default template content
-3. Paste the HTML from `invite-user.html`
-4. The template uses these Supabase variables:
-   - `{{ .ConfirmationURL }}` - The invitation acceptance link
+3. Paste the HTML from the corresponding template file
+4. All templates use these Supabase variables:
+   - `{{ .ConfirmationURL }}` - The confirmation/reset link
    - `{{ .SiteURL }}` - Your site URL (if needed)
 
 ## Step 4: Test the Template
