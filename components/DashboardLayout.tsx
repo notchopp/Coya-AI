@@ -18,6 +18,7 @@ import {
   Settings,
   Menu,
   X,
+  LogOut,
   Moon,
   Sun,
   TrendingUp,
@@ -89,6 +90,7 @@ export default function DashboardLayout({
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Open sidebar"
           >
             <Menu className="h-5 w-5 text-white" />
           </button>
@@ -122,7 +124,20 @@ export default function DashboardLayout({
               <span className="beta-badge">Beta</span>
             </div>
           </div>
-          <div className="w-9" />
+          <motion.button
+            onClick={async () => {
+              const supabase = getSupabaseClient();
+              await supabase.auth.signOut();
+              sessionStorage.removeItem("business_id");
+              window.location.href = "/login";
+            }}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Sign out"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <LogOut className="h-5 w-5 text-white" />
+          </motion.button>
         </header>
 
         {/* Page content */}
