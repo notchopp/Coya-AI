@@ -123,15 +123,18 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
   const { accentColor } = useAccentColor();
   const router = useRouter();
   if (!call) return null;
+  
+  // TypeScript guard - call is guaranteed to be non-null after this point
+  const callData = call;
 
   // Extract date from schedule JSONB - handle various structures
   function getScheduleDate(): Date | null {
-    if (!call.schedule) {
+    if (!callData || !callData.schedule) {
       console.log("⚠️ No schedule data");
       return null;
     }
     
-    const schedule = call.schedule;
+    const schedule = callData.schedule;
     console.log("📋 Schedule object:", schedule);
     
     // Try various common date field names
@@ -201,19 +204,19 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("🔍 See Calendar clicked, schedule:", call.schedule);
+    console.log("🔍 See Calendar clicked, schedule:", callData.schedule);
     const scheduleDate = getScheduleDate();
     console.log("📅 Extracted date:", scheduleDate);
     
     if (scheduleDate) {
       // Format date as YYYY-MM-DD for query parameter
       const dateStr = format(scheduleDate, "yyyy-MM-dd");
-      console.log("🚀 Navigating to calendar with date:", dateStr, "callId:", call.id);
+      console.log("🚀 Navigating to calendar with date:", dateStr, "callId:", callData.id);
       // Also pass call_id to highlight the specific booking
-      router.push(`/calendar?date=${dateStr}&callId=${call.id}`);
+      router.push(`/calendar?date=${dateStr}&callId=${callData.id}`);
       onClose();
     } else {
-      console.error("❌ No valid date found in schedule:", call.schedule);
+      console.error("❌ No valid date found in schedule:", callData.schedule);
       alert("Unable to find booking date in schedule data.");
     }
   }

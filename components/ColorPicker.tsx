@@ -53,7 +53,6 @@ export function ColorPicker() {
               style={{
                 backgroundColor: color,
                 borderColor: previewColor === color ? previewColor : "rgba(255, 255, 255, 0.2)",
-                ringColor: previewColor,
               }}
             >
               {previewColor === color && (
@@ -96,7 +95,6 @@ export function ColorPicker() {
               className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2"
               style={{ 
                 borderColor: `${previewColor}66`,
-                focusRingColor: previewColor,
               }}
             />
             <p className="text-xs text-white/40 mt-1">Enter hex color code</p>

@@ -22,9 +22,8 @@ type Call = {
   success: boolean | null;
   started_at: string;
   ended_at: string | null;
-  transcript: string | null;
+  transcript?: string | null;
   total_turns: number | null;
-  to_number: string | null; // Business phone number
 };
 
 type CallTurn = {
@@ -361,7 +360,7 @@ export default function LiveCallsPage() {
       // Now query for active calls (try both exact match and case-insensitive)
       const { data: callsData, error: callsError } = await supabase
         .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns,to_number")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns")
         .eq("business_id", effectiveBusinessId)
         .order("started_at", { ascending: false });
 
@@ -398,47 +397,27 @@ export default function LiveCallsPage() {
       }
       
       // Load call turns for all active calls
-      // Match by: call_id OR to_number (call_turns doesn't have business_id)
+      // Match by: call_id (call_turns doesn't have business_id)
       if (activeCalls.length > 0) {
         const callIds = activeCalls.map(c => c.call_id).filter(Boolean);
-        const toNumbers = activeCalls
-          .map(c => c.to_number?.trim()) // Trim whitespace/newlines
-          .filter((num): num is string => num !== null && num !== undefined && num !== "");
         
         console.log("🔄 Loading call turns for call_ids:", callIds);
-        console.log("🔄 Using to_numbers:", toNumbers);
         
-        // Query call_turns matching by call_id OR to_number (no business_id filter)
-        // Try call_id first, then to_number as fallback
+        // Query call_turns matching by call_id
         let turnsData: CallTurn[] = [];
         let turnsError: any = null;
         
         if (callIds.length > 0) {
-          // Try call_id first
+          // Query by call_id
           const { data, error } = await supabase
-            .from("call_turns")
+            .from("call_turns" as any)
             .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
             .in("call_id", callIds);
           
-          turnsData = data || [];
+          turnsData = (data as unknown as CallTurn[]) || [];
           turnsError = error;
           
           console.log("📞 Queried by call_id, found:", turnsData.length);
-        }
-        
-        // If no results by call_id and we have to_numbers, try to_number
-        if (turnsData.length === 0 && toNumbers.length > 0 && !turnsError) {
-          const { data, error } = await supabase
-            .from("call_turns")
-            .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
-            .in("to_number", toNumbers);
-          
-          if (!error && data) {
-            turnsData = [...turnsData, ...data];
-          }
-          turnsError = error || turnsError;
-          
-          console.log("📞 Queried by to_number, found:", data?.length || 0);
         }
 
         if (turnsError) {
@@ -448,19 +427,13 @@ export default function LiveCallsPage() {
           console.log("✅ Loaded call turns:", turnsData?.length || 0, "turns");
           
           // Filter and match turns to active calls
-          // Match by call_id OR to_number (normalized)
+          // Match by call_id
           const turnsByCallId: Record<string, CallTurn> = {};
           
           (turnsData || []).forEach((turn: CallTurn) => {
-            // Find matching call by call_id first, then by to_number (trimmed)
+            // Find matching call by call_id
             const matchingCall = activeCalls.find(call => {
-              const callToNumber = call.to_number?.trim();
-              const turnToNumber = turn.to_number?.trim();
-              
-              return (
-                (call.call_id && turn.call_id && call.call_id === turn.call_id) ||
-                (callToNumber && turnToNumber && callToNumber === turnToNumber)
-              );
+              return call.call_id && turn.call_id && call.call_id === turn.call_id;
             });
             
             if (matchingCall && matchingCall.call_id) {
@@ -549,33 +522,27 @@ export default function LiveCallsPage() {
                 // Match by call_id OR to_number (no business_id)
                 if (call.call_id) {
                   let query = supabase
-                    .from("call_turns")
+                    .from("call_turns" as any)
                     .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number");
                   
                   // Try call_id first, fallback to to_number
-                  const callToNumber = call.to_number?.trim();
                   if (call.call_id) {
                     query = query.eq("call_id", call.call_id);
-                  } else if (callToNumber) {
-                    query = query.eq("to_number", callToNumber);
                   } else {
                     return;
                   }
                   
                   query.maybeSingle().then(({ data: turnData, error: turnsError }) => {
                     if (!turnsError && turnData) {
-                      // Verify match by call_id OR to_number
-                      const callToNumberTrimmed = call.to_number?.trim();
-                      const turnToNumberTrimmed = turnData.to_number?.trim();
-                      const matches = 
-                        (call.call_id && turnData.call_id === call.call_id) ||
-                        (callToNumberTrimmed && turnToNumberTrimmed && callToNumberTrimmed === turnToNumberTrimmed);
+                      const typedTurnData = turnData as unknown as CallTurn;
+                      // Verify match by call_id
+                      const matches = call.call_id && typedTurnData.call_id === call.call_id;
                       
                       if (matches && call.call_id) {
-                        console.log(`🔄 Reloaded turn for updated call ${call.call_id} (status: ${call.status}, to_number: ${callToNumberTrimmed || 'N/A'})`);
+                        console.log(`🔄 Reloaded turn for updated call ${call.call_id} (status: ${call.status})`);
                         setCallTurns((prev) => ({
                           ...prev,
-                          [call.call_id]: turnData,
+                          [call.call_id]: typedTurnData,
                         }));
                       }
                     }
@@ -625,7 +592,7 @@ export default function LiveCallsPage() {
                    // Match by call_id OR to_number (no business_id)
                    if (turn?.call_id || turn?.to_number) {
                      let query = supabase
-                       .from("call_turns")
+                       .from("call_turns" as any)
                        .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number");
                      
                      // Match by call_id or to_number
@@ -642,32 +609,27 @@ export default function LiveCallsPage() {
                      if (turnsError) {
                        console.error("❌ Error reloading turn:", turnsError);
                      } else if (turnData) {
+                       const typedTurnData = turnData as unknown as CallTurn;
                        console.log("✅ Reloaded turn data:", {
-                         call_id: turnData.call_id,
-                         transcript_json_length: turnData.transcript_json ? (Array.isArray(turnData.transcript_json) ? turnData.transcript_json.length : 'object') : 'null',
-                         total_turns: turnData.total_turns
+                         call_id: typedTurnData.call_id,
+                         transcript_json_length: typedTurnData.transcript_json ? (Array.isArray(typedTurnData.transcript_json) ? typedTurnData.transcript_json.length : 'object') : 'null',
+                         total_turns: typedTurnData.total_turns
                        });
                        
                        // Find matching active call and update immediately
                        setCalls((currentCalls) => {
                          const matchingCall = currentCalls.find(call => {
-                           const callToNumber = call.to_number?.trim();
-                           const turnToNumber = turnData.to_number?.trim();
-                           
-                           return (
-                             (call.call_id && turnData.call_id && call.call_id === turnData.call_id) ||
-                             (callToNumber && turnToNumber && callToNumber === turnToNumber)
-                           );
+                           return call.call_id && typedTurnData.call_id && call.call_id === typedTurnData.call_id;
                          });
                          
                          if (matchingCall && matchingCall.call_id) {
                            console.log(`✅ Updating transcript for call ${matchingCall.call_id} in real-time`);
                            setCallTurns((prev) => ({
                              ...prev,
-                             [matchingCall.call_id]: turnData,
+                             [matchingCall.call_id]: typedTurnData,
                            }));
                          } else {
-                           console.log("⚠️ No matching active call found for turn:", turnData.call_id);
+                           console.log("⚠️ No matching active call found for turn:", typedTurnData.call_id);
                          }
                          return currentCalls;
                        });

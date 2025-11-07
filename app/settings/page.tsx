@@ -561,10 +561,6 @@ export default function SettingsPage() {
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
-                    style={{
-                      focusRingColor: accentColor,
-                      focusBorderColor: accentColor,
-                    }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = `${accentColor}80`;
                       e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;

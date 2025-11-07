@@ -32,6 +32,13 @@ type Message = {
   text: string;
 };
 
+type FilterState = {
+  status: string | null;
+  success: boolean | null;
+  intent: string | null;
+  dateRange: { from: Date | null; to: Date | null } | null;
+};
+
 function parseTranscript(transcript: string): Message[] {
   if (!transcript) return [];
   
@@ -131,6 +138,7 @@ export default function LogsPage() {
     intent: null,
     dateRange: null,
   });
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -248,8 +256,8 @@ export default function LogsPage() {
     }
 
     // Apply date range filter
-    if (filters.dateRange) {
-      const { start, end } = filters.dateRange;
+    if (filters.dateRange && filters.dateRange.from && filters.dateRange.to) {
+      const { from: start, to: end } = filters.dateRange;
       result = result.filter((log) => {
         const logDate = new Date(log.started_at);
         const startDate = new Date(start);
@@ -361,9 +369,6 @@ export default function LogsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-xl glass border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
-            style={{
-              focusRingColor: accentColor,
-            }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = `${accentColor}80`;
               e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -435,9 +440,6 @@ export default function LogsPage() {
                         setFilters({ ...filters, status: e.target.value || null })
                       }
                       className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
-                      style={{
-                        focusRingColor: accentColor,
-                      }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -467,9 +469,6 @@ export default function LogsPage() {
                         })
                       }
                       className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
-                      style={{
-                        focusRingColor: accentColor,
-                      }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -496,9 +495,6 @@ export default function LogsPage() {
                         setFilters({ ...filters, intent: e.target.value || null })
                       }
                       className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
-                      style={{
-                        focusRingColor: accentColor,
-                      }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -522,20 +518,17 @@ export default function LogsPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="date"
-                        value={filters.dateRange?.start || ""}
+                        value={filters.dateRange?.from ? format(filters.dateRange.from, "yyyy-MM-dd") : ""}
                         onChange={(e) =>
                           setFilters({
                             ...filters,
                             dateRange: {
-                              start: e.target.value,
-                              end: filters.dateRange?.end || "",
+                              from: e.target.value ? new Date(e.target.value) : null,
+                              to: filters.dateRange?.to || null,
                             },
                           })
                         }
                         className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
-                      style={{
-                        focusRingColor: accentColor,
-                      }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -547,20 +540,17 @@ export default function LogsPage() {
                       />
                       <input
                         type="date"
-                        value={filters.dateRange?.end || ""}
+                        value={filters.dateRange?.to ? format(filters.dateRange.to, "yyyy-MM-dd") : ""}
                         onChange={(e) =>
                           setFilters({
                             ...filters,
                             dateRange: {
-                              start: filters.dateRange?.start || "",
-                              end: e.target.value,
+                              from: filters.dateRange?.from || null,
+                              to: e.target.value ? new Date(e.target.value) : null,
                             },
                           })
                         }
                         className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
-                      style={{
-                        focusRingColor: accentColor,
-                      }}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -828,7 +818,7 @@ export default function LogsPage() {
 
       {/* Call Details Modal */}
       <CallDetailsModal
-        call={selectedCall}
+        call={selectedCall as any}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
