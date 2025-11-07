@@ -459,7 +459,13 @@ export default function CalendarPage() {
                       </div>
                     </div>
                     {call.last_summary && (
-                      <p className="text-white/70 text-sm line-clamp-3">
+                      <p 
+                        className="text-white/70 text-sm line-clamp-3 cursor-pointer hover:text-white transition-colors"
+                        onClick={() => {
+                          setSelectedBooking(call);
+                          setIsBookingModalOpen(true);
+                        }}
+                      >
                         {call.last_summary}
                       </p>
                     )}
@@ -470,6 +476,86 @@ export default function CalendarPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Booking Summary Modal */}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isBookingModalOpen && selectedBooking && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => {
+                    setIsBookingModalOpen(false);
+                    setSelectedBooking(null);
+                  }}
+                  className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+                >
+                  <div
+                    className="glass-strong rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden pointer-events-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="p-3 rounded-xl border"
+                          style={{
+                            background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                            borderColor: `${accentColor}4D`,
+                          }}
+                        >
+                          <CalendarIcon className="h-6 w-6" style={{ color: accentColor }} />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-white">
+                            {selectedBooking.patient_name || "Unknown"}
+                          </h2>
+                          <p className="text-sm text-white/60 mt-1">
+                            {getBookingDate(selectedBooking)}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsBookingModalOpen(false);
+                          setSelectedBooking(null);
+                        }}
+                        className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+                      >
+                        <X className="h-5 w-5 text-white/60" />
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6">
+                      {selectedBooking.last_summary && (
+                        <div>
+                          <div className="text-sm font-medium text-white/60 mb-3 uppercase tracking-wider">
+                            Summary
+                          </div>
+                          <p className="text-white leading-relaxed">
+                            {selectedBooking.last_summary}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }
