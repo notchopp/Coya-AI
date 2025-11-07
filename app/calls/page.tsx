@@ -156,17 +156,11 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   if (transcriptJson.messages && Array.isArray(transcriptJson.messages)) {
     const messages = transcriptJson.messages
       .filter((msg: any) => {
-        const role = (msg.role || msg.speaker || "").toLowerCase();
-        const msgType = (msg.type || "").toLowerCase();
-        const isToolCall = 
-          role === "tool" || 
-          role === "function" ||
-          msgType === "tool" ||
-          msgType === "function" ||
-          msg.function || // Function call object (like n8n calls)
-          msg.function_call ||
-          msg.tool_calls;
-        return !isToolCall;
+        if (isToolCall(msg)) {
+          console.log("🚫 Filtered out tool call from messages array:", msg);
+          return false;
+        }
+        return true;
       })
       .map((msg: any) => {
         const speaker = (msg.speaker || msg.role || "").toLowerCase();
@@ -175,6 +169,8 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         if (typeof text === "object" && text !== null) {
           text = text.text || text.content || text.message || JSON.stringify(text);
         }
+        // Filter tool calls from text string
+        text = typeof text === "string" ? filterToolCallsFromString(text) : text;
         return { role, text };
       })
       .filter((msg: Message) => msg.text.trim().length > 0);
@@ -182,13 +178,69 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
     return messages;
   }
   
-  // If it's a string, try to parse it
+  // If it's a string, filter tool calls first, then try to parse it
   if (typeof transcriptJson === "string") {
+    // Filter out tool call JSON objects from the string
+    const filteredString = filterToolCallsFromString(transcriptJson);
+    
+    // Try to parse as JSON
     try {
-      const parsed = JSON.parse(transcriptJson);
+      const parsed = JSON.parse(filteredString);
       return parseTranscriptJson(parsed);
     } catch (e) {
-      console.log("Failed to parse string as JSON:", e);
+      // If it's not valid JSON, treat it as plain text and split by lines
+      // Filter out lines that look like tool calls
+      const lines = filteredString.split("\n").filter((line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.length === 0) return false;
+        // Skip lines that are JSON tool calls
+        if (trimmed.startsWith("{") && (
+          trimmed.includes('"type":"function"') ||
+          trimmed.includes('"type":"tool"') ||
+          trimmed.includes('"function":{')
+        )) {
+          console.log("🚫 Filtered out tool call line:", trimmed.substring(0, 100));
+          return false;
+        }
+        return true;
+      });
+      
+      // If we have lines, try to determine role and create messages
+      if (lines.length > 0) {
+        // Simple heuristic: alternate between user and bot, or check for keywords
+        const messages: Message[] = [];
+        let currentRole: "user" | "bot" = "bot";
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          
+          // Try to detect role from content
+          const lower = trimmed.toLowerCase();
+          if (lower.includes("thanks for calling") || 
+              lower.includes("what can i do") ||
+              lower.includes("i can help") ||
+              lower.includes("we're open") ||
+              lower.includes("we have")) {
+            currentRole = "bot";
+          } else if (lower.startsWith("hey") || 
+                     lower.startsWith("hi") ||
+                     lower.includes("i was") ||
+                     lower.includes("can you") ||
+                     lower.includes("i would")) {
+            currentRole = "user";
+          }
+          
+          messages.push({ role: currentRole, text: trimmed });
+          // Alternate for next message
+          currentRole = currentRole === "user" ? "bot" : "user";
+        }
+        
+        console.log("✅ Parsed string as plain text:", messages.length, "messages");
+        return messages;
+      }
+      
+      console.log("❌ Failed to parse string as JSON or text:", e);
       return [];
     }
   }
