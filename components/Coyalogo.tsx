@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type CoyalogoProps = {
   size?: number;
@@ -10,7 +11,68 @@ type CoyalogoProps = {
   alt?: string;
 };
 
+// Convert hex color to CSS filter that approximates the color
+// This uses a combination of filters to tint the logo
+function hexToFilter(hex: string): string {
+  // Remove # if present
+  const color = hex.replace('#', '');
+  
+  // Parse RGB
+  const r = parseInt(color.substring(0, 2), 16);
+  const g = parseInt(color.substring(2, 4), 16);
+  const b = parseInt(color.substring(4, 6), 16);
+  
+  // Calculate filter values to approximate the color
+  // This is an approximation - for exact color matching, you'd need a more complex algorithm
+  // For now, we'll use brightness and saturation adjustments with hue rotation
+  
+  // Calculate brightness (0-1)
+  const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  
+  // Calculate saturation
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const saturation = max === 0 ? 0 : (max - min) / max;
+  
+  // Calculate hue rotation (approximate)
+  // Convert RGB to HSL and get hue
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  const maxNorm = Math.max(rNorm, gNorm, bNorm);
+  const minNorm = Math.min(rNorm, gNorm, bNorm);
+  const delta = maxNorm - minNorm;
+  
+  let hue = 0;
+  if (delta !== 0) {
+    if (maxNorm === rNorm) {
+      hue = ((gNorm - bNorm) / delta) % 6;
+    } else if (maxNorm === gNorm) {
+      hue = (bNorm - rNorm) / delta + 2;
+    } else {
+      hue = (rNorm - gNorm) / delta + 4;
+    }
+  }
+  hue = Math.round(hue * 60);
+  if (hue < 0) hue += 360;
+  
+  // Default yellow is around 50-60 degrees
+  // Calculate rotation needed from yellow to target color
+  const yellowHue = 50;
+  const hueRotation = hue - yellowHue;
+  
+  // Build filter string
+  // Adjust brightness to match target color brightness
+  const brightnessAdjust = brightness * 1.2; // Slight boost for visibility
+  const saturationAdjust = saturation * 1.5; // Boost saturation
+  
+  return `hue-rotate(${hueRotation}deg) saturate(${saturationAdjust}) brightness(${brightnessAdjust})`;
+}
+
 export default function Coyalogo({ size = 24, className = "", src, alt = "COYA AI Logo" }: CoyalogoProps) {
+  const { accentColor } = useAccentColor();
+  const colorFilter = hexToFilter(accentColor);
+  
   // If custom image/video provided, use it instead of SVG
   if (src) {
     const isVideo = src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.mov') || src.includes('video');
@@ -31,7 +93,12 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
             muted
             playsInline
             className="w-full h-full object-contain"
-            style={{ width: size, height: size, background: "transparent" }}
+            style={{ 
+              width: size, 
+              height: size, 
+              background: "transparent",
+              filter: colorFilter, // Apply color filter to match accent color
+            }}
           />
         </motion.div>
       );
@@ -53,6 +120,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
           height={size}
           className="object-contain"
           unoptimized={src.endsWith('.gif')} // Allow GIF animations
+          style={{ filter: colorFilter }} // Apply color filter to match accent color
         />
       </motion.div>
     );
@@ -73,18 +141,18 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
       transition={{ duration: 0.5 }}
     >
       <defs>
-        {/* Yellow gradient - golden to bright yellow */}
-        <linearGradient id="yellowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ca8a04" stopOpacity="1" />
-          <stop offset="25%" stopColor="#eab308" stopOpacity="1" />
-          <stop offset="60%" stopColor="#fde047" stopOpacity="1" />
-          <stop offset="100%" stopColor="#fef08a" stopOpacity="0.95" />
+        {/* Dynamic gradient based on accent color */}
+        <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={accentColor} stopOpacity="1" />
+          <stop offset="25%" stopColor={accentColor} stopOpacity="1" />
+          <stop offset="60%" stopColor={accentColor} stopOpacity="0.9" />
+          <stop offset="100%" stopColor={accentColor} stopOpacity="0.85" />
         </linearGradient>
         
         {/* Radial gradient for speckles */}
         <radialGradient id="speckleGradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#fde047" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#eab308" stopOpacity="0.2" />
+          <stop offset="0%" stopColor={accentColor} stopOpacity="0.6" />
+          <stop offset="100%" stopColor={accentColor} stopOpacity="0.2" />
         </radialGradient>
       </defs>
 
@@ -155,7 +223,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
                 Q ${control1X} ${control1Y} ${control2X} ${control2Y}
                 Q ${control3X} ${control3Y} ${bottomTipX} ${bottomTipY}`}
             fill="none"
-            stroke="url(#yellowGradient)"
+            stroke="url(#accentGradient)"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -199,7 +267,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
                 Q ${control1X} ${control1Y} ${control2X} ${control2Y}
                 Q ${control3X} ${control3Y} ${bottomTipX} ${bottomTipY}`}
             fill="none"
-            stroke="#fde047"
+            stroke={accentColor}
             strokeWidth="1.2"
             strokeLinecap="round"
             opacity={opacity}
@@ -242,7 +310,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
                 Q ${control1X} ${control1Y} ${control2X} ${control2Y}
                 Q ${control3X} ${control3Y} ${bottomTipX} ${bottomTipY}`}
             fill="none"
-            stroke="#fde047"
+            stroke={accentColor}
             strokeWidth="0.8"
             opacity={opacity}
             initial={{ pathLength: 0 }}
