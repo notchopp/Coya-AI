@@ -108,9 +108,13 @@ export default function DashboardLayout({
             </motion.div>
             <div className="flex items-center gap-2">
               <span 
-                className="font-semibold text-sm bg-clip-text text-transparent"
+                className="font-semibold text-sm"
                 style={{
                   background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  color: "#eab308", // Fallback color for browsers that don't support background-clip
                 }}
               >
                 COYA AI
