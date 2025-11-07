@@ -130,10 +130,12 @@ export default function CalendarPage() {
     const schedule = call.schedule;
     console.log("📋 Schedule for call:", call.id, schedule);
     
-    // Try various common date field names - prioritize datetime fields that include time
+    // Try various common date field names - prioritize "start" field first (most common in booking systems)
     const dateFields = [
+      schedule.start, // Most common - booking start time
       schedule.startDateTime, // Full datetime with time
       schedule.endDateTime,
+      schedule.end, // End time (fallback if start not available)
       schedule.appointment_datetime,
       schedule.datetime,
       schedule.scheduled_time,
@@ -142,7 +144,6 @@ export default function CalendarPage() {
       schedule.date, // Date only (will use time from datetime if available)
       schedule.appointment_date,
       schedule.start_date,
-      schedule.start,
       schedule.appointmentDate,
       schedule.appointmentTime,
     ].filter(Boolean);
@@ -187,17 +188,48 @@ export default function CalendarPage() {
     
     try {
       // Try to find a datetime field first (includes time), otherwise use date
+      // Prioritize "start" or "startDateTime" fields as they contain the booking time
       let dateValue = dateFields.find(field => {
         const str = String(field);
         // Check if it includes time indicators (T, :, AM/PM, etc.)
         return str.includes('T') || str.includes(':') || str.includes('AM') || str.includes('PM') || str.includes('am') || str.includes('pm');
       }) || dateFields[0];
       
+      // Check if schedule has "start" field specifically (common in booking systems)
+      if (schedule.start) {
+        dateValue = schedule.start;
+        console.log("📅 Using 'start' field from schedule:", dateValue);
+      }
+      
       const date = new Date(dateValue);
       if (isNaN(date.getTime())) {
         console.error("❌ Invalid date:", dateValue);
         return null;
       }
+      
+      // If the date string ends with 'Z' (UTC), we need to preserve the UTC time
+      // by creating a date that represents the same UTC time but doesn't convert to local
+      // However, we'll format it to show the UTC time as-is
+      const dateStr = String(dateValue);
+      if (dateStr.endsWith('Z') || dateStr.includes('T')) {
+        // Parse the UTC components directly to avoid timezone conversion
+        const utcMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+        if (utcMatch) {
+          const [, year, month, day, hour, minute, second] = utcMatch;
+          // Create date in UTC to preserve the original time
+          const utcDate = new Date(Date.UTC(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            parseInt(hour),
+            parseInt(minute),
+            parseInt(second)
+          ));
+          console.log("✅ Parsed UTC date from field:", utcDate, "Original UTC value:", dateValue, "UTC time:", `${hour}:${minute}`);
+          return utcDate;
+        }
+      }
+      
       console.log("✅ Parsed date from field:", date, "Original value:", dateValue);
       return date;
     } catch (e) {
