@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AuthWrapper from "@/components/AuthWrapper";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AccentColorProvider } from "@/components/AccentColorProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -35,7 +36,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ThemeProvider>
-          <AuthWrapper>{children}</AuthWrapper>
+          <AccentColorProvider>
+            <AuthWrapper>{children}</AuthWrapper>
+          </AccentColorProvider>
         </ThemeProvider>
       </body>
     </html>

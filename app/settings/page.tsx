@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User } from "lucide-react";
+import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette } from "lucide-react";
+import { ColorPicker } from "@/components/ColorPicker";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 type Business = {
   id: string;
@@ -50,12 +52,13 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function SettingsPage() {
+  const { accentColor } = useAccentColor();
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content" | "appearance">("profile");
   const [userName, setUserName] = useState<string>("");
   const [savingUserName, setSavingUserName] = useState(false);
   const [userNameSaveStatus, setUserNameSaveStatus] = useState<"idle" | "success" | "error">("idle");
@@ -448,7 +451,7 @@ export default function SettingsPage() {
           animate={{ opacity: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <Loader2 className="h-8 w-8 text-yellow-400 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: accentColor }} />
           <div className="text-white/60">Loading business settings...</div>
         </motion.div>
       </div>
@@ -460,6 +463,7 @@ export default function SettingsPage() {
     { id: "info" as const, label: "Business Info", icon: Building2 },
     { id: "hours" as const, label: "Hours & Staff", icon: Clock },
     { id: "content" as const, label: "Content", icon: Tag },
+    { id: "appearance" as const, label: "Appearance", icon: Palette },
   ];
 
   return (
@@ -477,7 +481,8 @@ export default function SettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-xs font-medium text-yellow-400/80 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+            className="text-xs font-medium drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
+            style={{ color: `${accentColor}CC` }}
           >
             #Founders Program
           </motion.span>
@@ -503,12 +508,13 @@ export default function SettingsPage() {
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-yellow-400"
+                  className="absolute bottom-0 left-0 right-0 h-0.5"
+                  style={{ backgroundColor: "var(--accent-color, #eab308)" }}
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <Icon className={`h-4 w-4 ${isActive ? "text-yellow-400" : "text-white/60"}`} />
-              <span className={isActive ? "text-yellow-400" : "text-white/60"}>
+              <Icon className={`h-4 w-4 ${isActive ? "" : "text-white/60"}`} style={isActive ? { color: "var(--accent-color, #eab308)" } : {}} />
+              <span className={isActive ? "" : "text-white/60"} style={isActive ? { color: "var(--accent-color, #eab308)" } : {}}>
                 {tab.label}
               </span>
             </button>
@@ -534,8 +540,14 @@ export default function SettingsPage() {
               className="p-6 rounded-2xl glass-strong border border-white/10"
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                  <User className="h-5 w-5 text-yellow-400" />
+                <div 
+                  className="p-2 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                    borderColor: `${accentColor}4D`,
+                  }}
+                >
+                  <User className="h-5 w-5" style={{ color: accentColor }} />
                 </div>
                 <h2 className="text-lg font-semibold text-white">User Profile</h2>
               </div>
@@ -548,7 +560,19 @@ export default function SettingsPage() {
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+                    style={{
+                      focusRingColor: accentColor,
+                      focusBorderColor: accentColor,
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = `${accentColor}80`;
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                     placeholder="Your Full Name"
                   />
                 </div>
@@ -1022,6 +1046,22 @@ export default function SettingsPage() {
             )}
           </div>
         </motion.div>
+        {activeTab === "appearance" && (
+          <motion.div
+            key="appearance"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 rounded-2xl glass-strong border border-white/10"
+            >
+              <ColorPicker />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
