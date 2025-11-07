@@ -130,15 +130,17 @@ export default function CalendarPage() {
     const schedule = call.schedule;
     console.log("📋 Schedule for call:", call.id, schedule);
     
-    // Try various common date field names
+    // Try various common date field names - prioritize datetime fields that include time
     const dateFields = [
-      schedule.date,
-      schedule.appointment_date,
-      schedule.datetime,
+      schedule.startDateTime, // Full datetime with time
+      schedule.endDateTime,
       schedule.appointment_datetime,
-      schedule.time,
+      schedule.datetime,
       schedule.scheduled_time,
       schedule.start_time,
+      schedule.time,
+      schedule.date, // Date only (will use time from datetime if available)
+      schedule.appointment_date,
       schedule.start_date,
       schedule.start,
       schedule.appointmentDate,
@@ -184,12 +186,19 @@ export default function CalendarPage() {
     }
     
     try {
-      const date = new Date(dateFields[0]);
+      // Try to find a datetime field first (includes time), otherwise use date
+      let dateValue = dateFields.find(field => {
+        const str = String(field);
+        // Check if it includes time indicators (T, :, AM/PM, etc.)
+        return str.includes('T') || str.includes(':') || str.includes('AM') || str.includes('PM') || str.includes('am') || str.includes('pm');
+      }) || dateFields[0];
+      
+      const date = new Date(dateValue);
       if (isNaN(date.getTime())) {
-        console.error("❌ Invalid date:", dateFields[0]);
+        console.error("❌ Invalid date:", dateValue);
         return null;
       }
-      console.log("✅ Parsed date from field:", date);
+      console.log("✅ Parsed date from field:", date, "Original value:", dateValue);
       return date;
     } catch (e) {
       console.error("❌ Failed to parse date:", e);

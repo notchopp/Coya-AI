@@ -76,21 +76,41 @@ function isToolCall(msg: any): boolean {
 function filterToolCallsFromString(transcript: string): string {
   if (!transcript || typeof transcript !== "string") return transcript;
   
-  // Pattern to match JSON objects that look like tool calls
-  // Matches: {"id":"...","type":"function",...} or similar patterns
-  const toolCallPattern = /\{[^{}]*"type"\s*:\s*"(function|tool)"[^{}]*\}/g;
-  
-  // Also match objects with "function" property
-  const functionCallPattern = /\{[^{}]*"function"\s*:\s*\{[^{}]*\}[^{}]*\}/g;
-  
   let filtered = transcript;
   
-  // Remove tool call JSON objects
-  filtered = filtered.replace(toolCallPattern, "");
-  filtered = filtered.replace(functionCallPattern, "");
+  // More comprehensive pattern to match nested JSON tool calls
+  // Matches: {"id":"...","type":"function","function":{...}}
+  // This pattern handles nested objects and escaped quotes
+  const nestedToolCallPattern = /\{[^{}]*"type"\s*:\s*"(function|tool)"[^{}]*"function"\s*:\s*\{[^}]*\}[^{}]*\}/g;
+  
+  // Pattern for simple tool calls: {"id":"...","type":"function",...}
+  const simpleToolCallPattern = /\{[^{}]*"type"\s*:\s*"(function|tool)"[^{}]*\}/g;
+  
+  // Pattern for function calls: {"id":"...","function":{...}}
+  const functionCallPattern = /\{[^{}]*"function"\s*:\s*\{[^}]*\}[^{}]*\}/g;
+  
+  // Pattern for tool calls with id and type at start: {"id":"...","type":"function"
+  const idTypePattern = /\{\s*"id"\s*:\s*"[^"]+"\s*,\s*"type"\s*:\s*"(function|tool)"[^}]*\}/g;
+  
+  // Remove tool call JSON objects (try multiple times to catch nested/overlapping patterns)
+  let previousLength = filtered.length;
+  let iterations = 0;
+  while (iterations < 5) {
+    filtered = filtered.replace(nestedToolCallPattern, "");
+    filtered = filtered.replace(simpleToolCallPattern, "");
+    filtered = filtered.replace(functionCallPattern, "");
+    filtered = filtered.replace(idTypePattern, "");
+    
+    // If no changes, we're done
+    if (filtered.length === previousLength) break;
+    previousLength = filtered.length;
+    iterations++;
+  }
   
   // Clean up any double newlines or extra whitespace left behind
   filtered = filtered.replace(/\n\s*\n\s*\n/g, "\n\n");
+  filtered = filtered.replace(/^\s*\n+/, ""); // Remove leading newlines
+  filtered = filtered.replace(/\n+\s*$/, ""); // Remove trailing newlines
   filtered = filtered.trim();
   
   return filtered;
@@ -118,6 +138,12 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         return true;
       })
       .map((msg: any, idx: number) => {
+        // Skip if this is a tool call (double check)
+        if (isToolCall(msg)) {
+          console.log(`  🚫 Skipping tool call at index ${idx}:`, msg);
+          return null;
+        }
+        
         // Determine role from speaker field
         const speaker = (msg.speaker || msg.role || "").toLowerCase();
         const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
@@ -133,10 +159,17 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         // If text is a string, filter out any embedded tool call JSON objects
         let finalText = typeof text === "string" ? filterToolCallsFromString(text) : text;
         
+        // Skip if text is empty or only whitespace after filtering
+        if (!finalText || typeof finalText !== "string" || finalText.trim().length === 0) {
+          console.log(`  ⚠️ Skipping empty message at index ${idx} after filtering`);
+          return null;
+        }
+        
         console.log(`  Item ${idx}: speaker="${speaker}", role="${role}", text="${finalText.substring(0, 50)}..."`);
         
         return { role, text: finalText };
       })
+      .filter((msg: Message | null): msg is Message => msg !== null)
       .filter((msg: Message) => {
         const hasText = msg.text.trim().length > 0;
         if (!hasText) {
@@ -193,14 +226,22 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
       const lines = filteredString.split("\n").filter((line: string) => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.length === 0) return false;
-        // Skip lines that are JSON tool calls
-        if (trimmed.startsWith("{") && (
-          trimmed.includes('"type":"function"') ||
-          trimmed.includes('"type":"tool"') ||
-          trimmed.includes('"function":{')
-        )) {
-          console.log("🚫 Filtered out tool call line:", trimmed.substring(0, 100));
-          return false;
+        
+        // Skip lines that are JSON tool calls - more comprehensive check
+        if (trimmed.startsWith("{")) {
+          // Check for various tool call patterns
+          const isToolCallLine = 
+            trimmed.includes('"type":"function"') ||
+            trimmed.includes('"type":"tool"') ||
+            trimmed.includes('"function":{') ||
+            trimmed.includes('"function": {') ||
+            (trimmed.includes('"id"') && trimmed.includes('"type"') && (trimmed.includes('"function"') || trimmed.includes('function'))) ||
+            trimmed.match(/^\s*\{\s*"id"\s*:\s*"[^"]+"\s*,\s*"type"\s*:\s*"(function|tool)"/);
+          
+          if (isToolCallLine) {
+            console.log("🚫 Filtered out tool call line:", trimmed.substring(0, 100));
+            return false;
+          }
         }
         return true;
       });
