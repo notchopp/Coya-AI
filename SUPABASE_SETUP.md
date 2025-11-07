@@ -31,54 +31,79 @@ To send an invitation to a user:
 6. When they accept, the callback will link their auth_user_id to the existing user record
 
 #### Option B: Using Supabase Admin API (Recommended)
+
+We've created a ready-to-use API route and script for inviting users:
+
+##### Method 1: Using the API Route (From your app)
+
+Make a POST request to `/api/invite-user`:
+
 ```typescript
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key for admin operations
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
-// IMPORTANT: First create the user record in the users table
-// Then invite them with business_id in metadata
-
-// Step 1: Create user record in users table
-const { data: newUser, error: userError } = await supabaseAdmin
-  .from('users')
-  .insert({
+// Example: From a settings page or admin panel
+const response = await fetch('/api/invite-user', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
     email: 'user@example.com',
-    business_id: 'your-business-id', // The business they belong to
-    is_active: true,
+    business_id: 'your-business-id',
     role: 'user', // Optional: 'admin', 'user', etc.
-  })
-  .select()
-  .single();
+  }),
+});
 
-if (userError) {
-  console.error('Error creating user:', userError);
-  return;
+const result = await response.json();
+if (result.success) {
+  console.log('Invitation sent!');
+}
+```
+
+##### Method 2: Using the Script (Command Line)
+
+```bash
+npx tsx scripts/invite-user.ts user@example.com your-business-id user
+```
+
+The script will:
+1. ✅ Create user record in `users` table (if doesn't exist)
+2. ✅ Send invitation email via Supabase Auth
+3. ✅ Link `auth_user_id` automatically
+4. ✅ Include `business_id` in user metadata
+
+##### Method 3: Direct API Usage (Programmatic)
+
+```typescript
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+
+const supabaseAdmin = getSupabaseAdminClient();
+
+// Step 1: Create user record (or check if exists)
+const { data: existingUser } = await supabaseAdmin
+  .from('users')
+  .select('id, auth_user_id')
+  .eq('email', 'user@example.com')
+  .maybeSingle();
+
+if (!existingUser) {
+  await supabaseAdmin.from('users').insert({
+    email: 'user@example.com',
+    business_id: 'your-business-id',
+    is_active: true,
+    role: 'user',
+  });
 }
 
-// Step 2: Invite the user with business_id in metadata
+// Step 2: Invite with business_id in metadata
 const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
   'user@example.com',
   {
     redirectTo: 'https://coya-ai.vercel.app/auth/callback',
     data: {
-      business_id: 'your-business-id', // Pass business_id in user metadata
-      role: 'user', // Optional
+      business_id: 'your-business-id',
+      role: 'user',
     }
   }
-)
-
-// The business_id will be available in user.user_metadata.business_id
-// when they accept the invite, allowing the callback to create/link the user record
+);
 ```
 
 ### 3. User Flow
