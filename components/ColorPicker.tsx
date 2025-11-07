@@ -21,11 +21,13 @@ const presetColors = [
 export function ColorPicker() {
   const { accentColor, setAccentColor } = useAccentColor();
   const [customColor, setCustomColor] = useState(accentColor);
+  const [previewColor, setPreviewColor] = useState(accentColor); // Separate preview color
   const [showPicker, setShowPicker] = useState(false);
 
   const handleColorChange = (color: string) => {
     setCustomColor(color);
-    setAccentColor(color);
+    setPreviewColor(color); // Update preview immediately
+    setAccentColor(color); // Also update the actual color immediately
   };
 
   return (
@@ -46,15 +48,15 @@ export function ColorPicker() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className={`w-12 h-12 rounded-lg border-2 transition-all ${
-                accentColor === color ? "ring-2 ring-offset-2 ring-offset-black" : ""
+                previewColor === color ? "ring-2 ring-offset-2 ring-offset-black" : ""
               }`}
               style={{
                 backgroundColor: color,
-                borderColor: accentColor === color ? accentColor : "rgba(255, 255, 255, 0.2)",
-                ringColor: accentColor,
+                borderColor: previewColor === color ? previewColor : "rgba(255, 255, 255, 0.2)",
+                ringColor: previewColor,
               }}
             >
-              {accentColor === color && (
+              {previewColor === color && (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -77,7 +79,7 @@ export function ColorPicker() {
             value={customColor}
             onChange={(e) => handleColorChange(e.target.value)}
             className="w-16 h-16 rounded-lg border-2 border-white/20 cursor-pointer"
-            style={{ borderColor: accentColor }}
+            style={{ borderColor: previewColor }}
           />
           <div className="flex-1">
             <input
@@ -93,8 +95,8 @@ export function ColorPicker() {
               placeholder="#eab308"
               className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2"
               style={{ 
-                borderColor: `${accentColor}66`,
-                focusRingColor: accentColor,
+                borderColor: `${previewColor}66`,
+                focusRingColor: previewColor,
               }}
             />
             <p className="text-xs text-white/40 mt-1">Enter hex color code</p>
@@ -109,8 +111,8 @@ export function ColorPicker() {
           <div 
             className="px-3 py-1.5 rounded-lg text-sm font-semibold"
             style={{ 
-              backgroundColor: `${accentColor}20`,
-              color: accentColor,
+              backgroundColor: `${previewColor}20`,
+              color: previewColor,
             }}
           >
             COYA AI
@@ -118,15 +120,15 @@ export function ColorPicker() {
           <div 
             className="px-3 py-1.5 rounded-lg text-sm"
             style={{ 
-              backgroundColor: `${accentColor}15`,
-              color: accentColor,
+              backgroundColor: `${previewColor}15`,
+              color: previewColor,
             }}
           >
             Active Tab
           </div>
           <div 
             className="w-8 h-8 rounded-full"
-            style={{ backgroundColor: accentColor }}
+            style={{ backgroundColor: previewColor }}
           />
         </div>
       </div>

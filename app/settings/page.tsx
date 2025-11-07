@@ -642,8 +642,14 @@ export default function SettingsPage() {
               className="p-6 rounded-2xl glass-strong border border-white/10"
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                  <Building2 className="h-5 w-5 text-yellow-400" />
+                <div 
+                  className="p-2 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                    borderColor: `${accentColor}4D`,
+                  }}
+                >
+                  <Building2 className="h-5 w-5" style={{ color: accentColor }} />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Business Information</h2>
               </div>
@@ -749,8 +755,14 @@ export default function SettingsPage() {
               className="p-6 rounded-2xl glass-strong border border-white/10"
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                  <Clock className="h-5 w-5 text-yellow-400" />
+                <div 
+                  className="p-2 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                    borderColor: `${accentColor}4D`,
+                  }}
+                >
+                  <Clock className="h-5 w-5" style={{ color: accentColor }} />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Business Hours</h2>
               </div>
@@ -913,8 +925,14 @@ export default function SettingsPage() {
             >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                <HelpCircle className="h-5 w-5 text-yellow-400" />
+              <div 
+                className="p-2 rounded-xl border"
+                style={{
+                  background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                <HelpCircle className="h-5 w-5" style={{ color: accentColor }} />
               </div>
               <h2 className="text-lg font-semibold text-white">FAQs</h2>
             </div>
@@ -984,8 +1002,14 @@ export default function SettingsPage() {
             >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                <Tag className="h-5 w-5 text-yellow-400" />
+              <div 
+                className="p-2 rounded-xl border"
+                style={{
+                  background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                <Tag className="h-5 w-5" style={{ color: accentColor }} />
               </div>
               <h2 className="text-lg font-semibold text-white">Promotions</h2>
             </div>

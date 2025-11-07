@@ -106,10 +106,10 @@ export default function DashboardLayout({
             </motion.div>
             <div className="flex items-center gap-2">
               <span 
-                className="font-semibold text-white text-sm bg-clip-text text-transparent"
-                style={{
-                  background: `linear-gradient(to right, ${accentColor}, white, ${accentColor})`,
-                }}
+                       className="font-semibold text-white text-sm bg-clip-text text-transparent"
+                       style={{
+                         background: `linear-gradient(to right, ${accentColor}, ${middleColor}, ${accentColor})`,
+                       }}
               >
                 COYA AI
               </span>
@@ -284,7 +284,7 @@ function SidebarContent({
               <span 
                 className="font-bold text-lg bg-clip-text text-transparent"
                 style={{
-                  background: `linear-gradient(to right, ${accentColor}, white, ${accentColor})`,
+                  background: `linear-gradient(to right, ${accentColor}, ${middleColor}, ${accentColor})`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}

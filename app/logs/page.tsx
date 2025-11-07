@@ -606,12 +606,12 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Logs Cards */}
-      <div className="space-y-4">
+      {/* Logs Cards - Floating Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          <div className="p-8 text-center text-white/40">Loading...</div>
+          <div className="col-span-full p-8 text-center text-white/40">Loading...</div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-white/40">No calls found</div>
+          <div className="col-span-full p-8 text-center text-white/40">No calls found</div>
         ) : (
                 paginatedLogs.map((log) => {
                   const isExpanded = expandedCards.has(log.id);
@@ -627,7 +627,19 @@ export default function LogsPage() {
                       ref={log.id === callIdParam ? callCardRef : null}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden hover:border-white/20 transition-all"
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden transition-all cursor-pointer shadow-lg hover:shadow-xl"
+                      style={{
+                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = `${accentColor}66`;
+                        e.currentTarget.style.boxShadow = `0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px ${accentColor}66`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+                      }}
                     >
                 {/* Card Header */}
                 <div 
