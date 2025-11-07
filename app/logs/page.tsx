@@ -883,20 +883,7 @@ export default function LogsPage() {
                               </div>
                               <div className="text-xs font-medium text-white/60 uppercase tracking-wider">Transcript</div>
                             </div>
-                            <div 
-                              className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"
-                              style={{
-                                scrollBehavior: "smooth",
-                              }}
-                              ref={(el) => {
-                                if (el && isExpanded) {
-                                  // Auto-scroll to bottom when expanded
-                                  setTimeout(() => {
-                                    el.scrollTop = el.scrollHeight;
-                                  }, 100);
-                                }
-                              }}
-                            >
+                            <TranscriptScrollContainer isExpanded={isExpanded}>
                               {parseTranscript(log.transcript).map((message, idx) => (
                                 <motion.div
                                   key={idx}
