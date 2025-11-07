@@ -146,7 +146,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         
         // Determine role from speaker field
         const speaker = (msg.speaker || msg.role || "").toLowerCase();
-        const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+        const role: "user" | "bot" = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
         
         // Try multiple possible text field names
         let text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
@@ -169,7 +169,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
         
         return { role, text: finalText };
       })
-      .filter((msg: Message | null): msg is Message => msg !== null)
+      .filter((msg): msg is Message => !!msg)
       .filter((msg: Message) => {
         const hasText = msg.text.trim().length > 0;
         if (!hasText) {
@@ -197,7 +197,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
       })
       .map((msg: any) => {
         const speaker = (msg.speaker || msg.role || "").toLowerCase();
-        const role = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
+        const role: "user" | "bot" = speaker.includes("user") || speaker.includes("caller") || speaker.includes("patient") ? "user" : "bot";
         let text = msg.text || msg.content || msg.message || msg.transcript || msg.text_content || msg.utterance || "";
         if (typeof text === "object" && text !== null) {
           text = text.text || text.content || text.message || JSON.stringify(text);
