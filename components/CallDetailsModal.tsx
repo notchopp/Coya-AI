@@ -161,14 +161,24 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
     }
   }
 
-  function handleViewCalendar() {
+  function handleViewCalendar(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("🔍 See Calendar clicked, schedule:", call.schedule);
     const scheduleDate = getScheduleDate();
+    console.log("📅 Extracted date:", scheduleDate);
+    
     if (scheduleDate) {
       // Format date as YYYY-MM-DD for query parameter
       const dateStr = format(scheduleDate, "yyyy-MM-dd");
+      console.log("🚀 Navigating to calendar with date:", dateStr, "callId:", call.id);
       // Also pass call_id to highlight the specific booking
       router.push(`/calendar?date=${dateStr}&callId=${call.id}`);
       onClose();
+    } else {
+      console.error("❌ No valid date found in schedule:", call.schedule);
+      alert("Unable to find booking date in schedule data.");
     }
   }
 
@@ -313,8 +323,9 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                 <div className="text-white font-medium">{call.last_intent}</div>
                                 {call.schedule && (
                                   <button
+                                    type="button"
                                     onClick={handleViewCalendar}
-                                    className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80 flex items-center gap-1.5"
+                                    className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80 flex items-center gap-1.5 cursor-pointer"
                                     style={{
                                       backgroundColor: `${accentColor}33`,
                                       color: accentColor,
