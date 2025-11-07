@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import Calendar from "react-calendar";
 import { getSupabaseClient } from "@/lib/supabase";
 import { format, isSameDay } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { X, Calendar as CalendarIcon } from "lucide-react";
 import "react-calendar/dist/Calendar.css";
 
 type Call = {
@@ -22,6 +24,8 @@ export default function CalendarPage() {
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [highlightedCallId, setHighlightedCallId] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Call | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
