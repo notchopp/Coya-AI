@@ -66,17 +66,84 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          // User is authenticated, get their business_id
-          const { data: userData, error: userError } = await supabase
+          // User is authenticated, check if they need to set password first
+          // For invite flow, they should set password before accessing dashboard
+          // This check is already handled above, so if we reach here, user is fully set up
+          
+          // Get their business_id from users table
+          let { data: userData, error: userError } = await supabase
             .from("users")
             .select("business_id, is_active, role")
             .eq("auth_user_id", data.user.id)
             .maybeSingle();
 
+          // If user doesn't exist by auth_user_id, try to find by email or create from metadata
           if (userError || !userData) {
-            setError("User account not found. Please contact your administrator.");
-            setLoading(false);
-            return;
+            if (data.user.email) {
+              // Try to find user by email (might have been pre-created)
+              const { data: emailUserData, error: emailError } = await supabase
+                .from("users")
+                .select("business_id, is_active, role, auth_user_id")
+                .eq("email", data.user.email)
+                .maybeSingle();
+
+              if (emailUserData && !emailUserData.auth_user_id) {
+                // User exists but doesn't have auth_user_id yet - update it
+                const { data: updatedUser, error: updateError } = await supabase
+                  .from("users")
+                  .update({ auth_user_id: data.user.id })
+                  .eq("email", data.user.email)
+                  .select("business_id, is_active, role")
+                  .single();
+
+                if (updateError) {
+                  console.error("Error updating user auth_user_id:", updateError);
+                  setError("Failed to link account. Please contact your administrator.");
+                  setLoading(false);
+                  return;
+                }
+
+                userData = updatedUser;
+              } else if (emailUserData && emailUserData.auth_user_id === data.user.id) {
+                // User found by email with matching auth_user_id
+                userData = emailUserData;
+              } else {
+                // No user found by email, try to create from metadata
+                const businessId = data.user.user_metadata?.business_id || data.user.app_metadata?.business_id;
+                
+                if (businessId) {
+                  // Create user record
+                  const { data: newUserData, error: createError } = await supabase
+                    .from("users")
+                    .insert({
+                      auth_user_id: data.user.id,
+                      business_id: businessId,
+                      email: data.user.email,
+                      is_active: true,
+                      role: data.user.user_metadata?.role || null,
+                    })
+                    .select("business_id, is_active, role")
+                    .single();
+
+                  if (createError) {
+                    console.error("Error creating user record:", createError);
+                    setError("Failed to create user account. Please contact your administrator.");
+                    setLoading(false);
+                    return;
+                  }
+
+                  userData = newUserData;
+                } else {
+                  setError("User account not found. Please contact your administrator to complete account setup. They may need to create your user record first.");
+                  setLoading(false);
+                  return;
+                }
+              }
+            } else {
+              setError("Email address not found. Please contact your administrator.");
+              setLoading(false);
+              return;
+            }
           }
 
           if (!userData.is_active) {
@@ -144,17 +211,80 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Get business_id from users table
-      const { data: userData, error: userError } = await supabase
+      // Check if user exists in users table by auth_user_id
+      let { data: userData, error: userError } = await supabase
         .from("users")
         .select("business_id, is_active, role")
         .eq("auth_user_id", user.id)
         .maybeSingle();
 
+      // If user doesn't exist by auth_user_id, try to find by email (user might have been pre-created)
       if (userError || !userData) {
-        setError("User account not found. Please contact your administrator.");
-        setSettingPassword(false);
-        return;
+        if (user.email) {
+          const { data: emailUserData, error: emailError } = await supabase
+            .from("users")
+            .select("business_id, is_active, role, auth_user_id")
+            .eq("email", user.email)
+            .maybeSingle();
+
+          if (emailUserData && !emailUserData.auth_user_id) {
+            // User exists but doesn't have auth_user_id yet - update it
+            const { data: updatedUser, error: updateError } = await supabase
+              .from("users")
+              .update({ auth_user_id: user.id })
+              .eq("email", user.email)
+              .select("business_id, is_active, role")
+              .single();
+
+            if (updateError) {
+              console.error("Error updating user auth_user_id:", updateError);
+              setError("Failed to link account. Please contact your administrator.");
+              setSettingPassword(false);
+              return;
+            }
+
+            userData = updatedUser;
+          } else if (emailUserData && emailUserData.auth_user_id === user.id) {
+            // User found by email with matching auth_user_id
+            userData = emailUserData;
+          } else {
+            // No user found by email, try to create from metadata
+            const businessId = user.user_metadata?.business_id || user.app_metadata?.business_id;
+            
+            if (businessId) {
+              // Create user record in users table
+              const { data: newUserData, error: createError } = await supabase
+                .from("users")
+                .insert({
+                  auth_user_id: user.id,
+                  business_id: businessId,
+                  email: user.email,
+                  is_active: true,
+                  role: user.user_metadata?.role || null,
+                })
+                .select("business_id, is_active, role")
+                .single();
+
+              if (createError) {
+                console.error("Error creating user record:", createError);
+                setError("Failed to create user account. Please contact your administrator.");
+                setSettingPassword(false);
+                return;
+              }
+
+              userData = newUserData;
+            } else {
+              // No business_id in metadata and no user record found
+              setError("User account not found. Please contact your administrator to complete account setup. They may need to create your user record first.");
+              setSettingPassword(false);
+              return;
+            }
+          }
+        } else {
+          setError("Email address not found. Please contact your administrator.");
+          setSettingPassword(false);
+          return;
+        }
       }
 
       if (!userData.is_active) {

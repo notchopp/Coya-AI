@@ -18,13 +18,19 @@ This guide explains how to configure Supabase Auth to work with the invitation f
 
 To send an invitation to a user:
 
-#### Option A: Using Supabase Dashboard
-1. Go to **Authentication** → **Users**
-2. Click **Invite User**
-3. Enter the user's email address
-4. The user will receive an email with an invitation link
+#### Option A: Using Supabase Dashboard (Requires Pre-Creating User)
+1. **First, create the user record in the `users` table:**
+   ```sql
+   INSERT INTO users (email, business_id, is_active, role)
+   VALUES ('user@example.com', 'your-business-id', true, 'user');
+   ```
+2. Then go to **Authentication** → **Users**
+3. Click **Invite User**
+4. Enter the user's email address (must match the email in users table)
+5. The user will receive an email with an invitation link
+6. When they accept, the callback will link their auth_user_id to the existing user record
 
-#### Option B: Using Supabase Admin API
+#### Option B: Using Supabase Admin API (Recommended)
 ```typescript
 import { createClient } from '@supabase/supabase-js'
 
@@ -39,13 +45,40 @@ const supabaseAdmin = createClient(
   }
 )
 
-// Invite a user
+// IMPORTANT: First create the user record in the users table
+// Then invite them with business_id in metadata
+
+// Step 1: Create user record in users table
+const { data: newUser, error: userError } = await supabaseAdmin
+  .from('users')
+  .insert({
+    email: 'user@example.com',
+    business_id: 'your-business-id', // The business they belong to
+    is_active: true,
+    role: 'user', // Optional: 'admin', 'user', etc.
+  })
+  .select()
+  .single();
+
+if (userError) {
+  console.error('Error creating user:', userError);
+  return;
+}
+
+// Step 2: Invite the user with business_id in metadata
 const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
   'user@example.com',
   {
-    redirectTo: 'https://coya-ai.vercel.app/auth/callback'
+    redirectTo: 'https://coya-ai.vercel.app/auth/callback',
+    data: {
+      business_id: 'your-business-id', // Pass business_id in user metadata
+      role: 'user', // Optional
+    }
   }
 )
+
+// The business_id will be available in user.user_metadata.business_id
+// when they accept the invite, allowing the callback to create/link the user record
 ```
 
 ### 3. User Flow
