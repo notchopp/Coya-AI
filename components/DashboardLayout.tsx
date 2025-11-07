@@ -144,8 +144,8 @@ export default function DashboardLayout({
         <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setSidebarOpen(true)}
           className="lg:hidden fixed bottom-4 left-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
           style={{
@@ -327,7 +327,7 @@ function SidebarContent({
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            whileHover={showPremium ? { scale: 1.1, rotate: 10 } : {}}
+            whileHover={showPremium ? { scale: 1.05, rotate: 5 } : {}}
           >
             <Coyalogo src="/logo.gif" size={60} />
           </motion.div>
@@ -352,7 +352,7 @@ function SidebarContent({
                 initial={showPremium ? { scale: 0 } : false}
                 animate={showPremium ? { scale: 1 } : {}}
                 transition={showPremium ? { type: "spring", delay: 0.4 } : {}}
-                whileHover={showPremium ? { scale: 1.1 } : {}}
+                whileHover={showPremium ? { scale: 1.05 } : {}}
               >
                 Beta
               </motion.span>
@@ -538,8 +538,8 @@ function SidebarContent({
                   />
                 )}
                 <motion.div
-                  whileHover={isPremium ? { rotate: [0, -10, 10, -10, 0], scale: 1.1 } : {}}
-                  transition={isPremium ? { duration: 0.5 } : {}}
+                  whileHover={isPremium ? { rotate: [0, -5, 5, -5, 0], scale: 1.05 } : {}}
+                  transition={isPremium ? { duration: 0.3 } : {}}
                 >
                   <Icon
                     className={`h-5 w-5 relative z-10 transition-colors ${
@@ -665,7 +665,7 @@ function SidebarContent({
           className="px-3 py-2 text-xs text-white/40 flex items-center justify-between"
         >
           <motion.span
-            whileHover={isPremium ? { scale: 1.1 } : {}}
+            whileHover={isPremium ? { scale: 1.05 } : {}}
             className="beta-badge"
           >
             Beta

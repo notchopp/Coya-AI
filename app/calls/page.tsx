@@ -787,11 +787,12 @@ export default function LiveCallsPage() {
                     backgroundColor: `${accentColor}33`,
                     borderColor: `${accentColor}4D`,
                     color: accentColor,
+                    transition: "background-color 0.2s ease",
                   }}
-                  onMouseEnter={(e) => {
+                  onHoverStart={(e) => {
                     e.currentTarget.style.backgroundColor = `${accentColor}4D`;
                   }}
-                  onMouseLeave={(e) => {
+                  onHoverEnd={(e) => {
                     e.currentTarget.style.backgroundColor = `${accentColor}33`;
                   }}
                 >

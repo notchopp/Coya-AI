@@ -263,17 +263,23 @@ function RealtimeCalls({ businessId }: Props) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.02, y: -2 }}
+                transition={{ 
+                  delay: index * 0.05,
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25
+                }}
+                whileHover={{ scale: 1.01, y: -2 }}
                 onClick={() => handleCallClick(c)}
-                className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10 transition-all duration-300"
+                className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10"
                 style={{
                   borderColor: "rgba(255, 255, 255, 0.1)",
+                  transition: "border-color 0.2s ease, background-color 0.2s ease",
                 }}
-                onMouseEnter={(e) => {
+                onHoverStart={(e) => {
                   e.currentTarget.style.borderColor = `${accentColor}80`;
                 }}
-                onMouseLeave={(e) => {
+                onHoverEnd={(e) => {
                   e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
                 }}
               >

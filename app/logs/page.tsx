@@ -281,10 +281,10 @@ export default function LogsPage() {
     setCurrentPage(1);
   }, [search, filters]);
 
-  function handleCardClick(call: Call) {
+  const handleCardClick = useCallback((call: Call) => {
     setSelectedCall(call);
     setIsModalOpen(true);
-  }
+  }, []);
 
   function exportToCSV() {
     if (filteredLogs.length === 0) {
@@ -620,21 +620,29 @@ export default function LogsPage() {
                         y: 0,
                       }}
                       whileHover={{ 
-                        y: -8, 
-                        scale: 1.02,
+                        y: -4, 
+                        scale: 1.01,
                       }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden transition-all cursor-pointer"
+                      transition={{ 
+                        type: "spring", 
+                        stiffness: 400, 
+                        damping: 25,
+                        mass: 0.5
+                      }}
+                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden cursor-pointer group"
                       style={{
                         boxShadow: "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)",
+                        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = `${accentColor}80`;
-                        e.currentTarget.style.boxShadow = `0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1), 0 0 0 2px ${accentColor}80`;
+                      onHoverStart={(e) => {
+                        const target = e.currentTarget;
+                        target.style.borderColor = `${accentColor}80`;
+                        target.style.boxShadow = `0 12px 20px -4px rgba(0, 0, 0, 0.25), 0 6px 12px -3px rgba(0, 0, 0, 0.15), 0 0 0 1px ${accentColor}80`;
                       }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                        e.currentTarget.style.boxShadow = "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)";
+                      onHoverEnd={(e) => {
+                        const target = e.currentTarget;
+                        target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        target.style.boxShadow = "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)";
                       }}
                     >
                 {/* Card Header */}
