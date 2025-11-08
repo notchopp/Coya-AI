@@ -55,6 +55,17 @@ https://your-app.vercel.app/api/vapi-webhook
 
 **How it works**: Vapi will call this tool during calls to get business context. The endpoint returns all business data (name, hours, services, FAQs, insurances, staff, promos, etc.) that your AI can use to answer questions.
 
+**Troubleshooting**:
+- Check Vercel logs to see what request format Vapi is sending
+- The endpoint supports multiple formats, but if it's still not working, check the logs for the exact body format
+- Make sure the phone number in your request matches the `to_number` in your `businesses` table
+- Test the endpoint manually with curl to verify it works:
+  ```bash
+  curl -X POST https://coya-ai.vercel.app/api/vapi-context \
+    -H "Content-Type: application/json" \
+    -d '{"to_number": "+1234567890"}'
+  ```
+
 ### 3. Test the Endpoints
 
 Both endpoints include GET handlers for health checks:

@@ -5,24 +5,45 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  * Vapi Tool Endpoint - Returns business context for a given phone number
  * This replaces the n8n tool and can be called by Vapi during calls
  * 
- * Request body: { "to_number": "+1234567890" } or { "phoneNumber": { "number": "+1234567890" } }
+ * Request body formats supported:
+ * - { "to_number": "+1234567890" }
+ * - { "phoneNumber": { "number": "+1234567890" } }
+ * - { "arguments": { "to_number": "+1234567890" } } (Vapi function call format)
+ * - Raw string phone number
  * Returns: Full business context (name, hours, services, FAQs, etc.)
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      // Handle case where body might be a raw string
+      const text = await request.text();
+      console.log("📞 Received non-JSON body:", text);
+      body = { to_number: text.trim() || null };
+    }
     
     // Handle multiple possible formats from Vapi
-    // Vapi might send: { "to_number": "..." } or { "phoneNumber": { "number": "..." } }
+    // Vapi Server URL tools might send:
+    // 1. Direct format: { "to_number": "..." }
+    // 2. Nested format: { "phoneNumber": { "number": "..." } }
+    // 3. Function call format: { "arguments": { "to_number": "..." } }
+    // 4. Raw string phone number
     const toNumber = body.to_number || 
                      body.phoneNumber?.number || 
                      body.phoneNumber || 
                      body.number ||
+                     body.arguments?.to_number ||
+                     body.arguments?.phoneNumber?.number ||
+                     body.arguments?.phoneNumber ||
+                     (typeof body === 'string' ? body : null) ||
                      null;
 
     console.log("📞 Vapi context request received:", {
-      body,
+      rawBody: body,
       extractedToNumber: toNumber,
+      bodyType: typeof body,
     });
 
     if (!toNumber) {
@@ -84,7 +105,16 @@ export async function POST(request: NextRequest) {
       hasFAQs: !!context.faqs,
     });
 
-    return NextResponse.json(context, { status: 200 });
+    // Return with CORS headers for Vapi
+    return NextResponse.json(context, { 
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
 
   } catch (error) {
     console.error("❌ Vapi context endpoint error:", error);
@@ -102,7 +132,29 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json(
     { status: "ok", service: "vapi-context", description: "Returns business context for Vapi calls" },
-    { status: 200 }
+    { 
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    }
+  );
+}
+
+// Handle OPTIONS requests (for CORS preflight)
+export async function OPTIONS() {
+  return NextResponse.json(
+    { status: "ok" },
+    { 
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    }
   );
 }
 
