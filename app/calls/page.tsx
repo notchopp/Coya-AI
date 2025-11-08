@@ -319,6 +319,7 @@ export default function LiveCallsPage() {
   const [connected, setConnected] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [endedCallId, setEndedCallId] = useState<string | null>(null);
+  const [hasLoadedCalls, setHasLoadedCalls] = useState(false); // Track if we've loaded calls at least once
 
   const effectiveBusinessId = useMemo(() => {
     if (mounted && typeof window !== "undefined") {
@@ -465,6 +466,7 @@ export default function LiveCallsPage() {
       if (activeCalls.length > 0 || calls.length > 0) {
         setCalls(activeCalls);
       }
+      setHasLoadedCalls(true); // Mark that we've loaded calls at least once
 
       // Check if any call just ended
       const previousCallIds = calls.map(c => c.id);
@@ -552,15 +554,29 @@ export default function LiveCallsPage() {
               if (isActive) {
                 console.log("🔄 Updating active call:", call.call_id, "patient_name:", call.patient_name);
                 // Update the call in state (this will trigger re-render with new patient_name, last_intent, etc.)
+                // Use functional update to prevent flickering
                 setCalls((prev) => {
                   const existingIndex = prev.findIndex(c => c.id === call.id || c.call_id === call.call_id);
                   if (existingIndex >= 0) {
                     // Update existing call with all new data (including patient_name)
-                    const updated = [...prev];
-                    updated[existingIndex] = { ...updated[existingIndex], ...call };
-                    return updated;
+                    // Only update if something actually changed to prevent unnecessary re-renders
+                    const existing = prev[existingIndex];
+                    const hasChanges = 
+                      existing.patient_name !== call.patient_name ||
+                      existing.last_intent !== call.last_intent ||
+                      existing.last_summary !== call.last_summary ||
+                      existing.status !== call.status ||
+                      existing.total_turns !== call.total_turns;
+                    
+                    if (hasChanges) {
+                      const updated = [...prev];
+                      updated[existingIndex] = { ...existing, ...call };
+                      return updated;
+                    }
+                    return prev; // No changes, return same array to prevent re-render
                   } else {
                     // Add new call
+                    setHasLoadedCalls(true);
                     return [call, ...prev];
                   }
                 });
@@ -835,11 +851,11 @@ export default function LiveCallsPage() {
       </AnimatePresence>
 
       {/* Active Calls */}
-      {calls.length === 0 ? (
+      {calls.length === 0 && hasLoadedCalls ? (
         <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
           No active calls
         </div>
-      ) : (
+      ) : calls.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {calls.map((call, index) => {
             const hasTranscriptContent = hasTranscript(call);
@@ -970,7 +986,7 @@ export default function LiveCallsPage() {
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
