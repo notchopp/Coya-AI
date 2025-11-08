@@ -373,19 +373,16 @@ export default function LiveCallsPage() {
       console.log("📞 Raw calls data:", callsData);
       console.log("📞 Total calls fetched:", callsData?.length || 0);
 
-      // Filter for active calls - be very permissive to catch all active calls
-      // Accept: active, in-progress, in_progress, or any call with started_at and no ended_at
+      // Filter for active calls - only calls that have started and haven't ended
       const activeCalls = (callsData || []).filter(c => {
-        const statusLower = c.status?.toLowerCase()?.trim();
         const hasStarted = !!c.started_at;
         const hasNotEnded = !c.ended_at;
+        const statusLower = c.status?.toLowerCase()?.trim();
+        const isEndedStatus = statusLower === "ended";
         
-        // Accept if status is active/in-progress OR if it has started_at and no ended_at
-        const isActive = statusLower === "active" || 
-                        statusLower === "in-progress" || 
-                        statusLower === "in_progress" ||
-                        (hasStarted && hasNotEnded); // Most permissive - any call that started and hasn't ended
-        console.log(`Call ${c.call_id}: status="${c.status}" (lowercase: "${statusLower}"), started_at=${hasStarted}, ended_at=${!!c.ended_at}, isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
+        // Only include if: started, not ended (by timestamp), and not ended status
+        const isActive = hasStarted && hasNotEnded && !isEndedStatus;
+        console.log(`Call ${c.call_id}: status="${c.status}", started_at=${hasStarted}, ended_at=${!!c.ended_at}, isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
         return isActive;
       });
 
@@ -538,33 +535,29 @@ export default function LiveCallsPage() {
             }
             // Handle UPDATE
             else if (payload.eventType === "UPDATE") {
-              // If call just ended (check if it was active/in-progress before)
-              const oldStatusLower = oldCall?.status?.toLowerCase()?.trim();
-              const wasActive = oldStatusLower === "active" || 
-                               oldStatusLower === "in-progress" || 
-                               oldStatusLower === "in_progress";
-              const isEnded = call.status?.toLowerCase()?.trim() === "ended";
+              // Check if call ended (by status OR ended_at timestamp)
+              const isEnded = call.status?.toLowerCase()?.trim() === "ended" || !!call.ended_at;
+              const wasActive = oldCall?.started_at && !oldCall?.ended_at;
               
-              if (wasActive && isEnded) {
+              if (isEnded && wasActive) {
+                console.log("🔴 Call ended, removing from live calls:", call.call_id);
                 setEndedCallId(call.id);
                 setCalls((prev) => prev.filter((c) => c.id !== call.id));
+                return; // Exit early, don't process further
               }
-              // If call is still active (check multiple status variations), update it
-              else {
-                const statusLower = call.status?.toLowerCase()?.trim();
-                const isActive = statusLower === "active" || 
-                                statusLower === "in-progress" || 
-                                statusLower === "in_progress" ||
-                                (!statusLower && call.started_at && !call.ended_at);
-                
-                if (isActive) {
+              
+              // Check if call is still active (has started_at and no ended_at)
+              const isActive = call.started_at && !call.ended_at;
+              
+              if (isActive) {
+                console.log("🔄 Updating active call:", call.call_id, "patient_name:", call.patient_name);
                 // Update the call in state (this will trigger re-render with new patient_name, last_intent, etc.)
                 setCalls((prev) => {
-                  const existingIndex = prev.findIndex(c => c.id === call.id);
+                  const existingIndex = prev.findIndex(c => c.id === call.id || c.call_id === call.call_id);
                   if (existingIndex >= 0) {
-                    // Update existing call
+                    // Update existing call with all new data (including patient_name)
                     const updated = [...prev];
-                    updated[existingIndex] = call;
+                    updated[existingIndex] = { ...updated[existingIndex], ...call };
                     return updated;
                   } else {
                     // Add new call
@@ -591,10 +584,10 @@ export default function LiveCallsPage() {
                       }
                     });
                 }
-                } else {
-                  // Remove if no longer active
-                  setCalls((prev) => prev.filter((c) => c.id !== call.id));
-                }
+              } else {
+                // Remove if no longer active (ended or never started)
+                console.log("🔴 Removing inactive call:", call.call_id);
+                setCalls((prev) => prev.filter((c) => c.id !== call.id && c.call_id !== call.call_id));
               }
             }
             // Handle DELETE
