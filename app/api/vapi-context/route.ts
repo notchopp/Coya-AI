@@ -11,6 +11,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  * - { "arguments": { "to_number": "+1234567890" } } (Vapi function call format)
  * - Raw string phone number
  * Returns: Full business context (name, hours, services, FAQs, etc.)
+ * 
+ * Deployment: Ready for production use
  */
 export async function POST(request: NextRequest) {
   try {
