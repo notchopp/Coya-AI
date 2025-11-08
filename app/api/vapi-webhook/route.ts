@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
           call_id: callId,
           turn_number: index + 1,
           role: msg.role === "user" ? "user" : msg.role === "assistant" ? "assistant" : "unknown",
-          content: msg.content || "",
+          message: msg.content || "",
           timestamp: msg.time ? new Date(msg.time).toISOString() : new Date().toISOString(),
         }));
     }
@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
           call_id: callId,
           turn_number: index + 1,
           role: msg.role === "bot" ? "assistant" : msg.role === "user" ? "user" : "unknown",
-          content: msg.message || "",
+          message: msg.message || "",
           timestamp: msg.time ? new Date(msg.time).toISOString() : new Date().toISOString(),
         }));
     }
