@@ -496,22 +496,63 @@ export default function LiveCallsPage() {
             const call = payload.new as Call;
             const oldCall = payload.old as Call;
 
-            // Handle INSERT (new active call)
-            if (payload.eventType === "INSERT" && call.status === "active") {
-              setCalls((prev) => {
-                if (prev.find(c => c.id === call.id)) return prev;
-                return [call, ...prev];
-              });
+            // Handle INSERT (new call - accept both "active" and "in-progress" status)
+            if (payload.eventType === "INSERT") {
+              const statusLower = call.status?.toLowerCase()?.trim();
+              const isActive = statusLower === "active" || 
+                              statusLower === "in-progress" || 
+                              statusLower === "in_progress" ||
+                              (!statusLower && call.started_at && !call.ended_at);
+              
+              if (isActive) {
+                console.log("🆕 New call detected:", call.call_id, "status:", call.status);
+                setCalls((prev) => {
+                  if (prev.find(c => c.id === call.id || c.call_id === call.call_id)) return prev;
+                  return [call, ...prev];
+                });
+                
+                // Immediately try to load call turns for this new call
+                if (call.call_id) {
+                  supabase
+                    .from("call_turns" as any)
+                    .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
+                    .eq("call_id", call.call_id)
+                    .maybeSingle()
+                    .then(({ data: turnData, error: turnsError }) => {
+                      if (!turnsError && turnData && call.call_id) {
+                        const typedTurnData = turnData as unknown as CallTurn;
+                        setCallTurns((prev) => ({
+                          ...prev,
+                          [call.call_id]: typedTurnData,
+                        }));
+                        console.log("✅ Loaded initial turn data for new call:", call.call_id);
+                      }
+                    });
+                }
+              }
             }
             // Handle UPDATE
             else if (payload.eventType === "UPDATE") {
-              // If call just ended
-              if (oldCall?.status === "active" && call.status === "ended") {
+              // If call just ended (check if it was active/in-progress before)
+              const oldStatusLower = oldCall?.status?.toLowerCase()?.trim();
+              const wasActive = oldStatusLower === "active" || 
+                               oldStatusLower === "in-progress" || 
+                               oldStatusLower === "in_progress";
+              const isEnded = call.status?.toLowerCase()?.trim() === "ended";
+              
+              if (wasActive && isEnded) {
                 setEndedCallId(call.id);
                 setCalls((prev) => prev.filter((c) => c.id !== call.id));
               }
-              // If call is still active, update it
-              else if (call.status === "active") {
+              // If call is still active (check multiple status variations), update it
+              else {
+                const statusLower = call.status?.toLowerCase()?.trim();
+                const isActive = statusLower === "active" || 
+                                statusLower === "in-progress" || 
+                                statusLower === "in_progress" ||
+                                (!statusLower && call.started_at && !call.ended_at);
+                
+                if (isActive) {
                 // Update the call in state (this will trigger re-render with new patient_name, last_intent, etc.)
                 setCalls((prev) => {
                   const existingIndex = prev.findIndex(c => c.id === call.id);
@@ -556,10 +597,10 @@ export default function LiveCallsPage() {
                     }
                   });
                 }
-              }
-              // Remove if no longer active
-              else {
-                setCalls((prev) => prev.filter((c) => c.id !== call.id));
+                } else {
+                  // Remove if no longer active
+                  setCalls((prev) => prev.filter((c) => c.id !== call.id));
+                }
               }
             }
             // Handle DELETE
