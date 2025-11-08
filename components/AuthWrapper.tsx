@@ -5,11 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import DashboardLayout from "@/components/DashboardLayout";
 import { NotificationProvider } from "@/components/NotificationProvider";
+import { BarChart3, LogOut, Menu } from "lucide-react";
+import { useAccentColor } from "@/components/AccentColorProvider";
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const isLoginPage = pathname === "/login";
   const isAuthCallback = pathname === "/auth/callback";
 
@@ -28,7 +31,23 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         return;
       }
 
-      // Get business_id if not in sessionStorage
+      // Check if user is admin (whochoppa@gmail.com)
+      const userEmail = session.user.email?.toLowerCase();
+      const isAdminUser = userEmail === "whochoppa@gmail.com";
+      setIsAdmin(isAdminUser);
+      
+      if (isAdminUser) {
+        // Admin user - redirect to ops if on regular pages
+        if (pathname !== "/ops" && pathname !== "/login" && pathname !== "/auth/callback") {
+          router.push("/ops");
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Get business_id if not in sessionStorage (for regular users)
       const storedBusinessId = sessionStorage.getItem("business_id");
       
       if (!storedBusinessId) {
@@ -83,10 +102,141 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
+  // Admin user gets custom layout
+  if (isAdmin) {
+    return (
+      <NotificationProvider>
+        <AdminLayout>{children}</AdminLayout>
+      </NotificationProvider>
+    );
+  }
+
   return (
     <NotificationProvider>
       <DashboardLayout>{children}</DashboardLayout>
     </NotificationProvider>
+  );
+}
+
+// Custom Admin Layout - Only shows Operations
+function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { accentColor } = useAccentColor();
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  async function handleSignOut() {
+    const supabase = getSupabaseClient();
+    await supabase.auth.signOut();
+    sessionStorage.clear();
+    router.push("/login");
+  }
+
+  return (
+    <div className="flex h-screen bg-black text-white overflow-hidden relative">
+      {/* Mobile sidebar */}
+      <div className="lg:hidden">
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+        )}
+        <div className={`fixed inset-y-0 left-0 z-50 w-[280px] glass-strong border-r transition-transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`} style={{ borderColor: `${accentColor}33` }}>
+          <div className="p-6 border-b border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
+                COYA AI
+              </div>
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+                ADMIN
+              </span>
+            </div>
+            <p className="text-white/60 text-sm">Operations Dashboard</p>
+          </div>
+          <nav className="p-4">
+            <button
+              onClick={() => { router.push("/ops"); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname === "/ops"
+                  ? "bg-white/10"
+                  : "hover:bg-white/5"
+              }`}
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span>Operations</span>
+            </button>
+          </nav>
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-red-400"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 flex-col border-r glass-strong relative z-10" style={{ borderColor: `${accentColor}33` }}>
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
+              COYA AI
+            </div>
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+              ADMIN
+            </span>
+          </div>
+          <p className="text-white/60 text-sm">Operations Dashboard</p>
+        </div>
+        <nav className="p-4 flex-1">
+          <button
+            onClick={() => router.push("/ops")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              pathname === "/ops"
+                ? "bg-white/10"
+                : "hover:bg-white/5"
+            }`}
+          >
+            <BarChart3 className="h-5 w-5" />
+            <span>Operations</span>
+          </button>
+        </nav>
+        <div className="p-4 border-t border-white/10">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-red-400"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile header */}
+        <header className="lg:hidden flex items-center justify-between p-4 border-b glass-strong" style={{ borderColor: `${accentColor}33` }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <Menu className="h-5 w-5 text-white" />
+          </button>
+          <div className="text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
+            COYA AI ADMIN
+          </div>
+          <div className="w-9" /> {/* Spacer */}
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }
 
