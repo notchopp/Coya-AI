@@ -5,17 +5,30 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  * Vapi Tool Endpoint - Returns business context for a given phone number
  * This replaces the n8n tool and can be called by Vapi during calls
  * 
- * Request body: { "to_number": "+1234567890" }
+ * Request body: { "to_number": "+1234567890" } or { "phoneNumber": { "number": "+1234567890" } }
  * Returns: Full business context (name, hours, services, FAQs, etc.)
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const toNumber = body.to_number || body.phoneNumber?.number || null;
+    
+    // Handle multiple possible formats from Vapi
+    // Vapi might send: { "to_number": "..." } or { "phoneNumber": { "number": "..." } }
+    const toNumber = body.to_number || 
+                     body.phoneNumber?.number || 
+                     body.phoneNumber || 
+                     body.number ||
+                     null;
+
+    console.log("📞 Vapi context request received:", {
+      body,
+      extractedToNumber: toNumber,
+    });
 
     if (!toNumber) {
+      console.warn("⚠️ No phone number provided in request:", body);
       return NextResponse.json(
-        { error: "to_number is required" },
+        { error: "to_number or phoneNumber.number is required", received: body },
         { status: 400 }
       );
     }
@@ -38,6 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!business) {
+      console.warn("⚠️ Business not found for phone number:", toNumber);
       return NextResponse.json(
         { error: "Business not found for phone number", to_number: toNumber },
         { status: 404 }
@@ -61,6 +75,14 @@ export async function POST(request: NextRequest) {
       to_number: businessData.to_number || null,
       // Include any other fields that might be useful
     };
+
+    console.log("✅ Business context found for", toNumber, ":", {
+      id: context.id,
+      name: context.name,
+      hasHours: !!context.hours,
+      hasServices: !!context.services,
+      hasFAQs: !!context.faqs,
+    });
 
     return NextResponse.json(context, { status: 200 });
 

@@ -38,18 +38,22 @@ https://your-app.vercel.app/api/vapi-webhook
    ```
 5. Save the configuration
 
-#### Context Tool Configuration (Optional - if you want to call it as a tool)
+#### Context Tool Configuration (Required for Context Injection)
 
-If you want Vapi to call the context endpoint as a tool (like the old n8n tool), add it as a Server URL tool:
+**Important**: Vapi cannot use webhook responses for context injection. You need to add the context endpoint as a tool.
 
 1. Go to **Tools** in Vapi Dashboard
 2. Add a new **Server URL** tool
-3. URL: `https://your-app.vercel.app/api/vapi-context`
-4. Method: `POST`
-5. Request Body: `{ "to_number": "{{phoneNumber.number}}" }`
-6. Description: "Get business context for the current call"
+3. **URL**: `https://coya-ai.vercel.app/api/vapi-context` (or your Vercel URL)
+4. **Method**: `POST`
+5. **Request Body**: `{ "to_number": "{{phoneNumber.number}}" }`
+   - Alternative formats also supported:
+     - `{ "phoneNumber": { "number": "{{phoneNumber.number}}" } }`
+     - `{ "to_number": "{{call.phoneNumber.number}}" }`
+6. **Description**: "Get business context for the current call (name, hours, services, FAQs, etc.)"
+7. **Function Name**: `get_business_context` (or any name you prefer)
 
-**Note**: The webhook now returns full business context in its response, so you may not need a separate tool call. The webhook response includes all business data (name, hours, services, FAQs, etc.) that Vapi can use.
+**How it works**: Vapi will call this tool during calls to get business context. The endpoint returns all business data (name, hours, services, FAQs, insurances, staff, promos, etc.) that your AI can use to answer questions.
 
 ### 3. Test the Endpoints
 
