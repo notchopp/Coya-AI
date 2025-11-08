@@ -333,13 +333,13 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to upsert call: ${callError.message}`);
     }
 
-    // 3️⃣ Handle call turns from conversation array or artifact messages
-    // conversation-update sends speech data, so we always process turns for it
-    let turnsToInsert: any[] = [];
+    // 3️⃣ Handle call turns - store conversation in transcript_json (single row per call_id)
+    // call_turns table has: call_id (unique), transcript_json (jsonb), total_turns, to_number
+    let conversationTurns: any[] = [];
     
     if (conversation && Array.isArray(conversation) && conversation.length > 0) {
       // Process conversation array (has role/content structure)
-      turnsToInsert = conversation
+      conversationTurns = conversation
         .filter((msg: any) => {
           // Filter valid messages (user/assistant with content)
           // Exclude tool, tool_calls, tool_call_result
@@ -349,17 +349,16 @@ export async function POST(request: NextRequest) {
           return false;
         })
         .map((msg: any, index: number) => ({
-          call_id: callId,
           turn_number: index + 1,
           role: msg.role === "user" ? "user" : msg.role === "assistant" ? "assistant" : "unknown",
-          message: msg.content || "",
+          content: msg.content || "",
           timestamp: msg.time ? new Date(msg.time).toISOString() : new Date().toISOString(),
         }));
     }
     
     // Also process message.messages if available (has bot/user with message field)
-    if (messageType === "conversation-update" && message.messages && Array.isArray(message.messages) && turnsToInsert.length === 0) {
-      turnsToInsert = message.messages
+    if (messageType === "conversation-update" && message.messages && Array.isArray(message.messages) && conversationTurns.length === 0) {
+      conversationTurns = message.messages
         .filter((msg: any) => {
           // Filter valid bot/user messages with message field
           if (msg.role === "bot" || msg.role === "user") {
@@ -368,35 +367,47 @@ export async function POST(request: NextRequest) {
           return false;
         })
         .map((msg: any, index: number) => ({
-          call_id: callId,
           turn_number: index + 1,
           role: msg.role === "bot" ? "assistant" : msg.role === "user" ? "user" : "unknown",
-          message: msg.message || "",
+          content: msg.message || "",
           timestamp: msg.time ? new Date(msg.time).toISOString() : new Date().toISOString(),
         }));
     }
     
-    if (turnsToInsert.length > 0) {
-      console.log(`💬 Processing ${turnsToInsert.length} conversation turns from ${messageType}`);
+    if (conversationTurns.length > 0) {
+      console.log(`💬 Processing ${conversationTurns.length} conversation turns from ${messageType}`);
+      
+      // Upsert single row per call_id with transcript_json
+      const callTurnData: any = {
+        call_id: callId,
+        transcript_json: conversationTurns,
+        total_turns: conversationTurns.length,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Add to_number if we have it
+      if (toNumber) {
+        callTurnData.to_number = toNumber;
+      }
       
       const { error: turnsError } = await supabaseAdmin
         .from("call_turns")
-        .upsert(turnsToInsert as any, {
-          onConflict: "call_id,turn_number",
+        .upsert(callTurnData as any, {
+          onConflict: "call_id",
           ignoreDuplicates: false,
         });
 
       if (turnsError) {
         console.error("❌ Error upserting call turns:", turnsError);
       } else {
-        // Update total_turns count
+        // Also update total_turns in calls table
         const { error: updateError } = await (supabaseAdmin
           .from("calls") as any)
-          .update({ total_turns: turnsToInsert.length })
+          .update({ total_turns: conversationTurns.length })
           .eq("call_id", callId);
 
         if (updateError) {
-          console.error("❌ Error updating total_turns:", updateError);
+          console.error("❌ Error updating total_turns in calls table:", updateError);
         }
       }
     }
