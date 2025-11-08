@@ -350,7 +350,6 @@ export async function POST(request: NextRequest) {
         })
         .map((msg: any, index: number) => ({
           call_id: callId,
-          business_id: business.id,
           turn_number: index + 1,
           role: msg.role === "user" ? "user" : msg.role === "assistant" ? "assistant" : "unknown",
           content: msg.content || "",
@@ -370,7 +369,6 @@ export async function POST(request: NextRequest) {
         })
         .map((msg: any, index: number) => ({
           call_id: callId,
-          business_id: business.id,
           turn_number: index + 1,
           role: msg.role === "bot" ? "assistant" : msg.role === "user" ? "user" : "unknown",
           content: msg.message || "",
