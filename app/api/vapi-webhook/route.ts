@@ -427,19 +427,22 @@ export async function POST(request: NextRequest) {
       }
     } else if (messageType === "conversation-update") {
       const messageStatus = message.status || null;
-      const isInProgress = messageStatus === "in-progress" || (!messageStatus && call.status === "ringing");
+      // Always check if call exists and set started_at if it's a new call
+      const { data: existingCall } = await supabaseAdmin
+        .from("calls")
+        .select("started_at, status")
+        .eq("call_id", callId)
+        .maybeSingle();
       
-      if (isInProgress) {
-        const { data: existingCall } = await supabaseAdmin
-          .from("calls")
-          .select("started_at")
-          .eq("call_id", callId)
-          .maybeSingle();
-        
-        const existing = existingCall as { started_at: string | null } | null;
-        if (!existing || !existing.started_at) {
-          callData.started_at = new Date().toISOString();
-          console.log("📞 New call created (conversation-update):", callId);
+      const existing = existingCall as { started_at: string | null; status: string | null } | null;
+      if (!existing || !existing.started_at) {
+        // New call - set started_at immediately
+        callData.started_at = new Date().toISOString();
+        console.log("📞 New call created (conversation-update):", callId, "status:", status);
+      } else if (existing.started_at && !callData.ended_at) {
+        // Existing active call - ensure status is set correctly
+        if (!status || status === "ended") {
+          status = existing.status || "in-progress";
         }
       }
       
