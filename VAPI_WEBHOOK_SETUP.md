@@ -38,9 +38,9 @@ https://your-app.vercel.app/api/vapi-webhook
    ```
 5. Save the configuration
 
-#### Context Tool Configuration (Required for Context Injection)
+#### Context Tool Configuration (Recommended for Context Injection)
 
-**Important**: Vapi cannot use webhook responses for context injection. You need to add the context endpoint as a tool.
+**Note**: Webhooks are typically one-way communication. While we're including business context in webhook responses, the standard and recommended approach for context injection is to use a Tool. This is what Vapi's Tools system is designed for.
 
 1. Go to **Tools** in Vapi Dashboard
 2. Add a new **Server URL** tool
@@ -222,15 +222,20 @@ Once this is working:
 
 ## 💡 How Context Injection Works
 
-**Option 1: Webhook Response (Recommended)**
-- The webhook automatically returns full business context in every response
-- Vapi can access this data from the webhook response
-- No additional tool calls needed
-- More efficient (1 call instead of 15-20)
+**Important Note**: Webhooks are typically one-way (Vapi sends data to you, you acknowledge). Whether Vapi can use webhook response data for context injection is unclear. The tool approach is the standard method.
 
-**Option 2: Separate Tool Call**
+**Option 1: Tool Call (Recommended - Known to Work)**
 - Add `/api/vapi-context` as a Server URL tool in Vapi
 - Vapi calls it when needed: `{ "to_number": "{{phoneNumber.number}}" }`
-- Returns same business context data
-- Use this if you need explicit tool calls in your workflow
+- Returns full business context data
+- This is the standard approach for context injection
+- **This is what you should use** - it's designed for this purpose
+
+**Option 2: Webhook Response (Uncertain - Needs Testing)**
+- The webhook automatically returns full business context in every response
+- **We're not 100% certain if Vapi can use this data**
+- If you want to test: Check Vapi logs to see if it accesses the webhook response
+- If it doesn't work, use Option 1 (Tool Call)
+
+**Recommendation**: Use the Tool approach (Option 1) - it's designed for this and we know it works once the environment variable is set.
 
