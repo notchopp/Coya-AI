@@ -31,9 +31,10 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         return;
       }
 
-      // Check if user is admin (whochoppa@gmail.com)
+      // Check if user is admin (whochoppa@gmail.com or specific user ID)
       const userEmail = session.user.email?.toLowerCase();
-      const isAdminUser = userEmail === "whochoppa@gmail.com";
+      const userId = session.user.id;
+      const isAdminUser = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
       setIsAdmin(isAdminUser);
       
       if (isAdminUser) {

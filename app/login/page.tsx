@@ -38,7 +38,21 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Get user's business_id from users table using auth_user_id
+        // Check if user is admin (whochoppa@gmail.com or specific user ID)
+        const userEmail = data.user.email?.toLowerCase();
+        const userId = data.user.id;
+        const isAdminUser = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+        
+        if (isAdminUser) {
+          // Admin user - skip users table check, go directly to ops
+          console.log("✅ Admin user signed in:", userEmail || userId);
+          router.push("/ops");
+          router.refresh();
+          setLoading(false);
+          return;
+        }
+
+        // Regular users - get business_id from users table
         type UserData = {
           business_id: string;
           is_active: boolean;

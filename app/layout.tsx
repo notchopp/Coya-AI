@@ -26,10 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Suppress CSP warnings in dev mode - Next.js uses eval() for HMR */}
+        {/* CSP policy - allows Next.js blob URLs and required sources */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'none';"
+          content="script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; object-src 'none';"
         />
       </head>
       <body

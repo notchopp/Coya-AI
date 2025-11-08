@@ -102,6 +102,20 @@ export default function AuthCallbackPage() {
             return;
           }
 
+          // Check if user is admin (whochoppa@gmail.com or specific user ID)
+          const userEmail = data.user.email?.toLowerCase();
+          const userId = data.user.id;
+          const isAdminUser = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+          
+          if (isAdminUser) {
+            // Admin user - skip users table check, go directly to ops
+            console.log("✅ Admin user authenticated:", userEmail || userId);
+            router.push("/ops");
+            router.refresh();
+            setLoading(false);
+            return;
+          }
+
           // User is authenticated, check if they need to set password first
           // For invite flow, they should set password before accessing dashboard
           // This check is already handled above, so if we reach here, user is fully set up
@@ -188,15 +202,28 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          // Store in sessionStorage
-          sessionStorage.setItem("business_id", userData.business_id);
-          if (userData.role) {
-            sessionStorage.setItem("user_role", userData.role);
-          }
+      // Check if user is admin before storing business_id
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const authUserEmail = authUser?.email?.toLowerCase();
+      const authUserId = authUser?.id;
+      const isAdminUserAfterPassword = authUserEmail === "whochoppa@gmail.com" || authUserId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+      
+      if (isAdminUserAfterPassword) {
+        // Admin user - go directly to ops
+        router.push("/ops");
+        router.refresh();
+        return;
+      }
 
-          // Redirect to dashboard
-          router.push("/");
-          router.refresh();
+      // Store in sessionStorage
+      sessionStorage.setItem("business_id", userData.business_id);
+      if (userData.role) {
+        sessionStorage.setItem("user_role", userData.role);
+      }
+
+      // Redirect to dashboard
+      router.push("/");
+      router.refresh();
         }
       } catch (err) {
         console.error("Auth callback error:", err);
@@ -326,6 +353,22 @@ export default function AuthCallbackPage() {
       if (!userData.is_active) {
         setError("Your account has been deactivated. Please contact your administrator.");
         setSettingPassword(false);
+        return;
+      }
+
+      // Check if user is admin before storing business_id
+      const { data: { user: authUserForPassword } } = await supabase.auth.getUser();
+      const authUserEmailForPassword = authUserForPassword?.email?.toLowerCase();
+      const authUserIdForPassword = authUserForPassword?.id;
+      const isAdminUserAfterPassword = authUserEmailForPassword === "whochoppa@gmail.com" || authUserIdForPassword === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+      
+      if (isAdminUserAfterPassword) {
+        // Admin user - go directly to ops
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/ops");
+          router.refresh();
+        }, 2000);
         return;
       }
 
