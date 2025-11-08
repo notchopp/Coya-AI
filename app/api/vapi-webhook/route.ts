@@ -328,7 +328,33 @@ export async function POST(request: NextRequest) {
 
     // 1️⃣1️⃣ Extract summary/intent
     let summary = callSummary || analysis?.summary || message.summary || null;
-    const intent = analysis?.intent || null;
+    
+    // Extract intent from multiple sources (priority order):
+    // 1. analysis.intent (direct from Vapi)
+    // 2. service_type from structured outputs/variables (what user was using)
+    // 3. Parse from summary if it mentions specific services
+    // 4. variables.intent as fallback
+    let intent = analysis?.intent || 
+                 bookingDetails.serviceType || 
+                 variables.service_type || 
+                 variables.intent || 
+                 null;
+    
+    // If no intent found but we have a summary, try to extract from summary
+    if (!intent && summary) {
+      const summaryLower = summary.toLowerCase();
+      // Check if summary mentions specific intents
+      if (summaryLower.includes("book") || summaryLower.includes("appointment")) {
+        intent = "appointment_booking";
+      } else if (summaryLower.includes("cancel")) {
+        intent = "appointment_cancellation";
+      } else if (summaryLower.includes("reschedule")) {
+        intent = "appointment_reschedule";
+      } else if (summaryLower.includes("question") || summaryLower.includes("inquire")) {
+        intent = "general_inquiry";
+      }
+    }
+    
     const successEvaluation = analysis?.successEvaluation || analysis?.success_evaluation || null;
     const success = successEvaluation === "true" || successEvaluation === true || successEvaluation === 1;
 
