@@ -297,8 +297,8 @@ export async function POST(request: NextRequest) {
                    variables.confirmation_status === "Upsell" ||
                    (analysis?.summary && analysis.summary.toLowerCase().includes("upsell"));
 
-    // 9️⃣ Determine status
-    let status = "active";
+    // 9️⃣ Determine status - ensure new calls get "in-progress" status
+    let status = "in-progress"; // Default to in-progress for new/active calls
     if (messageType === "end-of-call-report") {
       status = "ended";
     } else if (messageType === "status-update") {
@@ -309,10 +309,17 @@ export async function POST(request: NextRequest) {
       if (messageStatus === "forwarding") {
         status = "forwarding";
       } else if (messageStatus === "started" || messageStatus === "stopped") {
+        // For speech updates, preserve existing status or default to in-progress
         status = callStatus || "in-progress";
       } else {
+        // For new conversation updates, use in-progress if no status
         status = callStatus || messageStatus || "in-progress";
       }
+    }
+    
+    // Ensure we never have null/undefined status for active calls
+    if (!status || status === "null" || status === "undefined") {
+      status = "in-progress";
     }
 
     // 🔟 Extract transcript

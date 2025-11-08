@@ -373,15 +373,19 @@ export default function LiveCallsPage() {
       console.log("📞 Raw calls data:", callsData);
       console.log("📞 Total calls fetched:", callsData?.length || 0);
 
-      // Filter for active calls (check multiple variations)
-      // Also include calls that are updating (might have null/undefined status temporarily)
+      // Filter for active calls - be very permissive to catch all active calls
+      // Accept: active, in-progress, in_progress, or any call with started_at and no ended_at
       const activeCalls = (callsData || []).filter(c => {
         const statusLower = c.status?.toLowerCase()?.trim();
+        const hasStarted = !!c.started_at;
+        const hasNotEnded = !c.ended_at;
+        
+        // Accept if status is active/in-progress OR if it has started_at and no ended_at
         const isActive = statusLower === "active" || 
                         statusLower === "in-progress" || 
                         statusLower === "in_progress" ||
-                        (!statusLower && c.started_at && !c.ended_at); // Include calls that are in progress but status might be updating
-        console.log(`Call ${c.call_id}: status="${c.status}" (lowercase: "${statusLower}"), isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
+                        (hasStarted && hasNotEnded); // Most permissive - any call that started and hasn't ended
+        console.log(`Call ${c.call_id}: status="${c.status}" (lowercase: "${statusLower}"), started_at=${hasStarted}, ended_at=${!!c.ended_at}, isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
         return isActive;
       });
 
@@ -496,18 +500,17 @@ export default function LiveCallsPage() {
             const call = payload.new as Call;
             const oldCall = payload.old as Call;
 
-            // Handle INSERT (new call - accept both "active" and "in-progress" status)
+            // Handle INSERT (new call - be very permissive to catch all new calls)
             if (payload.eventType === "INSERT") {
-              const statusLower = call.status?.toLowerCase()?.trim();
-              const isActive = statusLower === "active" || 
-                              statusLower === "in-progress" || 
-                              statusLower === "in_progress" ||
-                              (!statusLower && call.started_at && !call.ended_at);
+              // Accept ANY new call that has started_at and no ended_at (regardless of status)
+              // This ensures we catch calls even if status is null or "in-progress"
+              const isNewCall = call.started_at && !call.ended_at;
               
-              if (isActive) {
-                console.log("🆕 New call detected:", call.call_id, "status:", call.status);
+              if (isNewCall) {
+                console.log("🆕 New call detected (INSERT):", call.call_id, "status:", call.status, "started_at:", call.started_at);
                 setCalls((prev) => {
                   if (prev.find(c => c.id === call.id || c.call_id === call.call_id)) return prev;
+                  console.log("✅ Adding new call to UI:", call.call_id);
                   return [call, ...prev];
                 });
                 
@@ -526,6 +529,8 @@ export default function LiveCallsPage() {
                           [call.call_id]: typedTurnData,
                         }));
                         console.log("✅ Loaded initial turn data for new call:", call.call_id);
+                      } else if (turnsError) {
+                        console.log("⚠️ No turn data yet for new call (will load when available):", call.call_id);
                       }
                     });
                 }
@@ -568,34 +573,23 @@ export default function LiveCallsPage() {
                 });
                 
                 // Always reload turn for this call when it updates (to get latest transcript_json)
-                // Match by call_id OR to_number (no business_id)
+                // This ensures transcripts update in real-time
                 if (call.call_id) {
-                  let query = supabase
+                  supabase
                     .from("call_turns" as any)
-                    .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number");
-                  
-                  // Try call_id first, fallback to to_number
-                  if (call.call_id) {
-                    query = query.eq("call_id", call.call_id);
-                  } else {
-                    return;
-                  }
-                  
-                  query.maybeSingle().then(({ data: turnData, error: turnsError }) => {
-                    if (!turnsError && turnData) {
-                      const typedTurnData = turnData as unknown as CallTurn;
-                      // Verify match by call_id
-                      const matches = call.call_id && typedTurnData.call_id === call.call_id;
-                      
-                      if (matches && call.call_id) {
-                        console.log(`🔄 Reloaded turn for updated call ${call.call_id} (status: ${call.status})`);
+                    .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
+                    .eq("call_id", call.call_id)
+                    .maybeSingle()
+                    .then(({ data: turnData, error: turnsError }) => {
+                      if (!turnsError && turnData && call.call_id) {
+                        const typedTurnData = turnData as unknown as CallTurn;
+                        console.log(`🔄 Reloaded turn for updated call ${call.call_id} (status: ${call.status}, turns: ${typedTurnData.total_turns})`);
                         setCallTurns((prev) => ({
                           ...prev,
                           [call.call_id]: typedTurnData,
                         }));
                       }
-                    }
-                  });
+                    });
                 }
                 } else {
                   // Remove if no longer active
@@ -637,52 +631,43 @@ export default function LiveCallsPage() {
                      total_turns: turn?.total_turns
                    });
                    
-                   // Reload turn and verify it matches an active call
-                   // Match by call_id OR to_number (no business_id)
-                   if (turn?.call_id || turn?.to_number) {
-                     let query = supabase
-                       .from("call_turns" as any)
-                       .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number");
+                   // Immediately update transcript for matching active call
+                   // Match by call_id (most reliable)
+                   if (turn?.call_id) {
+                     console.log(`🔄 Call turn updated (${payload.eventType}):`, turn.call_id, "total_turns:", turn.total_turns);
                      
-                     // Match by call_id or to_number
-                     if (turn.call_id) {
-                       query = query.eq("call_id", turn.call_id);
-                     } else if (turn.to_number) {
-                       query = query.eq("to_number", turn.to_number.trim());
-                     } else {
-                       return;
-                     }
-                     
-                     const { data: turnData, error: turnsError } = await query.maybeSingle();
-
-                     if (turnsError) {
-                       console.error("❌ Error reloading turn:", turnsError);
-                     } else if (turnData) {
-                       const typedTurnData = turnData as unknown as CallTurn;
-                       console.log("✅ Reloaded turn data:", {
-                         call_id: typedTurnData.call_id,
-                         transcript_json_length: typedTurnData.transcript_json ? (Array.isArray(typedTurnData.transcript_json) ? typedTurnData.transcript_json.length : 'object') : 'null',
-                         total_turns: typedTurnData.total_turns
+                     // Find matching active call and update immediately (no need to reload from DB)
+                     setCalls((currentCalls) => {
+                       const matchingCall = currentCalls.find(call => {
+                         return call.call_id && turn.call_id && call.call_id === turn.call_id;
                        });
                        
-                       // Find matching active call and update immediately
-                       setCalls((currentCalls) => {
-                         const matchingCall = currentCalls.find(call => {
-                           return call.call_id && typedTurnData.call_id && call.call_id === typedTurnData.call_id;
-                         });
-                         
-                         if (matchingCall && matchingCall.call_id) {
-                           console.log(`✅ Updating transcript for call ${matchingCall.call_id} in real-time`);
-                           setCallTurns((prev) => ({
-                             ...prev,
-                             [matchingCall.call_id]: typedTurnData,
-                           }));
-                         } else {
-                           console.log("⚠️ No matching active call found for turn:", typedTurnData.call_id);
-                         }
-                         return currentCalls;
-                       });
-                     }
+                       if (matchingCall && turn.call_id) {
+                         console.log(`✅ Updating transcript for call ${matchingCall.call_id} in real-time (${turn.total_turns} turns)`);
+                         setCallTurns((prev) => ({
+                           ...prev,
+                           [turn.call_id]: turn,
+                         }));
+                       } else {
+                         // If no matching call, try to reload from DB (might be a new call)
+                         supabase
+                           .from("call_turns" as any)
+                           .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
+                           .eq("call_id", turn.call_id)
+                           .maybeSingle()
+                           .then(({ data: turnData }) => {
+                             if (turnData && turn.call_id) {
+                               const typedTurnData = turnData as unknown as CallTurn;
+                               setCallTurns((prev) => ({
+                                 ...prev,
+                                 [turn.call_id]: typedTurnData,
+                               }));
+                               console.log(`✅ Loaded turn data for call ${turn.call_id}`);
+                             }
+                           });
+                       }
+                       return currentCalls;
+                     });
                    }
                  }
                )
@@ -692,17 +677,13 @@ export default function LiveCallsPage() {
       
       channels.push(turnsChannel);
 
-      // Poll for updates every 5 seconds to catch transcript changes
+      // Poll for updates every 2 seconds to catch transcript changes quickly
       // This ensures we catch any updates even if real-time subscription misses them
-      // Reduced frequency to prevent flickering
       const pollInterval = setInterval(() => {
         if (isMounted) {
-          // Only reload if we have active calls to avoid flickering
-          if (calls.length > 0) {
-            loadActiveCalls();
-          }
+          loadActiveCalls();
         }
-      }, 5000);
+      }, 2000);
 
       return () => {
         isMounted = false;
