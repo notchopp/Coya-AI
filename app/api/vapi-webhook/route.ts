@@ -288,9 +288,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 8️⃣ Determine escalate and upsell booleans
-    const escalate = escalationData !== null || 
-                     variables.confirmation_status === "Escalated" ||
-                     (analysis?.summary && analysis.summary.toLowerCase().includes("escalat"));
+    // Only escalate if call is actually being forwarded (no guessing)
+    const escalate = escalationData !== null;
 
     const upsell = upsellOpportunity || 
                    upsellDetected || 
