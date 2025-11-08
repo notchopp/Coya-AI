@@ -25,6 +25,7 @@ import {
   AlertCircle,
   GitBranch,
   Brain,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/calls", label: "Live Calls", icon: Phone },
   { href: "/logs", label: "Call Logs", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/ops", label: "Operations", icon: BarChart3 },
   { href: "/flowchart", label: "Flowchart", icon: GitBranch, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

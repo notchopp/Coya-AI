@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase";
 import { 
   TrendingUp, 
   TrendingDown,
@@ -42,11 +44,30 @@ type BusinessStats = {
 type TimeRange = "today" | "week" | "month";
 
 export default function OperationsDashboard() {
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<BusinessStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>("today");
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Check authentication
+  useEffect(() => {
+    async function checkAuth() {
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+      
+      setAuthLoading(false);
+    }
+    
+    checkAuth();
+  }, [router]);
 
   const loadBusinessStats = async () => {
     try {
@@ -151,7 +172,7 @@ export default function OperationsDashboard() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
