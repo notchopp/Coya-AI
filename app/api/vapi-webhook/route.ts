@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const upsellOpportunity = structuredOutputs["cab290cc-887d-4f25-84c7-7ef34379975e"]?.result || false;
     const callSummary = structuredOutputs["cb78524f-7625-4bd3-a53f-cf561b5adf24"]?.result || null;
 
-    // 3️⃣ Extract escalation data
+    // 3️⃣ Extract escalation data - ONLY when call is actually being forwarded with a destination
     let escalationData: {
       forwarding_phone_number: string | null;
       destination_type: string;
@@ -85,15 +85,19 @@ export async function POST(request: NextRequest) {
       timestamp: string | null;
     } | null = null;
     if (messageType === "status-update" && message.status === "forwarding") {
-      escalationData = {
-        forwarding_phone_number: message.forwardingPhoneNumber || message.destination?.number || null,
-        destination_type: message.destination?.type || "number",
-        destination_number: message.destination?.number || null,
-        transfer_message: message.destination?.message || null,
-        transfer_mode: message.destination?.transferPlan?.mode || null,
-        sip_verb: message.destination?.transferPlan?.sipVerb || null,
-        timestamp: message.timestamp || null,
-      };
+      const forwardingNumber = message.forwardingPhoneNumber || message.destination?.number || null;
+      // Only create escalationData if there's an actual forwarding number
+      if (forwardingNumber) {
+        escalationData = {
+          forwarding_phone_number: forwardingNumber,
+          destination_type: message.destination?.type || "number",
+          destination_number: forwardingNumber,
+          transfer_message: message.destination?.message || null,
+          transfer_mode: message.destination?.transferPlan?.mode || null,
+          sip_verb: message.destination?.transferPlan?.sipVerb || null,
+          timestamp: message.timestamp || null,
+        };
+      }
     }
 
     // 4️⃣ Extract messages and process call turns (like n8n)
@@ -101,7 +105,6 @@ export async function POST(request: NextRequest) {
     const conversationTurns: any[] = [];
     let turnCounter = 1;
     let confidenceScores: number[] = [];
-    let upsellDetected = false;
     let n8nResponseBody = null;
 
     messages.forEach((msg: any) => {
@@ -110,7 +113,7 @@ export async function POST(request: NextRequest) {
         n8nResponseBody = msg.metadata.responseBody;
       }
       
-      // Check for escalation in tool calls
+      // Check for escalation in tool calls - ONLY if there's an actual destination number
       if (msg.toolCalls && Array.isArray(msg.toolCalls)) {
         msg.toolCalls.forEach((toolCall: any) => {
           if (toolCall.function?.name === "untitled_tool" || 
@@ -121,11 +124,13 @@ export async function POST(request: NextRequest) {
                 ? JSON.parse(toolCall.function.arguments) 
                 : toolCall.function?.arguments || {};
               
-              if (!escalationData) {
+              // Only create escalationData if there's an actual destination number
+              const destinationNumber = args.destination || args.number || args.phone || null;
+              if (destinationNumber && !escalationData) {
                 escalationData = {
-                  forwarding_phone_number: args.destination || args.number || args.phone || null,
+                  forwarding_phone_number: destinationNumber,
                   destination_type: "number",
-                  destination_number: args.destination || args.number || args.phone || null,
+                  destination_number: destinationNumber,
                   transfer_message: null,
                   transfer_mode: "blind-transfer",
                   sip_verb: "refer",
@@ -133,17 +138,7 @@ export async function POST(request: NextRequest) {
                 };
               }
             } catch (e) {
-              if (!escalationData) {
-                escalationData = {
-                  forwarding_phone_number: null,
-                  destination_type: "number",
-                  destination_number: null,
-                  transfer_message: null,
-                  transfer_mode: "blind-transfer",
-                  sip_verb: "refer",
-                  timestamp: msg.time || null,
-                };
-              }
+              // Don't create escalationData on error - only if we have actual forwarding
             }
           }
         });
@@ -157,17 +152,6 @@ export async function POST(request: NextRequest) {
           : null;
         if (avgConfidence !== null) {
           confidenceScores.push(avgConfidence);
-        }
-      }
-      
-      // Check for upsell indicators
-      const msgText = msg.message || msg.content || "";
-      if (msgText && typeof msgText === "string") {
-        const lcMessage = msgText.toLowerCase();
-        if (lcMessage.includes("promo") || lcMessage.includes("discount") || 
-            lcMessage.includes("deal") || lcMessage.includes("special") ||
-            lcMessage.includes("offer")) {
-          upsellDetected = true;
         }
       }
       
@@ -288,13 +272,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 8️⃣ Determine escalate and upsell booleans
-    // Only escalate if call is actually being forwarded (no guessing)
-    const escalate = escalationData !== null;
+    // Only escalate if call is actually being forwarded with a real destination (no guessing)
+    const escalate = escalationData !== null && 
+                     escalationData.forwarding_phone_number !== null &&
+                     escalationData.forwarding_phone_number.trim() !== "";
 
-    const upsell = upsellOpportunity || 
-                   upsellDetected || 
-                   variables.confirmation_status === "Upsell" ||
-                   (analysis?.summary && analysis.summary.toLowerCase().includes("upsell"));
+    // Only use structured output for upsell (no text analysis guessing)
+    const upsell = upsellOpportunity === true;
 
     // 9️⃣ Determine status - ensure new calls get "in-progress" status
     let status = "in-progress"; // Default to in-progress for new/active calls
