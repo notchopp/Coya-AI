@@ -415,9 +415,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5️⃣ Return success response to Vapi
-    // Vapi expects a quick response - we return success immediately
-    // The response can include context if needed, but typically just success is fine
+    // 5️⃣ Return success response to Vapi with full business context
+    // Vapi can use this business context data if needed
     const response: any = {
       success: true,
       call_id: callId,
@@ -426,13 +425,20 @@ export async function POST(request: NextRequest) {
       status: status,
     };
     
-    // Optionally include business context if Vapi needs it
-    // (Most webhooks just return success, but we can include context if required)
+    // Include full business context for Vapi to use
     if (business) {
       response.business = {
         id: business.id,
-        name: business.name,
-        // Add any other context Vapi might need
+        name: business.name || null,
+        vertical: business.vertical || null,
+        address: business.address || null,
+        hours: business.hours || null,
+        services: business.services || null,
+        insurances: business.insurances || null,
+        staff: business.staff || null,
+        faqs: business.faqs || null,
+        promos: business.promos || null,
+        to_number: business.to_number || null,
       };
     }
     

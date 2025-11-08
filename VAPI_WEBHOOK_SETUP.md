@@ -1,6 +1,11 @@
-# Vapi Webhook Setup - Vercel Serverless
+# Vapi Integration Setup - Vercel Serverless
 
-This replaces your n8n webhook with a fast Vercel serverless endpoint that can handle high concurrency without queueing issues.
+This replaces your n8n webhook and tool with fast Vercel serverless endpoints that can handle high concurrency without queueing issues.
+
+## 📦 Two Endpoints
+
+1. **`/api/vapi-webhook`** - Receives call updates from Vapi (replaces n8n webhook)
+2. **`/api/vapi-context`** - Returns business context for Vapi calls (replaces n8n tool)
 
 ## 🚀 Why This is Better
 
@@ -8,6 +13,7 @@ This replaces your n8n webhook with a fast Vercel serverless endpoint that can h
 - **Handles High Concurrency**: Can process 10+ concurrent calls without exploding
 - **Cost Effective**: No per-execution credits (12-20 turns = 1 webhook call, not 20)
 - **Instant Updates**: Supabase Realtime updates your UI immediately
+- **Context Injection**: Business context returned in webhook response (no separate tool calls needed)
 
 ## 📋 Setup Steps
 
@@ -21,22 +27,51 @@ https://your-app.vercel.app/api/vapi-webhook
 
 ### 2. Configure Vapi
 
+#### Webhook Configuration
+
 1. Go to your Vapi Dashboard
 2. Navigate to **Phone Numbers** → Select your phone number
 3. Find the **"Server URL"** or **"Webhook URL"** field
-4. Paste your Vercel endpoint URL:
+4. Paste your Vercel webhook endpoint URL:
    ```
    https://your-app.vercel.app/api/vapi-webhook
    ```
 5. Save the configuration
 
-### 3. Test the Webhook
+#### Context Tool Configuration (Optional - if you want to call it as a tool)
 
-The endpoint includes a GET handler for health checks:
+If you want Vapi to call the context endpoint as a tool (like the old n8n tool), add it as a Server URL tool:
+
+1. Go to **Tools** in Vapi Dashboard
+2. Add a new **Server URL** tool
+3. URL: `https://your-app.vercel.app/api/vapi-context`
+4. Method: `POST`
+5. Request Body: `{ "to_number": "{{phoneNumber.number}}" }`
+6. Description: "Get business context for the current call"
+
+**Note**: The webhook now returns full business context in its response, so you may not need a separate tool call. The webhook response includes all business data (name, hours, services, FAQs, etc.) that Vapi can use.
+
+### 3. Test the Endpoints
+
+Both endpoints include GET handlers for health checks:
 
 ```bash
+# Test webhook
 curl https://your-app.vercel.app/api/vapi-webhook
 # Should return: {"status":"ok","service":"vapi-webhook"}
+
+# Test context endpoint
+curl https://your-app.vercel.app/api/vapi-context
+# Should return: {"status":"ok","service":"vapi-context","description":"Returns business context for Vapi calls"}
+```
+
+Test the context endpoint with a POST request:
+
+```bash
+curl -X POST https://your-app.vercel.app/api/vapi-context \
+  -H "Content-Type: application/json" \
+  -d '{"to_number": "+1234567890"}'
+# Should return full business context JSON
 ```
 
 ## 🔄 How It Works
@@ -57,7 +92,7 @@ curl https://your-app.vercel.app/api/vapi-webhook
 4. **Upsert call record** in `calls` table
 5. **Upsert call turns** in `call_turns` table (if present)
 6. **Update total_turns** count
-7. **Return success** to Vapi (fast response, no retries)
+7. **Return success + full business context** to Vapi (includes name, hours, services, FAQs, etc.)
 
 ### Data Mapping
 
@@ -124,18 +159,63 @@ Make sure these are set in Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL` ✅ (already set)
 - `SUPABASE_SERVICE_ROLE_KEY` ✅ (already set)
 
+## 📝 Webhook Response Format
+
+The webhook now returns full business context in the response:
+
+```json
+{
+  "success": true,
+  "call_id": "call-123",
+  "business_id": "business-456",
+  "message_type": "conversation-update",
+  "status": "in-progress",
+  "business": {
+    "id": "business-456",
+    "name": "Your Business Name",
+    "vertical": "healthcare",
+    "address": "123 Main St",
+    "hours": { "monday": "9am-5pm", ... },
+    "services": ["Service 1", "Service 2"],
+    "insurances": ["Insurance 1", "Insurance 2"],
+    "staff": [...],
+    "faqs": [...],
+    "promos": [...],
+    "to_number": "+1234567890"
+  }
+}
+```
+
+Vapi can use this business context data directly from the webhook response, eliminating the need for separate tool calls.
+
 ## 🎯 Next Steps
 
 1. ✅ Deploy to Vercel (already done when you push)
 2. ✅ Update Vapi webhook URL to point to Vercel
-3. ✅ Test with a real call
-4. ✅ Monitor Vercel logs for any issues
-5. ✅ Keep n8n for secondary workflows (daily summaries, follow-ups, etc.)
+3. ✅ (Optional) Add context endpoint as a tool if you want explicit tool calls
+4. ✅ Test with a real call - check webhook response for business context
+5. ✅ Monitor Vercel logs for any issues
+6. ✅ Keep n8n disabled or use it for secondary workflows (daily summaries, follow-ups, etc.)
 
 ## 🔄 Migration from n8n
 
 Once this is working:
-- Keep n8n webhook disabled or remove it
-- Use n8n for batch jobs (daily summaries, reports, etc.)
-- All real-time call processing happens in Vercel
+- ✅ **Disable n8n webhook** - Vercel webhook handles all call updates
+- ✅ **Disable n8n tool** - Business context is returned in webhook response (or use `/api/vapi-context` as a tool)
+- ✅ **Use n8n for batch jobs** - Daily summaries, reports, follow-ups, etc.
+- ✅ **All real-time call processing** happens in Vercel
+
+## 💡 How Context Injection Works
+
+**Option 1: Webhook Response (Recommended)**
+- The webhook automatically returns full business context in every response
+- Vapi can access this data from the webhook response
+- No additional tool calls needed
+- More efficient (1 call instead of 15-20)
+
+**Option 2: Separate Tool Call**
+- Add `/api/vapi-context` as a Server URL tool in Vapi
+- Vapi calls it when needed: `{ "to_number": "{{phoneNumber.number}}" }`
+- Returns same business context data
+- Use this if you need explicit tool calls in your workflow
 
