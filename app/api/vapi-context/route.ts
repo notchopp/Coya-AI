@@ -32,15 +32,20 @@ export async function POST(request: NextRequest) {
     // 2. Nested format: { "phoneNumber": { "number": "..." } }
     // 3. Function call format: { "arguments": { "to_number": "..." } }
     // 4. Raw string phone number
-    const toNumber = body.to_number || 
-                     body.phoneNumber?.number || 
-                     body.phoneNumber || 
-                     body.number ||
-                     body.arguments?.to_number ||
-                     body.arguments?.phoneNumber?.number ||
-                     body.arguments?.phoneNumber ||
-                     (typeof body === 'string' ? body : null) ||
-                     null;
+    let toNumber = body.to_number || 
+                   body.phoneNumber?.number || 
+                   body.phoneNumber || 
+                   body.number ||
+                   body.arguments?.to_number ||
+                   body.arguments?.phoneNumber?.number ||
+                   body.arguments?.phoneNumber ||
+                   (typeof body === 'string' ? body : null) ||
+                   null;
+
+    // Clean and trim the phone number (remove newlines, whitespace, etc.)
+    if (toNumber && typeof toNumber === 'string') {
+      toNumber = toNumber.trim().replace(/\n/g, '').replace(/\r/g, '');
+    }
 
     console.log("📞 Vapi context request received:", {
       rawBody: body,
