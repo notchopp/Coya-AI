@@ -374,9 +374,13 @@ export default function LiveCallsPage() {
       console.log("📞 Total calls fetched:", callsData?.length || 0);
 
       // Filter for active calls (check multiple variations)
+      // Also include calls that are updating (might have null/undefined status temporarily)
       const activeCalls = (callsData || []).filter(c => {
         const statusLower = c.status?.toLowerCase()?.trim();
-        const isActive = statusLower === "active" || statusLower === "in-progress" || statusLower === "in_progress";
+        const isActive = statusLower === "active" || 
+                        statusLower === "in-progress" || 
+                        statusLower === "in_progress" ||
+                        (!statusLower && c.started_at && !c.ended_at); // Include calls that are in progress but status might be updating
         console.log(`Call ${c.call_id}: status="${c.status}" (lowercase: "${statusLower}"), isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
         return isActive;
       });
@@ -455,7 +459,11 @@ export default function LiveCallsPage() {
         setCallTurns({});
       }
 
-      setCalls(activeCalls);
+      // Only update calls if we have active calls OR if we previously had calls (to handle transitions smoothly)
+      // This prevents flickering when status updates temporarily
+      if (activeCalls.length > 0 || calls.length > 0) {
+        setCalls(activeCalls);
+      }
 
       // Check if any call just ended
       const previousCallIds = calls.map(c => c.id);
@@ -643,13 +651,17 @@ export default function LiveCallsPage() {
       
       channels.push(turnsChannel);
 
-      // Poll for updates every 2 seconds to catch transcript changes
+      // Poll for updates every 5 seconds to catch transcript changes
       // This ensures we catch any updates even if real-time subscription misses them
+      // Reduced frequency to prevent flickering
       const pollInterval = setInterval(() => {
         if (isMounted) {
-          loadActiveCalls();
+          // Only reload if we have active calls to avoid flickering
+          if (calls.length > 0) {
+            loadActiveCalls();
+          }
         }
-      }, 2000);
+      }, 5000);
 
       return () => {
         isMounted = false;
@@ -666,7 +678,7 @@ export default function LiveCallsPage() {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted, calls.length]);
+  }, [supabase, effectiveBusinessId, mounted]); // Removed calls.length to prevent flickering
 
   function handleViewFullLog(callId: string) {
     router.push(`/logs?callId=${callId}`);
