@@ -37,7 +37,8 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
       setIsAdmin(isAdminUser);
       
       if (isAdminUser) {
-        // Admin user - redirect to ops if on regular pages
+        // Admin user - skip users table check, redirect to ops if on regular pages
+        console.log("✅ Admin user detected:", userEmail);
         if (pathname !== "/ops" && pathname !== "/login" && pathname !== "/auth/callback") {
           router.push("/ops");
           setLoading(false);
@@ -47,7 +48,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         return;
       }
 
-      // Get business_id if not in sessionStorage (for regular users)
+      // Regular users - need users table record with business_id
       const storedBusinessId = sessionStorage.getItem("business_id");
       
       if (!storedBusinessId) {
