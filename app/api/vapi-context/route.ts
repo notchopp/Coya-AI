@@ -63,12 +63,107 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Lookup business by to_number
-    const { data: business, error: businessError } = await supabaseAdmin
+    // Normalize phone number - try multiple formats
+    // Remove all non-digit characters except +
+    const normalizedNumber = toNumber.replace(/[^\d+]/g, '');
+    // Also try with just digits (no +)
+    const digitsOnly = normalizedNumber.replace(/\+/g, '');
+    // Try with +1 prefix
+    const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
+    // Try without +1 prefix
+    const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
+
+    console.log("🔍 Trying phone number formats:", {
+      original: toNumber,
+      normalized: normalizedNumber,
+      digitsOnly,
+      withPlusOne,
+      withoutPlusOne,
+    });
+
+    // Try multiple formats
+    let business: any = null;
+    let businessError: any = null;
+
+    // Try 1: Exact match with cleaned number
+    let { data, error } = await supabaseAdmin
       .from("businesses")
       .select("*")
       .eq("to_number", toNumber)
       .maybeSingle();
+    
+    console.log("🔍 First lookup attempt:", {
+      searchingFor: toNumber,
+      found: !!data,
+      error: error?.message,
+      errorCode: error?.code,
+    });
+    
+    if (data) {
+      business = data;
+      console.log("✅ Found business on first try!");
+    } else if (error && error.code !== "PGRST116") {
+      businessError = error;
+    }
+
+    // Try 2: Normalized (no spaces/dashes)
+    if (!business) {
+      ({ data, error } = await supabaseAdmin
+        .from("businesses")
+        .select("*")
+        .eq("to_number", normalizedNumber)
+        .maybeSingle());
+      
+      if (data) {
+        business = data;
+        console.log("✅ Found business with normalized format:", normalizedNumber);
+      } else if (error && error.code !== "PGRST116") {
+        businessError = error;
+      }
+    }
+
+    // Try 3: With +1 prefix
+    if (!business) {
+      ({ data, error } = await supabaseAdmin
+        .from("businesses")
+        .select("*")
+        .eq("to_number", withPlusOne)
+        .maybeSingle());
+      
+      if (data) {
+        business = data;
+        console.log("✅ Found business with +1 format:", withPlusOne);
+      } else if (error && error.code !== "PGRST116") {
+        businessError = error;
+      }
+    }
+
+    // Try 4: Without +1 prefix
+    if (!business) {
+      ({ data, error } = await supabaseAdmin
+        .from("businesses")
+        .select("*")
+        .eq("to_number", withoutPlusOne)
+        .maybeSingle());
+      
+      if (data) {
+        business = data;
+        console.log("✅ Found business without +1 format:", withoutPlusOne);
+      } else if (error && error.code !== "PGRST116") {
+        businessError = error;
+      }
+    }
+
+    // Debug: List all businesses to see what format they use
+    if (!business) {
+      const { data: allBusinesses } = await supabaseAdmin
+        .from("businesses")
+        .select("id, name, to_number")
+        .limit(10);
+      
+      console.log("🔍 Sample businesses in database:", allBusinesses);
+      console.log("🔍 Looking for:", { toNumber, normalizedNumber, digitsOnly, withPlusOne, withoutPlusOne });
+    }
 
     if (businessError && businessError.code !== "PGRST116") {
       console.error("Error fetching business:", businessError);
@@ -79,9 +174,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (!business) {
-      console.warn("⚠️ Business not found for phone number:", toNumber);
+      console.warn("⚠️ Business not found for phone number after trying multiple formats:", {
+        original: toNumber,
+        normalized: normalizedNumber,
+        digitsOnly,
+        withPlusOne,
+        withoutPlusOne,
+      });
       return NextResponse.json(
-        { error: "Business not found for phone number", to_number: toNumber },
+        { error: "Business not found for phone number", to_number: toNumber, tried_formats: [toNumber, normalizedNumber, withPlusOne, withoutPlusOne] },
         { status: 404 }
       );
     }
