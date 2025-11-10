@@ -4,11 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink } from "lucide-react";
+import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
 import { useProgram } from "@/components/ProgramProvider";
+import { useUserRole } from "@/lib/useUserRole";
 
 type Call = {
   id: string;
@@ -315,9 +316,13 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
 export default function LiveCallsPage() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
+  const { role: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
+  const [callsByProgram, setCallsByProgram] = useState<Record<string, Call[]>>({});
+  const [programs, setPrograms] = useState<Array<{ id: string; name: string }>>([]);
   const [callTurns, setCallTurns] = useState<Record<string, CallTurn>>({}); // Store one turn record per call_id
   const [connected, setConnected] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
@@ -350,14 +355,23 @@ export default function LiveCallsPage() {
 
       console.log("🔍 Loading active calls for business_id:", effectiveBusinessId);
 
+      // Load programs if admin
+      if (isAdmin) {
+        const { data: programsData } = await (supabase as any)
+          .from("programs")
+          .select("id, name")
+          .eq("business_id", effectiveBusinessId);
+        setPrograms(programsData || []);
+      }
+
       // First, check all calls for this business to see what statuses exist
-      let allCallsQuery = supabase
+      let allCallsQuery = (supabase as any)
         .from("calls")
-        .select("id,business_id,call_id,status,patient_name")
+        .select("id,business_id,call_id,status,patient_name,program_id")
         .eq("business_id", effectiveBusinessId);
       
-      // Filter by program_id if program is selected
-      if (programId) {
+      // Filter by program_id if program is selected (non-admin) or show all (admin)
+      if (!isAdmin && programId) {
         allCallsQuery = allCallsQuery.eq("program_id", programId);
       }
       
@@ -367,16 +381,16 @@ export default function LiveCallsPage() {
       
       console.log("🔍 All calls for this business:", allCallsData?.length || 0);
       console.log("🔍 Sample calls:", allCallsData?.slice(0, 5));
-      console.log("🔍 Status values found:", allCallsData?.map(c => ({ call_id: c.call_id, status: c.status, patient_name: c.patient_name })));
+      console.log("🔍 Status values found:", allCallsData?.map((c: any) => ({ call_id: c.call_id, status: c.status, patient_name: c.patient_name })));
 
       // Now query for active calls (try both exact match and case-insensitive)
-      let callsQuery = supabase
+      let callsQuery = (supabase as any)
         .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns,program_id")
         .eq("business_id", effectiveBusinessId);
       
-      // Filter by program_id if program is selected
-      if (programId) {
+      // Filter by program_id if program is selected (non-admin) or show all (admin)
+      if (!isAdmin && programId) {
         callsQuery = callsQuery.eq("program_id", programId);
       }
       
@@ -393,7 +407,7 @@ export default function LiveCallsPage() {
       console.log("📞 Total calls fetched:", callsData?.length || 0);
 
       // Filter for active calls - only calls that have started and haven't ended
-      const activeCalls = (callsData || []).filter(c => {
+      const activeCalls = (callsData || []).filter((c: any) => {
         const hasStarted = !!c.started_at;
         const hasNotEnded = !c.ended_at;
         const statusLower = c.status?.toLowerCase()?.trim();
@@ -407,7 +421,7 @@ export default function LiveCallsPage() {
 
       console.log("✅ Active calls after filtering:", activeCalls.length);
       if (activeCalls.length > 0) {
-        console.log("📋 Active call details:", activeCalls.map(c => ({
+        console.log("📋 Active call details:", activeCalls.map((c: any) => ({
           call_id: c.call_id,
           status: c.status,
           patient_name: c.patient_name,
@@ -423,7 +437,7 @@ export default function LiveCallsPage() {
       // Load call turns for all active calls
       // Match by: call_id (call_turns doesn't have business_id)
       if (activeCalls.length > 0) {
-        const callIds = activeCalls.map(c => c.call_id).filter(Boolean);
+        const callIds = activeCalls.map((c: any) => c.call_id).filter(Boolean);
         
         console.log("🔄 Loading call turns for call_ids:", callIds);
         
@@ -456,7 +470,7 @@ export default function LiveCallsPage() {
           
           (turnsData || []).forEach((turn: CallTurn) => {
             // Find matching call by call_id
-            const matchingCall = activeCalls.find(call => {
+            const matchingCall = activeCalls.find((call: any) => {
               return call.call_id && turn.call_id && call.call_id === turn.call_id;
             });
             
@@ -479,6 +493,19 @@ export default function LiveCallsPage() {
         setCallTurns({});
       }
 
+      // Group calls by program for admins
+      if (isAdmin) {
+        const grouped: Record<string, Call[]> = {};
+        activeCalls.forEach((call: any) => {
+          const programId = call.program_id || "no-program";
+          if (!grouped[programId]) {
+            grouped[programId] = [];
+          }
+          grouped[programId].push(call as Call);
+        });
+        setCallsByProgram(grouped);
+      }
+
       // Only update calls if we have active calls OR if we previously had calls (to handle transitions smoothly)
       // This prevents flickering when status updates temporarily
       if (activeCalls.length > 0 || calls.length > 0) {
@@ -488,7 +515,7 @@ export default function LiveCallsPage() {
 
       // Check if any call just ended
       const previousCallIds = calls.map(c => c.id);
-      const currentCallIds = activeCalls.map(c => c.id);
+      const currentCallIds = activeCalls.map((c: any) => c.id);
       const endedCalls = previousCallIds.filter(id => !currentCallIds.includes(id));
       
       if (endedCalls.length > 0 && calls.length > 0) {
@@ -731,7 +758,7 @@ export default function LiveCallsPage() {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted, programId]); // Removed calls.length to prevent flickering
+  }, [supabase, effectiveBusinessId, mounted, programId, isAdmin]); // Removed calls.length to prevent flickering
 
   function handleViewFullLog(callId: string) {
     router.push(`/logs?callId=${callId}`);
@@ -882,6 +909,45 @@ export default function LiveCallsPage() {
           ? calls.map(call => applyAnonymization(call, true) as Call)
           : calls;
         
+        // For admins, show calls grouped by program
+        if (isAdmin && Object.keys(callsByProgram).length > 0) {
+          return (
+            <div className="space-y-6">
+              {Object.entries(callsByProgram).map(([programId, programCalls]) => {
+                const program = programs.find(p => p.id === programId);
+                const programName = program?.name || (programId === "no-program" ? "No Program" : "Unknown Program");
+                const displayProgramCalls = isAnonymized 
+                  ? programCalls.map(call => applyAnonymization(call, true) as Call)
+                  : programCalls;
+                
+                if (displayProgramCalls.length === 0) return null;
+                
+                return (
+                  <div key={programId} className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" style={{ color: accentColor }} />
+                      <h2 className="text-xl font-bold text-white">{programName}</h2>
+                      <span className="px-2 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-white/60">
+                        {displayProgramCalls.length} {displayProgramCalls.length === 1 ? "call" : "calls"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                      {displayProgramCalls.map((call, index) => {
+                        return renderCallCard(call, index);
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {Object.keys(callsByProgram).length === 0 && hasLoadedCalls && (
+                <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
+                  No active calls
+                </div>
+              )}
+            </div>
+          );
+        }
+        
         return displayCalls.length === 0 && hasLoadedCalls ? (
           <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
             No active calls
@@ -889,136 +955,141 @@ export default function LiveCallsPage() {
         ) : displayCalls.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:gap-6">
             {displayCalls.map((call, index) => {
-            const hasTranscriptContent = hasTranscript(call);
-            const messages = hasTranscriptContent ? getMessagesForCall(call) : [];
-
-            return (
-              <motion.div
-                key={call.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="rounded-2xl glass-strong border border-white/10 overflow-hidden"
-              >
-                {/* Call Header */}
-                <div className="p-4 sm:p-6 border-b border-white/10">
-                  <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
-                    <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div 
-                        className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border flex-shrink-0"
-                        style={{
-                          backgroundColor: `${accentColor}33`,
-                          borderColor: `${accentColor}4D`,
-                        }}
-                      >
-                        <PhoneIncoming className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base sm:text-lg font-bold text-white truncate">
-                          {call.patient_name || "Unknown Caller"}
-                        </h3>
-                        {call.phone && (
-                          <p className="text-xs sm:text-sm text-white/60 truncate">{call.phone}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
-                      {/* Small "Call in progress" badge */}
-                      <motion.div
-                        animate={{
-                          opacity: [0.6, 1, 0.6],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border"
-                        style={{
-                          backgroundColor: `${accentColor}33`,
-                          borderColor: `${accentColor}4D`,
-                        }}
-                      >
-                        <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
-                        <span className="text-xs font-medium" style={{ color: accentColor }}>Live</span>
-                      </motion.div>
-                      <div className="text-xs text-white/40">
-                        {format(new Date(call.started_at), "h:mm a")}
-                      </div>
-                    </div>
-                  </div>
-                  {call.last_intent && (
-                    <div className="mt-3">
-                      <span 
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium border"
-                        style={{
-                          backgroundColor: `${accentColor}33`,
-                          color: accentColor,
-                          borderColor: `${accentColor}4D`,
-                        }}
-                      >
-                        {call.last_intent}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Call Content - Transcript */}
-                <div className="p-6">
-                  {hasTranscriptContent && messages.length > 0 ? (
-                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                      {messages.map((message, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div className={`flex items-start gap-1.5 sm:gap-2 max-w-[85%] sm:max-w-[80%] ${message.role === "user" ? "flex-row-reverse ml-auto" : ""}`}>
-                            <div 
-                              className={`p-1 sm:p-1.5 rounded-full flex-shrink-0 border ${
-                                message.role === "user"
-                                  ? ""
-                                  : ""
-                              }`}
-                              style={message.role === "user" ? {
-                                backgroundColor: "rgba(59, 130, 246, 0.2)",
-                                borderColor: "rgba(59, 130, 246, 0.3)",
-                              } : {
-                                backgroundColor: `${accentColor}33`,
-                                borderColor: `${accentColor}4D`,
-                              }}
-                            >
-                              {message.role === "user" ? (
-                                <UserCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" />
-                              ) : (
-                                <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" style={{ color: accentColor }} />
-                              )}
-                            </div>
-                            <div className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl ${
-                              message.role === "user"
-                                ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
-                                : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
-                            }`}>
-                              <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-white/40 text-sm">
-                      Waiting for transcript...
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+              return renderCallCard(call, index);
+            })}
+          </div>
         ) : null;
       })()}
     </div>
   );
+  
+  function renderCallCard(call: Call, index: number) {
+    const hasTranscriptContent = hasTranscript(call);
+    const messages = hasTranscriptContent ? getMessagesForCall(call) : [];
+    const displayCall = isAnonymized ? applyAnonymization(call, true) as Call : call;
+    
+    return (
+      <motion.div
+        key={call.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.1 }}
+        className="rounded-2xl glass-strong border border-white/10 overflow-hidden"
+      >
+        {/* Call Header */}
+        <div className="p-4 sm:p-6 border-b border-white/10">
+          <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+              <div 
+                className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border flex-shrink-0"
+                style={{
+                  backgroundColor: `${accentColor}33`,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                <PhoneIncoming className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-white truncate">
+                  {displayCall.patient_name || "Unknown Caller"}
+                </h3>
+                {displayCall.phone && (
+                  <p className="text-xs sm:text-sm text-white/60 truncate">{displayCall.phone}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
+              {/* Small "Call in progress" badge */}
+              <motion.div
+                animate={{
+                  opacity: [0.6, 1, 0.6],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border"
+                style={{
+                  backgroundColor: `${accentColor}33`,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                <span className="text-xs font-medium" style={{ color: accentColor }}>Live</span>
+              </motion.div>
+              <div className="text-xs text-white/40">
+                {format(new Date(displayCall.started_at), "h:mm a")}
+              </div>
+            </div>
+          </div>
+          {displayCall.last_intent && (
+            <div className="mt-3">
+              <span 
+                className="px-2.5 py-1 rounded-lg text-xs font-medium border"
+                style={{
+                  backgroundColor: `${accentColor}33`,
+                  color: accentColor,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                {displayCall.last_intent}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Call Content - Transcript */}
+        <div className="p-6">
+          {hasTranscriptContent && messages.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {messages.map((message, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div className={`flex items-start gap-1.5 sm:gap-2 max-w-[85%] sm:max-w-[80%] ${message.role === "user" ? "flex-row-reverse ml-auto" : ""}`}>
+                    <div 
+                      className={`p-1 sm:p-1.5 rounded-full flex-shrink-0 border ${
+                        message.role === "user"
+                          ? ""
+                          : ""
+                      }`}
+                      style={message.role === "user" ? {
+                        backgroundColor: "rgba(59, 130, 246, 0.2)",
+                        borderColor: "rgba(59, 130, 246, 0.3)",
+                      } : {
+                        backgroundColor: `${accentColor}33`,
+                        borderColor: `${accentColor}4D`,
+                      }}
+                    >
+                      {message.role === "user" ? (
+                        <UserCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400" />
+                      ) : (
+                        <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" style={{ color: accentColor }} />
+                      )}
+                    </div>
+                    <div className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl ${
+                      message.role === "user"
+                        ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
+                        : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
+                    }`}>
+                      <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-white/40 text-sm">
+              Waiting for transcript...
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
 }

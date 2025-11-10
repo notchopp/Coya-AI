@@ -10,6 +10,8 @@ import { useAccentColor } from "@/components/AccentColorProvider";
 import CallDetailsModal from "@/components/CallDetailsModal";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
 import { useProgram } from "@/components/ProgramProvider";
+import { useUserRole } from "@/lib/useUserRole";
+import { Building2 } from "lucide-react";
 
 
 type Call = {
@@ -123,10 +125,14 @@ function parseTranscript(transcript: string): Message[] {
 function LogsPageContent() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
+  const { role: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
   const searchParams = useSearchParams();
   const callIdParam = searchParams.get("callId");
   const callCardRef = useRef<HTMLDivElement>(null);
   const [logs, setLogs] = useState<Call[]>([]);
+  const [logsByProgram, setLogsByProgram] = useState<Record<string, Call[]>>({});
+  const [programs, setPrograms] = useState<Array<{ id: string; name: string }>>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -181,13 +187,22 @@ function LogsPageContent() {
 
       console.log("🔄 Loading logs for business_id:", businessId);
 
-      let logsQuery = supabase
+      // Load programs if admin
+      if (isAdmin) {
+        const { data: programsData } = await (supabase as any)
+          .from("programs")
+          .select("id, name")
+          .eq("business_id", businessId);
+        setPrograms(programsData || []);
+      }
+
+      let logsQuery = (supabase as any)
         .from("calls")
         .select("*")
         .eq("business_id", businessId!);
       
-      // Filter by program_id if program is selected
-      if (programId) {
+      // Filter by program_id if program is selected (non-admin) or show all (admin)
+      if (!isAdmin && programId) {
         logsQuery = logsQuery.eq("program_id", programId);
       }
       
@@ -205,12 +220,27 @@ function LogsPageContent() {
 
       console.log("✅ Loaded logs:", data?.length || 0);
 
-      setLogs(data ?? []);
+      const logsData = (data || []) as Call[];
+      
+      // Group logs by program for admins
+      if (isAdmin) {
+        const grouped: Record<string, Call[]> = {};
+        logsData.forEach((call: any) => {
+          const programId = call.program_id || "no-program";
+          if (!grouped[programId]) {
+            grouped[programId] = [];
+          }
+          grouped[programId].push(call as Call);
+        });
+        setLogsByProgram(grouped);
+      }
+      
+      setLogs(logsData);
       setLoading(false);
     }
 
     loadLogs();
-  }, [mounted, programId]);
+  }, [mounted, programId, isAdmin]);
 
   const filteredLogs = useMemo(() => {
     let result = logs;
@@ -280,6 +310,81 @@ function LogsPageContent() {
 
     return result;
   }, [logs, search, filters]);
+
+  // For admins, filter logs by program and group them
+  const filteredLogsByProgram = useMemo(() => {
+    if (!isAdmin || Object.keys(logsByProgram).length === 0) {
+      return {};
+    }
+    
+    const grouped: Record<string, Call[]> = {};
+    Object.entries(logsByProgram).forEach(([programId, programLogs]) => {
+      let result = programLogs;
+      
+      // Apply search filter
+      if (search) {
+        const lowerSearch = search.toLowerCase();
+        result = result.filter(
+          (log) =>
+            log.phone?.toLowerCase().includes(lowerSearch) ||
+            log.email?.toLowerCase().includes(lowerSearch) ||
+            log.patient_name?.toLowerCase().includes(lowerSearch) ||
+            log.last_summary?.toLowerCase().includes(lowerSearch) ||
+            log.last_intent?.toLowerCase().includes(lowerSearch) ||
+            log.transcript?.toLowerCase().includes(lowerSearch)
+        );
+      }
+      
+      // Apply status filter
+      if (filters.status) {
+        result = result.filter((log) => log.status === filters.status);
+      }
+      
+      // Apply success filter
+      if (filters.success !== null) {
+        result = result.filter((log) => log.success === filters.success);
+      }
+      
+      // Apply intent filter
+      if (filters.intent) {
+        const intentLower = filters.intent.toLowerCase();
+        result = result.filter((log) => {
+          if (!log.last_intent) return false;
+          const logIntentLower = log.last_intent.toLowerCase();
+          if (intentLower === "booking") {
+            return logIntentLower.includes("booking") || 
+                   logIntentLower.includes("schedule") || 
+                   logIntentLower.includes("appointment");
+          }
+          if (intentLower === "faqs") {
+            return logIntentLower.includes("faq") || 
+                   logIntentLower.includes("question") || 
+                   logIntentLower.includes("inquiry") ||
+                   logIntentLower.includes("info");
+          }
+          return logIntentLower.includes(intentLower);
+        });
+      }
+      
+      // Apply date range filter
+      if (filters.dateRange && filters.dateRange.from && filters.dateRange.to) {
+        const { from: start, to: end } = filters.dateRange;
+        result = result.filter((log) => {
+          const logDate = new Date(log.started_at);
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+          endDate.setHours(23, 59, 59, 999);
+          return logDate >= startDate && logDate <= endDate;
+        });
+      }
+      
+      if (result.length > 0) {
+        grouped[programId] = result;
+      }
+    });
+    
+    return grouped;
+  }, [logsByProgram, search, filters, isAdmin]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
@@ -632,18 +737,126 @@ function LogsPageContent() {
           <div className="col-span-full p-8 text-center text-white/40">Loading...</div>
         ) : filteredLogs.length === 0 ? (
           <div className="col-span-full p-8 text-center text-white/40">No calls found</div>
+        ) : isAdmin && Object.keys(filteredLogsByProgram).length > 0 ? (
+          // Admin view: Grouped by program
+          Object.entries(filteredLogsByProgram).map(([programId, programLogs]) => {
+            const program = programs.find(p => p.id === programId);
+            const programName = program?.name || (programId === "no-program" ? "No Program" : "Unknown Program");
+            const displayProgramLogs = isAnonymized 
+              ? programLogs.map(log => applyAnonymization(log, true) as Call)
+              : programLogs;
+            
+            if (displayProgramLogs.length === 0) return null;
+            
+            return (
+              <div key={programId} className="col-span-full space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 className="h-5 w-5" style={{ color: accentColor }} />
+                  <h2 className="text-xl font-bold text-white">{programName}</h2>
+                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-white/60">
+                    {displayProgramLogs.length} {displayProgramLogs.length === 1 ? "call" : "calls"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {displayProgramLogs.map((log) => {
+                    return renderLogCard(log);
+                  })}
+                </div>
+              </div>
+            );
+          })
         ) : (
-                paginatedLogs.map((log) => {
-                  const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
-                    ? "emerald"
-                    : log.status === "active"
-                    ? "yellow"
-                    : "gray";
-                  
-                  return (
-                    <motion.div
-                      key={log.id}
-                      ref={log.id === callIdParam ? callCardRef : null}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {paginatedLogs.map((log) => {
+              return renderLogCard(log);
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && !isAdmin && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg glass border transition-colors ${
+              currentPage === 1
+                ? "border-white/10 text-white/40 cursor-not-allowed"
+                : "border-white/10 text-white hover:bg-white/10"
+            }`}
+          >
+            Previous
+          </button>
+          <div className="flex items-center gap-2">
+            {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 7) {
+                pageNum = i + 1;
+              } else if (currentPage <= 4) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 3) {
+                pageNum = totalPages - 6 + i;
+              } else {
+                pageNum = currentPage - 3 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-2 rounded-lg glass border transition-colors text-sm ${
+                    currentPage === pageNum
+                      ? ""
+                      : "border-white/10 text-white hover:bg-white/10"
+                  }`}
+                  style={currentPage === pageNum ? {
+                    backgroundColor: `${accentColor}33`,
+                    borderColor: `${accentColor}4D`,
+                    color: accentColor,
+                  } : {}}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-lg glass border transition-colors ${
+              currentPage === totalPages
+                ? "border-white/10 text-white/40 cursor-not-allowed"
+                : "border-white/10 text-white hover:bg-white/10"
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      <CallDetailsModal
+        call={selectedCall as any}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedCall(null);
+        }}
+      />
+    </div>
+  );
+  
+  function renderLogCard(log: Call) {
+    const statusColor = log.status === "ended" || (log.status !== "active" && log.ended_at)
+      ? "emerald"
+      : log.status === "active"
+      ? "yellow"
+      : "gray";
+    
+    return (
+      <motion.div
+        key={log.id}
+        ref={log.id === callIdParam ? callCardRef : null}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ 
                         opacity: 1, 
@@ -791,84 +1004,9 @@ function LogsPageContent() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Pagination Controls */}
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-            className={`px-4 py-2 rounded-lg glass border transition-colors ${
-              currentPage === 1
-                ? "border-white/10 text-white/40 cursor-not-allowed"
-                : "border-white/10 text-white hover:bg-white/10"
-            }`}
-          >
-            Previous
-          </button>
-          <div className="flex items-center gap-2">
-            {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 7) {
-                pageNum = i + 1;
-              } else if (currentPage <= 4) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 3) {
-                pageNum = totalPages - 6 + i;
-              } else {
-                pageNum = currentPage - 3 + i;
-              }
-              
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`px-3 py-2 rounded-lg glass border transition-colors text-sm ${
-                    currentPage === pageNum
-                      ? ""
-                      : "border-white/10 text-white hover:bg-white/10"
-                  }`}
-                  style={currentPage === pageNum ? {
-                    borderColor: `${accentColor}80`,
-                    backgroundColor: `${accentColor}33`,
-                    color: accentColor,
-                  } : {}}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded-lg glass border transition-colors ${
-              currentPage === totalPages
-                ? "border-white/10 text-white/40 cursor-not-allowed"
-                : "border-white/10 text-white hover:bg-white/10"
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* Call Details Modal */}
-      <CallDetailsModal
-        call={selectedCall as any}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedCall(null);
-        }}
-      />
-    </div>
-  );
+      </motion.div>
+    );
+  }
 }
 
 export default function LogsPage() {
