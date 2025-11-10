@@ -11,9 +11,11 @@ type Props = {
 export function AnonymizationToggle({ onToggle }: Props) {
   const { accentColor } = useAccentColor();
   const [isAnonymized, setIsAnonymized] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load from sessionStorage
+    setMounted(true);
+    // Load from sessionStorage only after mount (prevents hydration mismatch)
     const saved = sessionStorage.getItem("anonymization_enabled");
     if (saved === "true") {
       setIsAnonymized(true);
@@ -27,6 +29,16 @@ export function AnonymizationToggle({ onToggle }: Props) {
     sessionStorage.setItem("anonymization_enabled", newValue.toString());
     onToggle?.(newValue);
   };
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-white/20 opacity-50">
+        <Eye className="h-4 w-4" />
+        <span>Full Data</span>
+      </div>
+    );
+  }
 
   return (
     <button
