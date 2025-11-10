@@ -140,10 +140,11 @@ export default function ProgramsPage() {
       return;
     }
 
-    setPrograms(data || []);
+    const programsData = data || [];
+    setPrograms(programsData);
     
     // Load stats for each program
-    for (const program of (data || [])) {
+    for (const program of programsData) {
       await loadProgramStats(program.id);
     }
     
@@ -216,9 +217,13 @@ export default function ProgramsPage() {
       if (!response.ok) {
         console.error("Error creating program:", result);
         alert(result.error || "Failed to create program");
+        setSaving(false);
+        return;
       } else {
         setCreatingProgram(false);
         setNewProgram({ name: "", extension: "", phone_number: "", description: "" });
+        // Force reload by resetting loading state
+        setLoading(true);
         await loadProgramsForBusiness(storedBusinessId);
       }
     } catch (error) {
@@ -656,63 +661,81 @@ export default function ProgramsPage() {
                           </div>
 
                           {isEditing && editingProgram && (
-                            <div className="space-y-6 mb-4">
-                              <div>
-                                <label className="text-sm text-white/60 mb-1 block">Extension</label>
-                                <input
-                                  type="text"
-                                  id={`program-extension-${program.id}`}
-                                  name={`program-extension-${program.id}`}
-                                  value={editingProgram.extension || ""}
-                                  onChange={(e) => setEditingProgram({ ...editingProgram, extension: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm text-white/60 mb-1 block">Phone Number</label>
-                                <input
-                                  type="text"
-                                  id={`program-phone-${program.id}`}
-                                  name={`program-phone-${program.id}`}
-                                  value={editingProgram.phone_number || ""}
-                                  onChange={(e) => setEditingProgram({ ...editingProgram, phone_number: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm text-white/60 mb-1 block">Description</label>
-                                <textarea
-                                  id={`program-description-${program.id}`}
-                                  name={`program-description-${program.id}`}
-                                  value={editingProgram.description || ""}
-                                  onChange={(e) => setEditingProgram({ ...editingProgram, description: e.target.value })}
-                                  className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
-                                  rows={2}
-                                />
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="space-y-4 mb-4 p-4 rounded-xl bg-white/5 border border-white/10"
+                            >
+                              {/* Basic Info */}
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Extension</label>
+                                  <input
+                                    type="text"
+                                    id={`program-extension-${program.id}`}
+                                    name={`program-extension-${program.id}`}
+                                    value={editingProgram.extension || ""}
+                                    onChange={(e) => setEditingProgram({ ...editingProgram, extension: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    placeholder="Extension"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Phone Number</label>
+                                  <input
+                                    type="text"
+                                    id={`program-phone-${program.id}`}
+                                    name={`program-phone-${program.id}`}
+                                    value={editingProgram.phone_number || ""}
+                                    onChange={(e) => setEditingProgram({ ...editingProgram, phone_number: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    placeholder="Phone Number"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Description</label>
+                                  <textarea
+                                    id={`program-description-${program.id}`}
+                                    name={`program-description-${program.id}`}
+                                    value={editingProgram.description || ""}
+                                    onChange={(e) => setEditingProgram({ ...editingProgram, description: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    rows={2}
+                                    placeholder="Description"
+                                  />
+                                </div>
                               </div>
 
                               {/* Services */}
-                              <div>
-                                <div className="flex items-center justify-between mb-4">
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
-                                    <Tag className="h-4 w-4" style={{ color: accentColor }} />
-                                    <h4 className="text-base font-semibold text-white">Services</h4>
+                                    <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                      <Tag className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">Services</h4>
                                   </div>
                                   <button
                                     onClick={() => {
                                       const currentServices = Array.isArray(editingProgram.services) ? editingProgram.services : [];
                                       setEditingProgram({ ...editingProgram, services: [...currentServices, ""] });
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
-                                    <Plus className="h-4 w-4" />
-                                    Add Service
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
                                   </button>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
                                   {(Array.isArray(editingProgram.services) && editingProgram.services.length > 0) ? (
                                     editingProgram.services.map((service: string, idx: number) => (
-                                      <div key={idx} className="flex items-center gap-3">
+                                      <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="flex items-center gap-2 group"
+                                      >
                                         <input
                                           type="text"
                                           id={`service-${idx}-${program.id}`}
@@ -723,8 +746,8 @@ export default function ProgramsPage() {
                                             const updatedServices = currentServices.map((s, i) => (i === idx ? e.target.value : s));
                                             setEditingProgram({ ...editingProgram, services: updatedServices });
                                           }}
-                                          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                          placeholder="e.g., Teeth Cleaning"
+                                          className="px-3 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
+                                          placeholder="Service name"
                                         />
                                         <button
                                           onClick={() => {
@@ -732,41 +755,48 @@ export default function ProgramsPage() {
                                             const updatedServices = currentServices.filter((_, i) => i !== idx);
                                             setEditingProgram({ ...editingProgram, services: updatedServices });
                                           }}
-                                          className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                                         >
-                                          <X className="h-4 w-4" />
+                                          <X className="h-3.5 w-3.5" />
                                         </button>
-                                      </div>
+                                      </motion.div>
                                     ))
                                   ) : (
-                                    <p className="text-white/40 text-sm">No services added yet.</p>
+                                    <p className="text-white/40 text-xs">No services added yet.</p>
                                   )}
                                 </div>
                               </div>
 
                               {/* Staff */}
-                              <div>
-                                <div className="flex items-center justify-between mb-4">
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" style={{ color: accentColor }} />
-                                    <h4 className="text-base font-semibold text-white">Staff</h4>
+                                    <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                      <User className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">Staff</h4>
                                   </div>
                                   <button
                                     onClick={() => {
                                       const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
                                       setEditingProgram({ ...editingProgram, staff: [...currentStaff, { name: "", role: "" }] });
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
-                                    <Plus className="h-4 w-4" />
-                                    Add Staff
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
                                   </button>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                   {(Array.isArray(editingProgram.staff) && editingProgram.staff.length > 0) ? (
                                     editingProgram.staff.map((member: any, idx: number) => (
-                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
-                                        <div className="flex items-center gap-3">
+                                      <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all"
+                                      >
+                                        <div className="flex items-center gap-2">
                                           <input
                                             type="text"
                                             id={`staff-name-${idx}-${program.id}`}
@@ -777,8 +807,8 @@ export default function ProgramsPage() {
                                               const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, name: e.target.value } : m);
                                               setEditingProgram({ ...editingProgram, staff: updatedStaff });
                                             }}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                            placeholder="Staff Name"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                            placeholder="Name"
                                           />
                                           <input
                                             type="text"
@@ -790,8 +820,8 @@ export default function ProgramsPage() {
                                               const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, role: e.target.value } : m);
                                               setEditingProgram({ ...editingProgram, staff: updatedStaff });
                                             }}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                            placeholder="Role (e.g., Dentist)"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                            placeholder="Role"
                                           />
                                           <button
                                             onClick={() => {
@@ -799,113 +829,139 @@ export default function ProgramsPage() {
                                               const updatedStaff = currentStaff.filter((_, i) => i !== idx);
                                               setEditingProgram({ ...editingProgram, staff: updatedStaff });
                                             }}
-                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
                                           >
-                                            <X className="h-4 w-4" />
+                                            <X className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
-                                      </div>
+                                      </motion.div>
                                     ))
                                   ) : (
-                                    <p className="text-white/40 text-sm">No staff members added yet.</p>
+                                    <p className="text-white/40 text-xs">No staff added yet.</p>
                                   )}
                                 </div>
                               </div>
 
                               {/* Hours */}
-                              <div>
-                                <div className="flex items-center gap-2 mb-4">
-                                  <Clock className="h-4 w-4" style={{ color: accentColor }} />
-                                  <h4 className="text-base font-semibold text-white">Hours of Operation</h4>
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                    <Clock className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                  </div>
+                                  <h4 className="text-sm font-semibold text-white">Hours</h4>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                   {DAYS_OF_WEEK.map((day) => {
                                     const currentHours = (editingProgram.hours as Record<string, string>)?.[day] || "";
                                     const isClosed = currentHours === "closed" || !currentHours;
                                     return (
-                                      <div key={day} className="flex items-center gap-3">
-                                        <label htmlFor={`hours-${day}-${program.id}`} className="w-24 text-sm text-white/80 capitalize">
-                                          {day}
-                                        </label>
-                                        <input
-                                          type="text"
-                                          id={`hours-${day}-${program.id}`}
-                                          name={`hours-${day}-${program.id}`}
-                                          value={isClosed ? "" : currentHours}
-                                          onChange={(e) => {
-                                            const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
-                                            updatedHours[day] = e.target.value;
-                                            setEditingProgram({ ...editingProgram, hours: updatedHours });
-                                          }}
-                                          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                          placeholder="9 AM - 5 PM"
-                                          disabled={isClosed}
-                                        />
-                                        <div className="flex items-center">
-                                          <input
-                                            type="checkbox"
-                                            id={`closed-${day}-${program.id}`}
-                                            name={`closed-${day}-${program.id}`}
-                                            checked={isClosed}
-                                            onChange={(e) => {
-                                              const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
-                                              if (e.target.checked) {
-                                                updatedHours[day] = "closed";
-                                              } else {
-                                                delete updatedHours[day];
-                                              }
-                                              setEditingProgram({ ...editingProgram, hours: updatedHours });
-                                            }}
-                                            className="h-4 w-4 text-yellow-500 bg-gray-800 border-gray-600 rounded focus:ring-yellow-500"
-                                          />
-                                          <label htmlFor={`closed-${day}-${program.id}`} className="ml-2 text-sm text-white/80">
-                                            Closed
-                                          </label>
+                                      <motion.div
+                                        key={day}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        className={`flex items-center gap-2 p-2 rounded-lg glass border transition-all ${
+                                          isClosed ? "border-white/5 bg-white/2" : "border-white/10 hover:border-yellow-500/30 hover:bg-white/5"
+                                        }`}
+                                      >
+                                        <div className="w-20 flex-shrink-0">
+                                          <span className={`text-xs font-semibold capitalize ${
+                                            isClosed ? "text-white/40" : "text-white/90"
+                                          }`}>
+                                            {day.slice(0, 3)}
+                                          </span>
                                         </div>
-                                      </div>
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <label className="flex items-center gap-1.5 cursor-pointer group">
+                                            <input
+                                              type="checkbox"
+                                              id={`closed-${day}-${program.id}`}
+                                              name={`closed-${day}-${program.id}`}
+                                              checked={isClosed}
+                                              onChange={(e) => {
+                                                const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
+                                                if (e.target.checked) {
+                                                  updatedHours[day] = "closed";
+                                                } else {
+                                                  delete updatedHours[day];
+                                                }
+                                                setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                              }}
+                                              className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer"
+                                            />
+                                            <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors">
+                                              Closed
+                                            </span>
+                                          </label>
+                                          {!isClosed && (
+                                            <input
+                                              type="text"
+                                              id={`hours-${day}-${program.id}`}
+                                              name={`hours-${day}-${program.id}`}
+                                              value={currentHours}
+                                              onChange={(e) => {
+                                                const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
+                                                updatedHours[day] = e.target.value;
+                                                setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                              }}
+                                              className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                              placeholder="9am-5pm"
+                                            />
+                                          )}
+                                          {isClosed && (
+                                            <span className="px-2.5 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs border border-white/10">
+                                              Closed
+                                            </span>
+                                          )}
+                                        </div>
+                                      </motion.div>
                                     );
                                   })}
                                 </div>
                               </div>
 
                               {/* FAQs */}
-                              <div>
-                                <div className="flex items-center justify-between mb-4">
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
-                                    <HelpCircle className="h-4 w-4" style={{ color: accentColor }} />
-                                    <h4 className="text-base font-semibold text-white">FAQs</h4>
+                                    <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                      <HelpCircle className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">FAQs</h4>
                                   </div>
                                   <button
                                     onClick={() => {
                                       const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
                                       setEditingProgram({ ...editingProgram, faqs: [...currentFaqs, { question: "", answer: "" }] });
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
-                                    <Plus className="h-4 w-4" />
-                                    Add FAQ
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
                                   </button>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                   {(Array.isArray(editingProgram.faqs) && editingProgram.faqs.length > 0) ? (
                                     editingProgram.faqs.map((faq: any, idx: number) => (
-                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
-                                        <div>
-                                          <input
-                                            type="text"
-                                            id={`faq-question-${idx}-${program.id}`}
-                                            name={`faq-question-${idx}-${program.id}`}
-                                            value={faq.question || ""}
-                                            onChange={(e) => {
-                                              const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
-                                              const updatedFaqs = currentFaqs.map((f, i) => i === idx ? { ...f, question: e.target.value } : f);
-                                              setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
-                                            }}
-                                            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                            placeholder="Question"
-                                          />
-                                        </div>
-                                        <div className="flex items-center gap-3">
+                                      <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
+                                      >
+                                        <input
+                                          type="text"
+                                          id={`faq-question-${idx}-${program.id}`}
+                                          name={`faq-question-${idx}-${program.id}`}
+                                          value={faq.question || ""}
+                                          onChange={(e) => {
+                                            const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
+                                            const updatedFaqs = currentFaqs.map((f, i) => i === idx ? { ...f, question: e.target.value } : f);
+                                            setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
+                                          }}
+                                          className="w-full px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                          placeholder="Question"
+                                        />
+                                        <div className="flex items-center gap-2">
                                           <textarea
                                             id={`faq-answer-${idx}-${program.id}`}
                                             name={`faq-answer-${idx}-${program.id}`}
@@ -915,7 +971,7 @@ export default function ProgramsPage() {
                                               const updatedFaqs = currentFaqs.map((f, i) => i === idx ? { ...f, answer: e.target.value } : f);
                                               setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
                                             }}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm min-h-[60px]"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-h-[50px]"
                                             placeholder="Answer"
                                             rows={2}
                                           />
@@ -925,57 +981,62 @@ export default function ProgramsPage() {
                                               const updatedFaqs = currentFaqs.filter((_, i) => i !== idx);
                                               setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
                                             }}
-                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
                                           >
-                                            <X className="h-4 w-4" />
+                                            <X className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
-                                      </div>
+                                      </motion.div>
                                     ))
                                   ) : (
-                                    <p className="text-white/40 text-sm">No FAQs added yet.</p>
+                                    <p className="text-white/40 text-xs">No FAQs added yet.</p>
                                   )}
                                 </div>
                               </div>
 
                               {/* Promotions */}
-                              <div>
-                                <div className="flex items-center justify-between mb-4">
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
-                                    <Tag className="h-4 w-4" style={{ color: accentColor }} />
-                                    <h4 className="text-base font-semibold text-white">Promotions</h4>
+                                    <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                      <Tag className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">Promotions</h4>
                                   </div>
                                   <button
                                     onClick={() => {
                                       const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
                                       setEditingProgram({ ...editingProgram, promos: [...currentPromos, { title: "", description: "" }] });
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
-                                    <Plus className="h-4 w-4" />
-                                    Add Promo
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
                                   </button>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                   {(Array.isArray(editingProgram.promos) && editingProgram.promos.length > 0) ? (
                                     editingProgram.promos.map((promo: any, idx: number) => (
-                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
-                                        <div>
-                                          <input
-                                            type="text"
-                                            id={`promo-title-${idx}-${program.id}`}
-                                            name={`promo-title-${idx}-${program.id}`}
-                                            value={promo.title || ""}
-                                            onChange={(e) => {
-                                              const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
-                                              const updatedPromos = currentPromos.map((p, i) => i === idx ? { ...p, title: e.target.value } : p);
-                                              setEditingProgram({ ...editingProgram, promos: updatedPromos });
-                                            }}
-                                            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
-                                            placeholder="Promotion Title"
-                                          />
-                                        </div>
-                                        <div className="flex items-center gap-3">
+                                      <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
+                                      >
+                                        <input
+                                          type="text"
+                                          id={`promo-title-${idx}-${program.id}`}
+                                          name={`promo-title-${idx}-${program.id}`}
+                                          value={promo.title || ""}
+                                          onChange={(e) => {
+                                            const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
+                                            const updatedPromos = currentPromos.map((p, i) => i === idx ? { ...p, title: e.target.value } : p);
+                                            setEditingProgram({ ...editingProgram, promos: updatedPromos });
+                                          }}
+                                          className="w-full px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                          placeholder="Title"
+                                        />
+                                        <div className="flex items-center gap-2">
                                           <textarea
                                             id={`promo-description-${idx}-${program.id}`}
                                             name={`promo-description-${idx}-${program.id}`}
@@ -985,8 +1046,8 @@ export default function ProgramsPage() {
                                               const updatedPromos = currentPromos.map((p, i) => i === idx ? { ...p, description: e.target.value } : p);
                                               setEditingProgram({ ...editingProgram, promos: updatedPromos });
                                             }}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm min-h-[60px]"
-                                            placeholder="Promotion Description"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-h-[50px]"
+                                            placeholder="Description"
                                             rows={2}
                                           />
                                           <button
@@ -995,19 +1056,19 @@ export default function ProgramsPage() {
                                               const updatedPromos = currentPromos.filter((_, i) => i !== idx);
                                               setEditingProgram({ ...editingProgram, promos: updatedPromos });
                                             }}
-                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
                                           >
-                                            <X className="h-4 w-4" />
+                                            <X className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
-                                      </div>
+                                      </motion.div>
                                     ))
                                   ) : (
-                                    <p className="text-white/40 text-sm">No promotions added yet.</p>
+                                    <p className="text-white/40 text-xs">No promotions added yet.</p>
                                   )}
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           )}
 
                           {program.description && !isEditing && (
