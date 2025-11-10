@@ -12,7 +12,8 @@ import {
   RefreshCw,
   ExternalLink,
   X,
-  ArrowRight
+  ArrowRight,
+  Layers
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
@@ -22,7 +23,7 @@ import BusinessesTab from "@/components/ops/BusinessesTab";
 import CallsTab from "@/components/ops/CallsTab";
 import AnalyticsTab from "@/components/ops/AnalyticsTab";
 
-type Tab = "overview" | "businesses" | "calls" | "analytics";
+type Tab = "overview" | "businesses" | "calls" | "analytics" | "programs";
 
 export default function OperationsDashboard() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function OperationsDashboard() {
   const tabs = [
     { id: "overview" as Tab, label: "Overview", icon: BarChart3 },
     { id: "businesses" as Tab, label: "Businesses", icon: Building2 },
+    { id: "programs" as Tab, label: "Programs", icon: Layers },
     { id: "calls" as Tab, label: "Calls", icon: Phone },
     { id: "analytics" as Tab, label: "Analytics", icon: TrendingUp },
   ];
@@ -84,7 +86,13 @@ export default function OperationsDashboard() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (tab.id === "programs") {
+                      router.push("/ops/programs");
+                    } else {
+                      setActiveTab(tab.id);
+                    }
+                  }}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                     isActive
                       ? "border-white text-white"
@@ -119,6 +127,17 @@ export default function OperationsDashboard() {
             )}
             {activeTab === "analytics" && (
               <AnalyticsTab timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+            )}
+            {activeTab === "programs" && (
+              <div className="text-center py-12">
+                <p className="text-white/60 mb-4">Redirecting to Programs Management...</p>
+                <button
+                  onClick={() => router.push("/ops/programs")}
+                  className="px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
+                >
+                  Go to Programs
+                </button>
+              </div>
             )}
           </motion.div>
         </AnimatePresence>

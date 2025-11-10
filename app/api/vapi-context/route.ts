@@ -7,14 +7,19 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  * 
  * Request body formats supported:
  * - { "to_number": "+1234567890" }
+ * - { "to_number": "+1234567890", "extension": "123" }
+ * - { "to_number": "+1234567890", "program_id": "uuid" }
  * - { "phoneNumber": { "number": "+1234567890" } }
- * - { "arguments": { "to_number": "+1234567890" } } (Vapi function call format)
+ * - { "arguments": { "to_number": "+1234567890", "extension": "123" } } (Vapi function call format)
  * - Raw string phone number
  * Returns: Full business context (name, hours, services, FAQs, etc.)
+ * If program exists (by extension or program_id), returns program-level data, otherwise business defaults
  * 
  * Deployment: Ready for production use
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     let body: any;
     try {
@@ -42,6 +47,10 @@ export async function POST(request: NextRequest) {
                    (typeof body === 'string' ? body : null) ||
                    null;
 
+    // Extract extension and program_id
+    const extension = body.extension || body.arguments?.extension || null;
+    const programId = body.program_id || body.programId || body.arguments?.program_id || body.arguments?.programId || null;
+
     // Clean and trim the phone number (remove newlines, whitespace, etc.)
     if (toNumber && typeof toNumber === 'string') {
       toNumber = toNumber.trim().replace(/\n/g, '').replace(/\r/g, '');
@@ -50,6 +59,8 @@ export async function POST(request: NextRequest) {
     console.log("📞 Vapi context request received:", {
       rawBody: body,
       extractedToNumber: toNumber,
+      extension,
+      programId,
       bodyType: typeof body,
     });
 
@@ -85,10 +96,13 @@ export async function POST(request: NextRequest) {
     let business: any = null;
     let businessError: any = null;
 
+    // Optimized: Only select needed columns for faster queries
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,insurances";
+    
     // Try 1: Exact match with cleaned number
     let { data, error } = await supabaseAdmin
       .from("businesses")
-      .select("*")
+      .select(businessColumns)
       .eq("to_number", toNumber)
       .maybeSingle();
     
@@ -110,7 +124,7 @@ export async function POST(request: NextRequest) {
     if (!business) {
       ({ data, error } = await supabaseAdmin
         .from("businesses")
-        .select("*")
+        .select(businessColumns)
         .eq("to_number", normalizedNumber)
         .maybeSingle());
       
@@ -126,7 +140,7 @@ export async function POST(request: NextRequest) {
     if (!business) {
       ({ data, error } = await supabaseAdmin
         .from("businesses")
-        .select("*")
+        .select(businessColumns)
         .eq("to_number", withPlusOne)
         .maybeSingle());
       
@@ -142,7 +156,7 @@ export async function POST(request: NextRequest) {
     if (!business) {
       ({ data, error } = await supabaseAdmin
         .from("businesses")
-        .select("*")
+        .select(businessColumns)
         .eq("to_number", withoutPlusOne)
         .maybeSingle());
       
@@ -174,6 +188,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!business) {
+      const duration = Date.now() - startTime;
       console.warn("⚠️ Business not found for phone number after trying multiple formats:", {
         original: toNumber,
         normalized: normalizedNumber,
@@ -183,34 +198,83 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "Business not found for phone number", to_number: toNumber, tried_formats: [toNumber, normalizedNumber, withPlusOne, withoutPlusOne] },
-        { status: 404 }
+        { 
+          status: 404,
+          headers: { 'X-Response-Time': `${duration}ms` },
+        }
       );
     }
 
-    // Format business context for Vapi
-    // Return all relevant fields that Vapi might need during the call
+    // Fetch program if extension or program_id provided
+    let program: any = null;
+    if (extension || programId) {
+      const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
+      let programQuery = (supabaseAdmin
+        .from("programs") as any)
+        .select(programColumns)
+        .eq("business_id", business.id);
+
+      if (programId) {
+        programQuery = programQuery.eq("id", programId);
+      } else if (extension) {
+        programQuery = programQuery.eq("extension", extension);
+      }
+
+      const { data: programData, error: programError } = await programQuery.maybeSingle();
+
+      if (programError && programError.code !== "PGRST116") {
+        console.warn("⚠️ Error fetching program:", programError);
+        // Continue with business defaults if program lookup fails
+      } else if (programData) {
+        program = programData;
+        console.log("✅ Found program:", { id: program.id, name: program.name, extension: program.extension });
+      }
+    }
+
+    // Build combined context: program-level data if exists, otherwise business defaults
     const businessData = business as any;
-    const context = {
+    const context: any = {
+      business_id: businessData.id,
+      business_name: program?.name || businessData.name || null,
+      business_phone: businessData.to_number || null,
+      vertical: program?.vertical || businessData.vertical || null,
+      address: program?.address || businessData.address || null,
+      hours: program?.hours || businessData.hours || null,
+      services: program?.services || businessData.services || null,
+      staff: program?.staff || businessData.staff || null,
+      faqs: program?.faqs || businessData.faqs || null,
+      promos: program?.promos || businessData.promos || null,
+      insurances: program?.insurances || businessData.insurances || null,
+      // Legacy fields for backward compatibility
       id: businessData.id,
-      name: businessData.name || null,
-      vertical: businessData.vertical || null,
-      address: businessData.address || null,
-      hours: businessData.hours || null,
-      services: businessData.services || null,
-      insurances: businessData.insurances || null,
-      staff: businessData.staff || null,
-      faqs: businessData.faqs || null,
-      promos: businessData.promos || null,
+      name: program?.name || businessData.name || null,
       to_number: businessData.to_number || null,
-      // Include any other fields that might be useful
     };
 
+    // Add program-specific fields if program exists
+    if (program) {
+      context.program_id = program.id;
+      context.program_name = program.name;
+      context.extension = program.extension;
+      if (program.description) context.program_description = program.description;
+      if (program.settings) context.program_settings = program.settings;
+    }
+
+    const duration = Date.now() - startTime;
+
+    // Log if response time exceeds target (for monitoring)
+    if (duration > 200) {
+      console.warn(`⚠️ Vapi context response time (${duration}ms) exceeds 200ms target`);
+    }
+
     console.log("✅ Business context found for", toNumber, ":", {
-      id: context.id,
-      name: context.name,
+      id: context.business_id,
+      name: context.business_name,
+      hasProgram: !!program,
       hasHours: !!context.hours,
       hasServices: !!context.services,
       hasFAQs: !!context.faqs,
+      responseTime: `${duration}ms`,
     });
 
     // Return with CORS headers for Vapi
@@ -221,34 +285,173 @@ export async function POST(request: NextRequest) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
+        'X-Response-Time': `${duration}ms`,
       },
     });
 
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error("❌ Vapi context endpoint error:", error);
     return NextResponse.json(
       {
         error: "An unexpected error occurred",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: { 'X-Response-Time': `${duration}ms` },
+      }
     );
   }
 }
 
-// Handle GET requests (for health checks)
-export async function GET() {
-  return NextResponse.json(
-    { status: "ok", service: "vapi-context", description: "Returns business context for Vapi calls" },
-    { 
+// Handle GET requests (supports query params for testing)
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  
+  try {
+    const { searchParams } = new URL(request.url);
+    const toNumber = searchParams.get("to_number");
+    const extension = searchParams.get("extension");
+    const programId = searchParams.get("program_id");
+
+    // If no params, return health check
+    if (!toNumber) {
+      return NextResponse.json(
+        { status: "ok", service: "vapi-context", description: "Returns business context for Vapi calls" },
+        { 
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          },
+        }
+      );
+    }
+
+    // Process GET request with query params (same logic as POST)
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    // Normalize phone number - try multiple formats
+    const normalizedNumber = toNumber.replace(/[^\d+]/g, '');
+    const digitsOnly = normalizedNumber.replace(/\+/g, '');
+    const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
+    const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
+
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,insurances";
+    let business: any = null;
+
+    // Try multiple formats
+    for (const format of [toNumber, normalizedNumber, withPlusOne, withoutPlusOne]) {
+      const { data, error } = await supabaseAdmin
+        .from("businesses")
+        .select(businessColumns)
+        .eq("to_number", format)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        throw error;
+      }
+
+      if (data) {
+        business = data;
+        break;
+      }
+    }
+
+    if (!business) {
+      const duration = Date.now() - startTime;
+      return NextResponse.json(
+        { error: "Business not found for phone number", to_number: toNumber },
+        { 
+          status: 404,
+          headers: { 'X-Response-Time': `${duration}ms` },
+        }
+      );
+    }
+
+    // Fetch program if extension or program_id provided
+    let program: any = null;
+    if (extension || programId) {
+      const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
+      let programQuery = (supabaseAdmin
+        .from("programs") as any)
+        .select(programColumns)
+        .eq("business_id", business.id);
+
+      if (programId) {
+        programQuery = programQuery.eq("id", programId);
+      } else if (extension) {
+        programQuery = programQuery.eq("extension", extension);
+      }
+
+      const { data: programData, error: programError } = await programQuery.maybeSingle();
+
+      if (programError && programError.code !== "PGRST116") {
+        console.warn("⚠️ Error fetching program:", programError);
+      } else if (programData) {
+        program = programData;
+      }
+    }
+
+    // Build combined context
+    const businessData = business as any;
+    const context: any = {
+      business_id: businessData.id,
+      business_name: program?.name || businessData.name || null,
+      business_phone: businessData.to_number || null,
+      vertical: program?.vertical || businessData.vertical || null,
+      address: program?.address || businessData.address || null,
+      hours: program?.hours || businessData.hours || null,
+      services: program?.services || businessData.services || null,
+      staff: program?.staff || businessData.staff || null,
+      faqs: program?.faqs || businessData.faqs || null,
+      promos: program?.promos || businessData.promos || null,
+      insurances: program?.insurances || businessData.insurances || null,
+      id: businessData.id,
+      name: program?.name || businessData.name || null,
+      to_number: businessData.to_number || null,
+    };
+
+    if (program) {
+      context.program_id = program.id;
+      context.program_name = program.name;
+      context.extension = program.extension;
+      if (program.description) context.program_description = program.description;
+      if (program.settings) context.program_settings = program.settings;
+    }
+
+    const duration = Date.now() - startTime;
+
+    if (duration > 200) {
+      console.warn(`⚠️ Vapi context response time (${duration}ms) exceeds 200ms target`);
+    }
+
+    return NextResponse.json(context, {
       status: 200,
       headers: {
+        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
+        'X-Response-Time': `${duration}ms`,
       },
-    }
-  );
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error("❌ Vapi context GET error:", error);
+    return NextResponse.json(
+      {
+        error: "An unexpected error occurred",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { 
+        status: 500,
+        headers: { 'X-Response-Time': `${duration}ms` },
+      }
+    );
+  }
 }
 
 // Handle OPTIONS requests (for CORS preflight)

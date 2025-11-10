@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, startOfMonth, subMonths, subWeeks } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useProgram } from "@/components/ProgramProvider";
+import { useUserRole } from "@/lib/useUserRole";
 
 type DashboardCall = {
   id: string;
@@ -78,6 +80,9 @@ type ActivityItem = {
 
 export default function Dashboard() {
   const { accentColor } = useAccentColor();
+  const { program, programId } = useProgram();
+  const { role: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
   const [mounted, setMounted] = useState(false);
   const [performance, setPerformance] = useState<PerformanceMetrics>({
     totalCallsHandled: 0,
@@ -221,11 +226,18 @@ export default function Dashboard() {
         comparePeriodEnd = periodStart;
       }
 
-      // Get all calls for this business
-      const { data: allCallsData, error: callsError } = await supabase
+      // Build query - filter by program_id if program is selected
+      let callsQuery = supabase
         .from("calls")
         .select("id, started_at, ended_at, status, schedule, success, last_intent, patient_name")
-        .eq("business_id", businessId!)
+        .eq("business_id", businessId!);
+      
+      // Filter by program_id if program is selected
+      if (programId) {
+        callsQuery = callsQuery.eq("program_id", programId);
+      }
+      
+      const { data: allCallsData, error: callsError } = await callsQuery
         .order("started_at", { ascending: false })
         .limit(1000);
 
@@ -729,7 +741,7 @@ export default function Dashboard() {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [mounted, timePeriod]);
+  }, [mounted, timePeriod, programId]);
 
   async function generateFunFact(calls: any[], businessId: string) {
     if (!calls || calls.length === 0) {
@@ -901,7 +913,9 @@ export default function Dashboard() {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Dashboard</h1>
-            {businessName && (
+            {program?.name ? (
+              <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {program.name}</span>
+            ) : businessName && (
               <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {businessName}</span>
             )}
             <span className="beta-badge">Beta</span>
@@ -1007,7 +1021,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-3 sm:gap-4`}>
           <motion.div 
             key={`totalCalls-${metricKey}`}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -1123,30 +1137,33 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          <motion.div 
-            key={`savings-${metricKey}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="p-4 rounded-xl glass border border-white/10"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-3 w-3" style={{ color: accentColor }} />
-              <div className="text-xs text-white/60">Estimated Savings</div>
-            </div>
+          {/* Only show savings/revenue for admins */}
+          {isAdmin && (
             <motion.div 
-              key={`savings-value-${metricKey}`}
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-2xl font-bold text-white"
+              key={`savings-${metricKey}`}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="p-4 rounded-xl glass border border-white/10"
             >
-              {loading ? "..." : `$${performance.estimatedSavings.toFixed(0)}`}
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="h-3 w-3" style={{ color: accentColor }} />
+                <div className="text-xs text-white/60">Estimated Savings</div>
+              </div>
+              <motion.div 
+                key={`savings-value-${metricKey}`}
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-2xl font-bold text-white"
+              >
+                {loading ? "..." : `$${performance.estimatedSavings.toFixed(0)}`}
+              </motion.div>
+              <div className="text-xs text-white/40 mt-1">
+                {totalBookings} patient{totalBookings !== 1 ? 's' : ''} booked × $300
+              </div>
             </motion.div>
-            <div className="text-xs text-white/40 mt-1">
-              {totalBookings} patient{totalBookings !== 1 ? 's' : ''} booked × $300
-            </div>
-          </motion.div>
+          )}
 
           <motion.div 
             key={`ratio-${metricKey}`}
@@ -1208,27 +1225,28 @@ export default function Dashboard() {
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Contextual Insights */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lg:col-span-2 p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
-        >
-          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <div 
-              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border"
-              style={{
-                background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
-                borderColor: `${accentColor}4D`,
-              }}
-            >
-              <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
+        {/* Contextual Insights - Only show for admins */}
+        {isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="lg:col-span-2 p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+          >
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div 
+                className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border"
+                style={{
+                  background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                  borderColor: `${accentColor}4D`,
+                }}
+              >
+                <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: accentColor }} />
+              </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white">AI Insights</h2>
             </div>
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white">AI Insights</h2>
-          </div>
-          </div>
+            </div>
 
           <div className="space-y-3">
             {loading ? (
@@ -1278,7 +1296,8 @@ export default function Dashboard() {
               })
             )}
           </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Activity Feed */}
         <motion.div

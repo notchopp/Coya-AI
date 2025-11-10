@@ -7,14 +7,17 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { NotificationProvider } from "@/components/NotificationProvider";
 import { BarChart3, LogOut, Menu } from "lucide-react";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useProgram } from "@/components/ProgramProvider";
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { hasPrograms, programId, loading: programLoading } = useProgram();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const isLoginPage = pathname === "/login";
   const isAuthCallback = pathname === "/auth/callback";
+  const isSelectProgramPage = pathname === "/select-program";
 
   useEffect(() => {
     async function checkAuth() {
@@ -86,11 +89,30 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         console.log("✅ Using stored business_id:", storedBusinessId);
       }
 
+      // Check if business has programs and user needs to select one
+      if (!isSelectProgramPage && !isAdmin) {
+        const query = (supabase as any).from("programs");
+        const { data: programs } = await query
+          .select("id")
+          .eq("business_id", storedBusinessId || "")
+          .limit(1);
+
+        const hasPrograms = (programs?.length || 0) > 0;
+        const storedProgramId = sessionStorage.getItem("program_id");
+
+        // If business has programs but no program selected, redirect to select-program
+        if (hasPrograms && !storedProgramId) {
+          router.push("/select-program");
+          setLoading(false);
+          return;
+        }
+      }
+
       setLoading(false);
     }
 
     checkAuth();
-  }, [pathname, isLoginPage, router]);
+  }, [pathname, isLoginPage, isSelectProgramPage, router]);
 
   if (loading) {
     return (
@@ -100,7 +122,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage || isAuthCallback) {
+  if (isLoginPage || isAuthCallback || isSelectProgramPage) {
     return <>{children}</>;
   }
 

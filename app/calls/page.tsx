@@ -8,6 +8,7 @@ import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink } from "luc
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
+import { useProgram } from "@/components/ProgramProvider";
 
 type Call = {
   id: string;
@@ -313,6 +314,7 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
 
 export default function LiveCallsPage() {
   const { accentColor } = useAccentColor();
+  const { programId } = useProgram();
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
@@ -349,10 +351,17 @@ export default function LiveCallsPage() {
       console.log("🔍 Loading active calls for business_id:", effectiveBusinessId);
 
       // First, check all calls for this business to see what statuses exist
-      const { data: allCallsData } = await supabase
+      let allCallsQuery = supabase
         .from("calls")
         .select("id,business_id,call_id,status,patient_name")
-        .eq("business_id", effectiveBusinessId)
+        .eq("business_id", effectiveBusinessId);
+      
+      // Filter by program_id if program is selected
+      if (programId) {
+        allCallsQuery = allCallsQuery.eq("program_id", programId);
+      }
+      
+      const { data: allCallsData } = await allCallsQuery
         .order("started_at", { ascending: false })
         .limit(20);
       
@@ -361,10 +370,17 @@ export default function LiveCallsPage() {
       console.log("🔍 Status values found:", allCallsData?.map(c => ({ call_id: c.call_id, status: c.status, patient_name: c.patient_name })));
 
       // Now query for active calls (try both exact match and case-insensitive)
-      const { data: callsData, error: callsError } = await supabase
+      let callsQuery = supabase
         .from("calls")
         .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns")
-        .eq("business_id", effectiveBusinessId)
+        .eq("business_id", effectiveBusinessId);
+      
+      // Filter by program_id if program is selected
+      if (programId) {
+        callsQuery = callsQuery.eq("program_id", programId);
+      }
+      
+      const { data: callsData, error: callsError } = await callsQuery
         .order("started_at", { ascending: false });
 
       if (!isMounted) return;
@@ -711,7 +727,7 @@ export default function LiveCallsPage() {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted]); // Removed calls.length to prevent flickering
+  }, [supabase, effectiveBusinessId, mounted, programId]); // Removed calls.length to prevent flickering
 
   function handleViewFullLog(callId: string) {
     router.push(`/logs?callId=${callId}`);

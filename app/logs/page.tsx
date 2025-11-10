@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import CallDetailsModal from "@/components/CallDetailsModal";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
+import { useProgram } from "@/components/ProgramProvider";
 
 
 type Call = {
@@ -121,6 +122,7 @@ function parseTranscript(transcript: string): Message[] {
 
 export default function LogsPage() {
   const { accentColor } = useAccentColor();
+  const { programId } = useProgram();
   const searchParams = useSearchParams();
   const callIdParam = searchParams.get("callId");
   const callCardRef = useRef<HTMLDivElement>(null);
@@ -179,10 +181,17 @@ export default function LogsPage() {
 
       console.log("🔄 Loading logs for business_id:", businessId);
 
-      const { data, error } = await supabase
+      let logsQuery = supabase
         .from("calls")
         .select("*")
-        .eq("business_id", businessId!)
+        .eq("business_id", businessId!);
+      
+      // Filter by program_id if program is selected
+      if (programId) {
+        logsQuery = logsQuery.eq("program_id", programId);
+      }
+      
+      const { data, error } = await logsQuery
         .order("started_at", { ascending: false })
         .limit(500);
 
@@ -201,7 +210,7 @@ export default function LogsPage() {
     }
 
     loadLogs();
-  }, [mounted]);
+  }, [mounted, programId]);
 
   const filteredLogs = useMemo(() => {
     let result = logs;

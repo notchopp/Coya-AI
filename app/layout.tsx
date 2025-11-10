@@ -5,6 +5,7 @@ import AuthWrapper from "@/components/AuthWrapper";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AccentColorProvider } from "@/components/AccentColorProvider";
 import { PremiumModeProvider } from "@/components/PremiumModeProvider";
+import { ProgramProvider } from "@/components/ProgramProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -39,7 +40,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AccentColorProvider>
             <PremiumModeProvider>
-              <AuthWrapper>{children}</AuthWrapper>
+              <ProgramProvider>
+                <AuthWrapper>{children}</AuthWrapper>
+              </ProgramProvider>
             </PremiumModeProvider>
           </AccentColorProvider>
         </ThemeProvider>

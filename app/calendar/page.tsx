@@ -8,6 +8,7 @@ import Calendar from "react-calendar";
 import { getSupabaseClient } from "@/lib/supabase";
 import { format, isSameDay } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useProgram } from "@/components/ProgramProvider";
 import { X, Calendar as CalendarIcon } from "lucide-react";
 import "react-calendar/dist/Calendar.css";
 
@@ -21,6 +22,7 @@ type Call = {
 
 export default function CalendarPage() {
   const { accentColor } = useAccentColor();
+  const { programId } = useProgram();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [highlightedCallId, setHighlightedCallId] = useState<string | null>(null);
@@ -92,11 +94,18 @@ export default function CalendarPage() {
       console.log("🔄 Loading calendar calls for business_id:", businessId);
 
       // Only get calls with schedule (booked appointments) for this business
-      const { data, error } = await supabase
+      let calendarQuery = supabase
         .from("calls")
         .select("id,started_at,patient_name,last_summary,schedule")
         .eq("business_id", businessId!)
-        .not("schedule", "is", null)
+        .not("schedule", "is", null);
+      
+      // Filter by program_id if program is selected
+      if (programId) {
+        calendarQuery = calendarQuery.eq("program_id", programId);
+      }
+      
+      const { data, error } = await calendarQuery
         .order("started_at", { ascending: false })
         .limit(500);
 
