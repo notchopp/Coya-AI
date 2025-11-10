@@ -25,8 +25,10 @@ import {
   Bot,
   UserCircle,
   FileText,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
@@ -262,21 +264,30 @@ export default function DemoDashboard() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Read-Only Banner */}
+      {/* Read-Only Banner with Back Button */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-50 p-3 sm:p-4 glass-strong border-b border-yellow-500/30 bg-yellow-500/10"
       >
         <div className="flex items-center gap-3 max-w-7xl mx-auto">
-          <Lock className="h-5 w-5 text-yellow-400 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-white font-medium text-sm sm:text-base">
-              Read-Only Demo Mode
-            </p>
-            <p className="text-white/60 text-xs sm:text-sm">
-              Scroll down to explore different sections of the dashboard
-            </p>
+          <Link
+            href="https://coya-website.vercel.app"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg glass border border-white/20 hover:border-accent/50 transition-all duration-200 text-white/80 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm font-medium">Back to Website</span>
+          </Link>
+          <div className="flex-1 flex items-center gap-3">
+            <Lock className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-white font-medium text-sm sm:text-base">
+                Read-Only Demo Mode
+              </p>
+              <p className="text-white/60 text-xs sm:text-sm">
+                Scroll down to explore different sections of the dashboard
+              </p>
+            </div>
           </div>
         </div>
       </motion.div>
