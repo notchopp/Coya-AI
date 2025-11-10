@@ -428,9 +428,11 @@ export default function ProgramsPage() {
                 <h3 className="text-xl font-bold text-white mb-4">Create New Program</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-white/60 mb-1">Name *</label>
+                    <label htmlFor="new-program-name" className="block text-sm text-white/60 mb-1">Name *</label>
                     <input
                       type="text"
+                      id="new-program-name"
+                      name="new-program-name"
                       value={newProgram.name || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -438,9 +440,11 @@ export default function ProgramsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-white/60 mb-1">Extension</label>
+                    <label htmlFor="new-program-extension" className="block text-sm text-white/60 mb-1">Extension</label>
                     <input
                       type="text"
+                      id="new-program-extension"
+                      name="new-program-extension"
                       value={newProgram.extension || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, extension: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -448,9 +452,11 @@ export default function ProgramsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-white/60 mb-1">Phone Number</label>
+                    <label htmlFor="new-program-phone" className="block text-sm text-white/60 mb-1">Phone Number</label>
                     <input
                       type="text"
+                      id="new-program-phone"
+                      name="new-program-phone"
                       value={newProgram.phone_number || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, phone_number: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -458,8 +464,10 @@ export default function ProgramsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-white/60 mb-1">Description</label>
+                    <label htmlFor="new-program-description" className="block text-sm text-white/60 mb-1">Description</label>
                     <textarea
+                      id="new-program-description"
+                      name="new-program-description"
                       value={newProgram.description || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, description: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -670,7 +678,7 @@ export default function ProgramsPage() {
                               {/* Basic Info */}
                               <div className="space-y-3">
                                 <div>
-                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Extension</label>
+                                  <label htmlFor={`program-extension-${program.id}`} className="block text-xs font-medium text-white/80 mb-1.5">Extension</label>
                                   <input
                                     type="text"
                                     id={`program-extension-${program.id}`}
@@ -682,7 +690,7 @@ export default function ProgramsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Phone Number</label>
+                                  <label htmlFor={`program-phone-${program.id}`} className="block text-xs font-medium text-white/80 mb-1.5">Phone Number</label>
                                   <input
                                     type="text"
                                     id={`program-phone-${program.id}`}
@@ -694,7 +702,7 @@ export default function ProgramsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-white/80 mb-1.5">Description</label>
+                                  <label htmlFor={`program-description-${program.id}`} className="block text-xs font-medium text-white/80 mb-1.5">Description</label>
                                   <textarea
                                     id={`program-description-${program.id}`}
                                     name={`program-description-${program.id}`}
@@ -736,6 +744,7 @@ export default function ProgramsPage() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         className="flex items-center gap-2 group"
                                       >
+                                        <label htmlFor={`service-${idx}-${program.id}`} className="sr-only">Service Name</label>
                                         <input
                                           type="text"
                                           id={`service-${idx}-${program.id}`}
@@ -797,6 +806,7 @@ export default function ProgramsPage() {
                                         className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all"
                                       >
                                         <div className="flex items-center gap-2">
+                                          <label htmlFor={`staff-name-${idx}-${program.id}`} className="sr-only">Staff Name</label>
                                           <input
                                             type="text"
                                             id={`staff-name-${idx}-${program.id}`}
@@ -810,6 +820,7 @@ export default function ProgramsPage() {
                                             className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                             placeholder="Name"
                                           />
+                                          <label htmlFor={`staff-role-${idx}-${program.id}`} className="sr-only">Staff Role</label>
                                           <input
                                             type="text"
                                             id={`staff-role-${idx}-${program.id}`}
@@ -893,19 +904,22 @@ export default function ProgramsPage() {
                                             </span>
                                           </label>
                                           {!isClosed && (
-                                            <input
-                                              type="text"
-                                              id={`hours-${day}-${program.id}`}
-                                              name={`hours-${day}-${program.id}`}
-                                              value={currentHours}
-                                              onChange={(e) => {
-                                                const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
-                                                updatedHours[day] = e.target.value;
-                                                setEditingProgram({ ...editingProgram, hours: updatedHours });
-                                              }}
-                                              className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
-                                              placeholder="9am-5pm"
-                                            />
+                                            <>
+                                              <label htmlFor={`hours-${day}-${program.id}`} className="sr-only">{day} hours</label>
+                                              <input
+                                                type="text"
+                                                id={`hours-${day}-${program.id}`}
+                                                name={`hours-${day}-${program.id}`}
+                                                value={currentHours}
+                                                onChange={(e) => {
+                                                  const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
+                                                  updatedHours[day] = e.target.value;
+                                                  setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                                }}
+                                                className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                                placeholder="9am-5pm"
+                                              />
+                                            </>
                                           )}
                                           {isClosed && (
                                             <span className="px-2.5 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs border border-white/10">
@@ -948,6 +962,7 @@ export default function ProgramsPage() {
                                         animate={{ opacity: 1, y: 0 }}
                                         className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
                                       >
+                                        <label htmlFor={`faq-question-${idx}-${program.id}`} className="sr-only">FAQ Question</label>
                                         <input
                                           type="text"
                                           id={`faq-question-${idx}-${program.id}`}
@@ -962,6 +977,7 @@ export default function ProgramsPage() {
                                           placeholder="Question"
                                         />
                                         <div className="flex items-center gap-2">
+                                          <label htmlFor={`faq-answer-${idx}-${program.id}`} className="sr-only">FAQ Answer</label>
                                           <textarea
                                             id={`faq-answer-${idx}-${program.id}`}
                                             name={`faq-answer-${idx}-${program.id}`}
@@ -1023,6 +1039,7 @@ export default function ProgramsPage() {
                                         animate={{ opacity: 1, y: 0 }}
                                         className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
                                       >
+                                        <label htmlFor={`promo-title-${idx}-${program.id}`} className="sr-only">Promotion Title</label>
                                         <input
                                           type="text"
                                           id={`promo-title-${idx}-${program.id}`}
@@ -1037,6 +1054,7 @@ export default function ProgramsPage() {
                                           placeholder="Title"
                                         />
                                         <div className="flex items-center gap-2">
+                                          <label htmlFor={`promo-description-${idx}-${program.id}`} className="sr-only">Promotion Description</label>
                                           <textarea
                                             id={`promo-description-${idx}-${program.id}`}
                                             name={`promo-description-${idx}-${program.id}`}
@@ -1154,35 +1172,43 @@ export default function ProgramsPage() {
             {editingBusiness && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Business Name</label>
+                  <label htmlFor="business-name-edit" className="block text-sm text-white/60 mb-1">Business Name</label>
                   <input
                     type="text"
+                    id="business-name-edit"
+                    name="business-name-edit"
                     value={editingBusiness.name || ""}
                     onChange={(e) => setEditingBusiness({ ...editingBusiness, name: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Phone Number</label>
+                  <label htmlFor="business-phone-edit" className="block text-sm text-white/60 mb-1">Phone Number</label>
                   <input
                     type="text"
+                    id="business-phone-edit"
+                    name="business-phone-edit"
                     value={editingBusiness.to_number || ""}
                     onChange={(e) => setEditingBusiness({ ...editingBusiness, to_number: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Vertical</label>
+                  <label htmlFor="business-vertical-edit" className="block text-sm text-white/60 mb-1">Vertical</label>
                   <input
                     type="text"
+                    id="business-vertical-edit"
+                    name="business-vertical-edit"
                     value={editingBusiness.vertical || ""}
                     onChange={(e) => setEditingBusiness({ ...editingBusiness, vertical: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Address</label>
+                  <label htmlFor="business-address-edit" className="block text-sm text-white/60 mb-1">Address</label>
                   <textarea
+                    id="business-address-edit"
+                    name="business-address-edit"
                     value={editingBusiness.address || ""}
                     onChange={(e) => setEditingBusiness({ ...editingBusiness, address: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -1190,9 +1216,11 @@ export default function ProgramsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Default Program ID</label>
+                  <label htmlFor="business-program-id-edit" className="block text-sm text-white/60 mb-1">Default Program ID</label>
                   <input
                     type="text"
+                    id="business-program-id-edit"
+                    name="business-program-id-edit"
                     value={editingBusiness.program_id || ""}
                     onChange={(e) => setEditingBusiness({ ...editingBusiness, program_id: e.target.value || null })}
                     className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
