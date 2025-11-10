@@ -7,6 +7,7 @@ import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, Help
 import { ColorPicker } from "@/components/ColorPicker";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { useUserRole } from "@/lib/useUserRole";
+import { useAuditLog } from "@/lib/useAuditLog";
 
 type Business = {
   id: string;
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const { accentColor } = useAccentColor();
   const { role: userRole, loading: roleLoading } = useUserRole();
   const isAdmin = userRole === "admin";
+  const { logBusinessEdit } = useAuditLog();
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -363,6 +365,26 @@ export default function SettingsPage() {
     } else {
       console.log("✅ Settings saved successfully");
       setSaveStatus("success");
+      
+      // Log audit event for business edit
+      if (isAdmin) {
+        const resourceType = activeTab === "info" ? "business_info" 
+          : activeTab === "hours" ? "hours" 
+          : activeTab === "content" ? "content" 
+          : "business_info";
+        
+        await logBusinessEdit(resourceType, {
+          name: formData.name.trim(),
+          vertical: formData.vertical.trim(),
+          services: formData.services.filter(Boolean),
+          address: formData.address.trim() || null,
+          hours: hoursJson,
+          staff: staffJson,
+          faqs: formData.faqs.length > 0 ? formData.faqs : null,
+          promos: formData.promos.length > 0 ? formData.promos : null,
+        });
+      }
+      
       // Update local state
       setBusiness({
         ...business,

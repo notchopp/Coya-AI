@@ -34,9 +34,14 @@ A sleek, real-time dashboard for monitoring live receptionist calls, viewing cal
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
    HIPAA_HASH_SALT=your_secure_random_salt_for_hipaa_compliance
+   CALL_RETENTION_DAYS=90
+   CRON_SECRET=your_secure_cron_secret
    ```
    
-   **Important:** Set `HIPAA_HASH_SALT` to a secure random string (at least 32 characters) for HIPAA-compliant de-identification. This salt is used to create consistent patient hashes.
+   **Important:** 
+   - Set `HIPAA_HASH_SALT` to a secure random string (at least 32 characters) for HIPAA-compliant de-identification
+   - Set `CALL_RETENTION_DAYS` to the number of days before auto-anonymization (default: 90)
+   - Set `CRON_SECRET` for securing cron job endpoints
 
 3. **Run the development server:**
    ```bash
@@ -141,6 +146,22 @@ The dashboard is built with multi-tenant architecture:
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+
+## HIPAA Compliance
+
+This system includes HIPAA-compliant features:
+- De-identification of PHI
+- Audit logging for all PHI access
+- Role-based access control
+- Data retention and auto-anonymization
+- Sensitive content detection
+
+**Before onboarding healthcare clients:**
+1. Sign BAA with Supabase (enable HIPAA add-on)
+2. Run audit logs migration: `supabase/migrations/create_audit_logs.sql`
+3. Review `HIPAA_COMPLIANCE.md` for full compliance checklist
+
+See `HIPAA_COMPLIANCE.md` for detailed compliance documentation.
 
 ## License
 

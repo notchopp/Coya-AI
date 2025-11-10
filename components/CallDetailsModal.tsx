@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { X, Phone, User, MessageSquare, CheckCircle, XCircle, Mail, Clock, FileText, Bot, UserCircle, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useAuditLog } from "@/lib/useAuditLog";
+import { useEffect } from "react";
 
 type Call = {
   id: string;
@@ -122,10 +124,24 @@ type CallDetailsModalProps = {
 export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsModalProps) {
   const { accentColor } = useAccentColor();
   const router = useRouter();
+  const { logPHIAccess } = useAuditLog();
+  
   if (!call) return null;
   
   // TypeScript guard - call is guaranteed to be non-null after this point
   const callData = call;
+  
+  // Log PHI access when modal opens
+  useEffect(() => {
+    if (isOpen && call) {
+      logPHIAccess("call", call.id, {
+        call_id: call.call_id,
+        patient_name: call.patient_name,
+        has_transcript: !!call.transcript,
+        has_summary: !!call.last_summary,
+      });
+    }
+  }, [isOpen, call, logPHIAccess]);
 
   // Extract date from schedule JSONB - handle various structures
   function getScheduleDate(): Date | null {

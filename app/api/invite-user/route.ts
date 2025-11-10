@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { logUserInvite, getClientIP, getUserAgent } from "@/lib/audit-log";
 
 export async function POST(request: NextRequest) {
   try {
@@ -165,6 +166,39 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Log audit event for user invitation
+    // Get inviter user ID from auth header or request
+    const authHeader = request.headers.get("authorization");
+    let inviterUserId: string | undefined;
+    if (authHeader) {
+      try {
+        const supabaseAdmin = getSupabaseAdminClient();
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+        if (user) {
+          const { data: userData } = await supabaseAdmin
+            .from("users")
+            .select("id")
+            .eq("auth_user_id", user.id)
+            .maybeSingle();
+          if (userData) {
+            inviterUserId = (userData as any).id;
+          }
+        }
+      } catch (e) {
+        // If we can't get user, log without user_id
+      }
+    }
+    
+    await logUserInvite(
+      inviterUserId || "system",
+      business_id,
+      email,
+      role || "user",
+      getClientIP(request as any),
+      getUserAgent(request as any)
+    );
 
     return NextResponse.json({
       success: true,
