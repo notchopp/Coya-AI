@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette, Mail, UserPlus } from "lucide-react";
+import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette, Mail, UserPlus, Lock } from "lucide-react";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useUserRole } from "@/lib/useUserRole";
 
 type Business = {
   id: string;
@@ -53,6 +54,8 @@ const DAYS_OF_WEEK = [
 
 export default function SettingsPage() {
   const { accentColor } = useAccentColor();
+  const { role: userRole, loading: roleLoading } = useUserRole();
+  const isAdmin = userRole === "admin";
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -465,9 +468,9 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "profile" as const, label: "User Profile", icon: User },
-    { id: "info" as const, label: "Business Info", icon: Building2 },
-    { id: "hours" as const, label: "Hours & Staff", icon: Clock },
-    { id: "content" as const, label: "Content", icon: Tag },
+    { id: "info" as const, label: "Business Info", icon: Building2, adminOnly: true },
+    { id: "hours" as const, label: "Hours & Staff", icon: Clock, adminOnly: true },
+    { id: "content" as const, label: "Content", icon: Tag, adminOnly: true },
     { id: "team" as const, label: "Team", icon: Users },
     { id: "appearance" as const, label: "Appearance", icon: Palette },
   ];
@@ -512,7 +515,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           email: inviteEmail.trim(),
           business_id: businessId,
-          role: inviteRole,
+          role: isAdmin ? inviteRole : "user", // Only admins can assign admin role
         }),
       });
 
@@ -596,11 +599,15 @@ export default function SettingsPage() {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const isAdminOnly = tab.adminOnly && !isAdmin;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="relative px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 sm:gap-2 min-h-[44px] whitespace-nowrap"
+              onClick={() => !isAdminOnly && setActiveTab(tab.id)}
+              disabled={isAdminOnly}
+              className={`relative px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 sm:gap-2 min-h-[44px] whitespace-nowrap ${
+                isAdminOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              }`}
             >
               {isActive && (
                 <motion.div
@@ -614,6 +621,9 @@ export default function SettingsPage() {
               <span className={isActive ? "" : "text-white/60"} style={isActive ? { color: "var(--accent-color, #eab308)" } : {}}>
                 {tab.label}
               </span>
+              {isAdminOnly && (
+                <Lock className="h-3 w-3 text-white/40 ml-1" />
+              )}
             </button>
           );
         })}
@@ -728,25 +738,41 @@ export default function SettingsPage() {
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            {/* Business Info */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
-            >
-              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                <div 
-                  className="p-2 rounded-xl border"
-                  style={{
-                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
-                    borderColor: `${accentColor}4D`,
-                  }}
-                >
-                  <Building2 className="h-5 w-5" style={{ color: accentColor }} />
+            {!isAdmin ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Lock className="h-5 w-5 text-white/40" />
+                  <h2 className="text-lg font-semibold text-white/60">Admin Only</h2>
                 </div>
-                <h2 className="text-lg font-semibold text-white">Business Information</h2>
-              </div>
-              <div className="space-y-4">
+                <p className="text-white/40">
+                  Only administrators can edit business information. Contact your admin to make changes.
+                </p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Business Info */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+                >
+                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                    <div 
+                      className="p-2 rounded-xl border"
+                      style={{
+                        background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                        borderColor: `${accentColor}4D`,
+                      }}
+                    >
+                      <Building2 className="h-5 w-5" style={{ color: accentColor }} />
+                    </div>
+                    <h2 className="text-lg font-semibold text-white">Business Information</h2>
+                  </div>
+                  <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">
                     Business Name
@@ -829,6 +855,8 @@ export default function SettingsPage() {
                 </div>
               </div>
             </motion.div>
+              </>
+            )}
           </motion.div>
         )}
 
@@ -841,8 +869,24 @@ export default function SettingsPage() {
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            {/* Business Hours */}
-            <motion.div
+            {!isAdmin ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Lock className="h-5 w-5 text-white/40" />
+                  <h2 className="text-lg font-semibold text-white/60">Admin Only</h2>
+                </div>
+                <p className="text-white/40">
+                  Only administrators can edit business hours and staff. Contact your admin to make changes.
+                </p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Business Hours */}
+                <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
@@ -998,6 +1042,8 @@ export default function SettingsPage() {
             )}
           </div>
         </motion.div>
+              </>
+            )}
           </motion.div>
         )}
 
@@ -1010,8 +1056,24 @@ export default function SettingsPage() {
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            {/* FAQs */}
-            <motion.div
+            {!isAdmin ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Lock className="h-5 w-5 text-white/40" />
+                  <h2 className="text-lg font-semibold text-white/60">Admin Only</h2>
+                </div>
+                <p className="text-white/40">
+                  Only administrators can edit content (FAQs and Promotions). Contact your admin to make changes.
+                </p>
+              </motion.div>
+            ) : (
+              <>
+                {/* FAQs */}
+                <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
@@ -1163,6 +1225,8 @@ export default function SettingsPage() {
             )}
           </div>
         </motion.div>
+              </>
+            )}
           </motion.div>
         )}
         {activeTab === "team" && (
@@ -1213,28 +1277,37 @@ export default function SettingsPage() {
                     disabled={inviting}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    Role
-                  </label>
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
-                    className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = `${accentColor}80`;
-                      e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                    disabled={inviting}
-                  >
-                    <option value="user" className="bg-black text-white">User</option>
-                    <option value="admin" className="bg-black text-white">Admin</option>
-                  </select>
-                </div>
+                {isAdmin && (
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">
+                      Role
+                    </label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
+                      className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = `${accentColor}80`;
+                        e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                      disabled={inviting}
+                    >
+                      <option value="user" className="bg-black text-white">User</option>
+                      <option value="admin" className="bg-black text-white">Admin</option>
+                    </select>
+                  </div>
+                )}
+                {!isAdmin && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <p className="text-xs text-white/60">
+                      New users will be assigned the "User" role. Only admins can assign admin roles.
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-end gap-3 pt-4">
                   <AnimatePresence>
                     {inviteStatus === "success" && (
@@ -1310,56 +1383,60 @@ export default function SettingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Save Button - Always Visible */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex justify-end gap-3 pt-6 border-t border-white/10"
-      >
-          <AnimatePresence>
-            {saveStatus === "success" && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm"
+      {/* Save Button - Only show for admin when editing admin-only tabs */}
+      {(isAdmin || (activeTab !== "info" && activeTab !== "hours" && activeTab !== "content")) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-end gap-3 pt-6 border-t border-white/10"
+        >
+            <AnimatePresence>
+              {saveStatus === "success" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Settings saved successfully
+                </motion.div>
+              )}
+              {saveStatus === "error" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Failed to save settings
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {(activeTab === "info" || activeTab === "hours" || activeTab === "content") && isAdmin && (
+              <motion.button
+                onClick={handleSave}
+                disabled={saving}
+                whileHover={{ scale: saving ? 1 : 1.02 }}
+                whileTap={{ scale: saving ? 1 : 0.98 }}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-4 w-4" />
-                Settings saved successfully
-              </motion.div>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </motion.button>
             )}
-            {saveStatus === "error" && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm"
-              >
-                <XCircle className="h-4 w-4" />
-                Failed to save settings
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <motion.button
-            onClick={handleSave}
-            disabled={saving}
-            whileHover={{ scale: saving ? 1 : 1.02 }}
-            whileTap={{ scale: saving ? 1 : 0.98 }}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Save Changes
-              </>
-            )}
-          </motion.button>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { usePremiumMode } from "@/components/PremiumModeProvider";
 import { ChartsPage } from "@/components/ChartsPage";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import Coyalogo from "@/components/Coyalogo";
+import { useIsAdmin } from "@/lib/useUserRole";
 import {
   LayoutDashboard,
   Phone,
@@ -48,6 +49,7 @@ export default function DashboardLayout({
   const { isPremium, isLocalhost, togglePremium } = usePremiumMode();
   const { accentColor } = useAccentColor();
   const { theme } = useTheme();
+  const isAdmin = useIsAdmin();
   const mobileMiddleColor = theme === "light" ? "#000000" : "#ffffff";
   // Premium mode available on all pages
   const isDashboard = pathname === "/";
@@ -179,8 +181,8 @@ export default function DashboardLayout({
           <Menu className="h-6 w-6 text-white" />
         </motion.button>
 
-        {/* Floating AI Insights Toggle - Mobile Only, Dashboard Only */}
-        {isDashboard && (
+        {/* Floating AI Insights Toggle - Mobile Only, Dashboard Only, Admin Only */}
+        {isDashboard && isAdmin && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -230,6 +232,7 @@ function SidebarContent({
   const { accentColor } = useAccentColor();
   // Use context for premium mode - shared state across all components
   const { isPremium, togglePremium } = usePremiumMode();
+  const isAdmin = useIsAdmin();
   const middleColor = theme === "light" ? "#000000" : "#ffffff"; // Black in light mode, white in dark mode
   const isDashboard = pathname === "/";
   const showPremium = isPremium; // Use context state directly
@@ -610,7 +613,8 @@ function SidebarContent({
         className="p-4 border-t space-y-3"
         style={{ borderColor: `${accentColor}33` }}
       >
-        {/* AI Insights Toggle - Always Visible */}
+        {/* AI Insights Toggle - Admin Only */}
+        {isAdmin && (
         <motion.button
           whileHover={{ scale: 1.02, x: 4 }}
           whileTap={{ scale: 0.98 }}
@@ -641,6 +645,7 @@ function SidebarContent({
             <span className="ml-2">{showPremium ? "AI Insights ON" : "AI Insights OFF"}</span>
           </motion.div>
         </motion.button>
+        )}
 
         {/* Theme Toggle */}
         <motion.button

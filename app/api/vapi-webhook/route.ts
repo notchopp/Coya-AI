@@ -60,10 +60,41 @@ function createConsistentToken(value: string | null, type: 'phone' | 'email' | '
 }
 
 /**
+ * Anonymizes specific names in transcript (only known names, not common words)
+ */
+function anonymizeKnownNames(transcript: string, namesToAnonymize: string[]): string {
+  if (!transcript || namesToAnonymize.length === 0) return transcript;
+  
+  let anonymized = transcript;
+  const nameCache = new Map<string, string>();
+  
+  // Anonymize each known name
+  for (const name of namesToAnonymize) {
+    if (!name || name.trim().length === 0) continue;
+    
+    const trimmedName = name.trim();
+    // Create token for this name
+    if (!nameCache.has(trimmedName)) {
+      nameCache.set(trimmedName, createConsistentToken(trimmedName, 'name') || '[NAME]');
+    }
+    const token = nameCache.get(trimmedName) || '[NAME]';
+    
+    // Replace the name (case-insensitive, whole word only)
+    const namePattern = new RegExp(`\\b${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    anonymized = anonymized.replace(namePattern, token);
+  }
+  
+  return anonymized;
+}
+
+/**
  * HIPAA-compliant transcript de-identification
  * Removes all 18 HIPAA identifiers while preserving structure for training
+ * Only anonymizes known names (patient name, business name) - keeps everything else readable
+ * @param transcript - The transcript text to de-identify
+ * @param knownNames - Optional array of known names to anonymize (patient name, business name, etc.)
  */
-function deidentifyTranscript(transcript: string | null): string | null {
+function deidentifyTranscript(transcript: string | null, knownNames?: string[]): string | null {
   if (!transcript) return transcript;
   
   let deidentified = transcript;
@@ -82,7 +113,6 @@ function deidentifyTranscript(transcript: string | null): string | null {
   // 4. Remove SSN (HIPAA identifier #7)
   deidentified = deidentified.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, '[SSN]');
   deidentified = deidentified.replace(/\b\d{9}\b/g, (match) => {
-    // Only replace if it looks like SSN (not other numbers)
     return match.length === 9 ? '[SSN]' : match;
   });
   
@@ -94,7 +124,6 @@ function deidentifyTranscript(transcript: string | null): string | null {
   deidentified = deidentified.replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[IP]');
   
   // 7. Remove dates (HIPAA identifier #3) - dates that could identify individuals
-  // Remove specific dates (MM/DD/YYYY, DD/MM/YYYY, etc.)
   deidentified = deidentified.replace(/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/g, '[DATE]');
   deidentified = deidentified.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi, '[DATE]');
   deidentified = deidentified.replace(/\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/g, '[DATE]');
@@ -102,42 +131,11 @@ function deidentifyTranscript(transcript: string | null): string | null {
   // 8. Remove ages over 89 (HIPAA identifier #3)
   deidentified = deidentified.replace(/\b(9[0-9]|[1-9]\d{2,})\s*(?:years?\s*old|yrs?\.?|years?)\b/gi, '[AGE]');
   
-  // 9. Remove names (HIPAA identifier #1) - replace with consistent tokens
-  const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g;
-  const nameCache = new Map<string, string>();
-  
-  deidentified = deidentified.replace(namePattern, (match) => {
-    // Skip common words that aren't names
-    const commonWords = [
-      'User', 'AI', 'Assistant', 'Hello', 'Hi', 'Yes', 'No', 'Okay', 'Thanks', 'Thank', 
-      'Please', 'Sorry', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-      'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-      'Doctor', 'Dr', 'Mr', 'Mrs', 'Ms', 'Miss', 'Sir', 'Madam'
-    ];
-    
-    if (commonWords.some(word => match.toLowerCase() === word.toLowerCase())) {
-      return match;
-    }
-    
-    // Check if it's a title + name pattern
-    if (/^(Dr|Mr|Mrs|Ms|Miss|Sir|Madam)\.?\s+[A-Z]/.test(match)) {
-      const parts = match.split(/\s+/);
-      if (parts.length > 1) {
-        // Replace the name part, keep title
-        const namePart = parts.slice(1).join(' ');
-        if (!nameCache.has(namePart)) {
-          nameCache.set(namePart, createConsistentToken(namePart, 'name') || '[NAME]');
-        }
-        return parts[0] + ' ' + nameCache.get(namePart);
-      }
-    }
-    
-    // Create consistent token for this name
-    if (!nameCache.has(match)) {
-      nameCache.set(match, createConsistentToken(match, 'name') || '[NAME]');
-    }
-    return nameCache.get(match) || '[NAME]';
-  });
+  // 9. Anonymize known names and business names (HIPAA identifier #1)
+  // Only anonymize the specific names provided, not common words - keeps transcript readable
+  if (knownNames && knownNames.length > 0) {
+    deidentified = anonymizeKnownNames(deidentified, knownNames);
+  }
   
   // 10. Remove addresses (HIPAA identifier #2) - street addresses
   deidentified = deidentified.replace(/\b\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Circle|Cir|Way|Place|Pl)\b/gi, '[ADDRESS]');
@@ -703,6 +701,11 @@ export async function POST(request: NextRequest) {
       console.log("⚠️ Sensitive content detected in summary:", summarySensitivity.sensitiveTypes);
     }
     
+    // For training data: anonymize only known names, keep everything else readable
+    const namesToAnonymize: string[] = [];
+    if (patientName) namesToAnonymize.push(patientName);
+    if (business?.name) namesToAnonymize.push(business.name);
+    
     // 1️⃣3️⃣ Build comprehensive call data (matching calls table schema)
     const callData: any = {
       call_id: callId,
@@ -752,14 +755,19 @@ export async function POST(request: NextRequest) {
       console.log("🔒 Creating anonymized training data for ended call:", callId);
       
       // Create anonymized version for training/ML purposes
-      // For sensitive content, use heavily anonymized version
-      let trainingTranscript = deidentifyTranscript(transcript);
-      let trainingSummary = deidentifyTranscript(summary);
+      // Only anonymize known names (patient name, business name) - keep everything else readable
+      const namesToAnonymize: string[] = [];
+      if (patientName) namesToAnonymize.push(patientName);
+      if (business?.name) namesToAnonymize.push(business.name);
+      
+      let trainingTranscript = deidentifyTranscript(transcript, namesToAnonymize);
+      let trainingSummary = deidentifyTranscript(summary, namesToAnonymize);
       
       if (hasSensitiveContent) {
         // Heavily anonymize sensitive content for training
-        trainingTranscript = anonymizeSensitiveContent(transcript);
-        trainingSummary = anonymizeSensitiveContent(summary);
+        // First anonymize known names, then apply sensitive content anonymization
+        trainingTranscript = anonymizeSensitiveContent(trainingTranscript);
+        trainingSummary = anonymizeSensitiveContent(trainingSummary);
         console.log("🔒 Heavily anonymizing sensitive content for training data");
       }
       

@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
           updateData.patient_name = deidentifyName(call.patient_name);
         }
         
+        // For cleanup, we don't have the original names, so we'll do basic PHI removal
+        // The names should already be anonymized if they were in the original data
         if (call.transcript) {
           updateData.transcript = deidentifyTranscript(call.transcript);
         }

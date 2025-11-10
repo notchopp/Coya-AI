@@ -32,10 +32,50 @@ export function createConsistentToken(value: string | null, type: 'phone' | 'ema
 }
 
 /**
+ * Anonymizes specific names in transcript (only known names, not common words)
+ */
+function anonymizeKnownNames(transcript: string, namesToAnonymize: string[]): string {
+  if (!transcript || namesToAnonymize.length === 0) return transcript;
+  
+  let anonymized = transcript;
+  const nameCache = new Map<string, string>();
+  
+  // Anonymize each known name
+  for (const name of namesToAnonymize) {
+    if (!name || name.trim().length === 0) continue;
+    
+    const trimmedName = name.trim();
+    // Create token for this name
+    if (!nameCache.has(trimmedName)) {
+      nameCache.set(trimmedName, createConsistentToken(trimmedName, 'name') || '[NAME]');
+    }
+    const token = nameCache.get(trimmedName) || '[NAME]';
+    
+    // Replace the name (case-insensitive, whole word only)
+    // Handle both full name and individual words
+    const nameWords = trimmedName.split(/\s+/);
+    
+    if (nameWords.length > 1) {
+      // Full name - replace as phrase
+      const namePattern = new RegExp(`\\b${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      anonymized = anonymized.replace(namePattern, token);
+    } else {
+      // Single word name - be more careful (whole word only)
+      const namePattern = new RegExp(`\\b${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      anonymized = anonymized.replace(namePattern, token);
+    }
+  }
+  
+  return anonymized;
+}
+
+/**
  * HIPAA-compliant transcript de-identification
  * Removes all 18 HIPAA identifiers while preserving structure for training
+ * @param transcript - The transcript text to de-identify
+ * @param knownNames - Optional array of known names to anonymize (patient name, business name, etc.)
  */
-export function deidentifyTranscript(transcript: string | null): string | null {
+export function deidentifyTranscript(transcript: string | null, knownNames?: string[]): string | null {
   if (!transcript) return transcript;
   
   let deidentified = transcript;
@@ -72,38 +112,11 @@ export function deidentifyTranscript(transcript: string | null): string | null {
   // 8. Remove ages over 89 (HIPAA identifier #3)
   deidentified = deidentified.replace(/\b(9[0-9]|[1-9]\d{2,})\s*(?:years?\s*old|yrs?\.?|years?)\b/gi, '[AGE]');
   
-  // 9. Remove names (HIPAA identifier #1) - replace with consistent tokens
-  const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g;
-  const nameCache = new Map<string, string>();
-  
-  deidentified = deidentified.replace(namePattern, (match) => {
-    const commonWords = [
-      'User', 'AI', 'Assistant', 'Hello', 'Hi', 'Yes', 'No', 'Okay', 'Thanks', 'Thank', 
-      'Please', 'Sorry', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-      'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-      'Doctor', 'Dr', 'Mr', 'Mrs', 'Ms', 'Miss', 'Sir', 'Madam'
-    ];
-    
-    if (commonWords.some(word => match.toLowerCase() === word.toLowerCase())) {
-      return match;
-    }
-    
-    if (/^(Dr|Mr|Mrs|Ms|Miss|Sir|Madam)\.?\s+[A-Z]/.test(match)) {
-      const parts = match.split(/\s+/);
-      if (parts.length > 1) {
-        const namePart = parts.slice(1).join(' ');
-        if (!nameCache.has(namePart)) {
-          nameCache.set(namePart, createConsistentToken(namePart, 'name') || '[NAME]');
-        }
-        return parts[0] + ' ' + nameCache.get(namePart);
-      }
-    }
-    
-    if (!nameCache.has(match)) {
-      nameCache.set(match, createConsistentToken(match, 'name') || '[NAME]');
-    }
-    return nameCache.get(match) || '[NAME]';
-  });
+  // 9. Anonymize known names and business names (HIPAA identifier #1)
+  // Only anonymize the specific names provided, not common words
+  if (knownNames && knownNames.length > 0) {
+    deidentified = anonymizeKnownNames(deidentified, knownNames);
+  }
   
   // 10. Remove addresses (HIPAA identifier #2)
   deidentified = deidentified.replace(/\b\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Circle|Cir|Way|Place|Pl)\b/gi, '[ADDRESS]');
