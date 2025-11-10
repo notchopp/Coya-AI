@@ -200,6 +200,8 @@ export default function ProgramsManagementPage() {
             <div className="flex items-center gap-3">
               <input
                 type="text"
+                id="programs-search"
+                name="programs-search"
                 placeholder="Search programs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -297,6 +299,8 @@ export default function ProgramsManagementPage() {
                         {isEditing ? (
                           <input
                             type="text"
+                            id={`program-name-${program.id}`}
+                            name={`program-name-${program.id}`}
                             value={editingProgram.name}
                             onChange={(e) => setEditingProgram({ ...editingProgram, name: e.target.value })}
                             className="text-xl font-bold text-white bg-white/10 border border-white/20 rounded px-3 py-1 mb-2 focus:outline-none focus:border-white/40"
@@ -348,6 +352,8 @@ export default function ProgramsManagementPage() {
                           <label className="text-sm text-white/60 mb-1 block">Extension</label>
                           <input
                             type="text"
+                            id={`program-extension-${program.id}`}
+                            name={`program-extension-${program.id}`}
                             value={editingProgram.extension || ""}
                             onChange={(e) => setEditingProgram({ ...editingProgram, extension: e.target.value })}
                             className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
@@ -356,6 +362,8 @@ export default function ProgramsManagementPage() {
                         <div>
                           <label className="text-sm text-white/60 mb-1 block">Description</label>
                           <textarea
+                            id={`program-description-${program.id}`}
+                            name={`program-description-${program.id}`}
                             value={editingProgram.description || ""}
                             onChange={(e) => setEditingProgram({ ...editingProgram, description: e.target.value })}
                             className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"

@@ -687,6 +687,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
+                    id="user-name"
+                    name="user-name"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
@@ -801,6 +803,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
+                    id="business-name"
+                    name="business-name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
@@ -813,6 +817,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
+                    id="business-vertical"
+                    name="business-vertical"
                     value={formData.vertical}
                     onChange={(e) => setFormData({ ...formData, vertical: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
@@ -825,6 +831,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
+                    id="business-address"
+                    name="business-address"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
@@ -858,6 +866,8 @@ export default function SettingsPage() {
                         >
                           <input
                             type="text"
+                            id={`service-${index}`}
+                            name={`service-${index}`}
                             value={service}
                             onChange={(e) => updateService(index, e.target.value)}
                             className="px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
@@ -949,6 +959,8 @@ export default function SettingsPage() {
                       <label className="flex items-center gap-2 cursor-pointer group">
                         <input
                           type="checkbox"
+                          id={`hours-closed-${index}`}
+                          name={`hours-closed-${index}`}
                           checked={dayHours.closed}
                           onChange={(e) => updateHours(index, "closed", e.target.checked)}
                           className="w-4 h-4 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer"
@@ -961,6 +973,8 @@ export default function SettingsPage() {
                         <div className="flex-1 relative">
                           <input
                             type="text"
+                            id={`hours-${index}`}
+                            name={`hours-${index}`}
                             value={dayHours.hours}
                             onChange={(e) => updateHours(index, "hours", e.target.value)}
                             className="w-full px-4 py-2.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"

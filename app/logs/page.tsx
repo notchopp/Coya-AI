@@ -383,6 +383,8 @@ function LogsPageContent() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
           <input
             type="text"
+            id="logs-search"
+            name="logs-search"
             placeholder="Search calls by number, summary, or transcript..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -453,6 +455,8 @@ function LogsPageContent() {
                       Status
                     </label>
                     <select
+                      id="filter-status"
+                      name="filter-status"
                       value={filters.status || ""}
                       onChange={(e) =>
                         setFilters({ ...filters, status: e.target.value || null })
@@ -479,6 +483,8 @@ function LogsPageContent() {
                       Success
                     </label>
                     <select
+                      id="filter-success"
+                      name="filter-success"
                       value={filters.success === null ? "" : filters.success ? "true" : "false"}
                       onChange={(e) =>
                         setFilters({
@@ -508,6 +514,8 @@ function LogsPageContent() {
                       Intent
                     </label>
                     <select
+                      id="filter-intent"
+                      name="filter-intent"
                       value={filters.intent || ""}
                       onChange={(e) =>
                         setFilters({ ...filters, intent: e.target.value || null })
@@ -536,6 +544,8 @@ function LogsPageContent() {
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="date"
+                        id="filter-date-from"
+                        name="filter-date-from"
                         value={filters.dateRange?.from ? format(filters.dateRange.from, "yyyy-MM-dd") : ""}
                         onChange={(e) =>
                           setFilters({
@@ -558,6 +568,8 @@ function LogsPageContent() {
                       />
                       <input
                         type="date"
+                        id="filter-date-to"
+                        name="filter-date-to"
                         value={filters.dateRange?.to ? format(filters.dateRange.to, "yyyy-MM-dd") : ""}
                         onChange={(e) =>
                           setFilters({
