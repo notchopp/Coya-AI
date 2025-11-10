@@ -28,6 +28,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* CSP policy - allows Next.js blob URLs and required sources */}
+        {/* Note: 'unsafe-eval' is required for Next.js development mode (hot reloading) */}
+        {/* In production, Next.js does not use eval(), so this is safe */}
         <meta
           httpEquiv="Content-Security-Policy"
           content="script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; object-src 'none';"

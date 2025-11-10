@@ -196,6 +196,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
+                id="email"
+                name="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -211,6 +213,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="password"
+                id="password"
+                name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
