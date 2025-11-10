@@ -8,6 +8,7 @@ import { Search, Filter, Download, X, Calendar, CheckCircle, XCircle, ChevronRig
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import CallDetailsModal from "@/components/CallDetailsModal";
+import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
 
 
 type Call = {
@@ -128,6 +129,7 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
+  const [isAnonymized, setIsAnonymized] = useState(false);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -274,7 +276,13 @@ export default function LogsPage() {
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  // Apply anonymization to logs for display
+  const displayLogs = useMemo(() => {
+    if (!isAnonymized) return filteredLogs;
+    return filteredLogs.map(log => applyAnonymization(log, true) as Call);
+  }, [filteredLogs, isAnonymized]);
+  
+  const paginatedLogs = displayLogs.slice(startIndex, endIndex);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -361,6 +369,7 @@ export default function LogsPage() {
 
       {/* Search and Filters */}
       <div className="flex gap-4">
+        <AnonymizationToggle onToggle={setIsAnonymized} />
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
           <input

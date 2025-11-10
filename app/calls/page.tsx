@@ -7,6 +7,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
 
 type Call = {
   id: string;
@@ -320,6 +321,7 @@ export default function LiveCallsPage() {
   const [mounted, setMounted] = useState(false);
   const [endedCallId, setEndedCallId] = useState<string | null>(null);
   const [hasLoadedCalls, setHasLoadedCalls] = useState(false); // Track if we've loaded calls at least once
+  const [isAnonymized, setIsAnonymized] = useState(false);
 
   const effectiveBusinessId = useMemo(() => {
     if (mounted && typeof window !== "undefined") {
@@ -769,27 +771,30 @@ export default function LiveCallsPage() {
         </motion.span>
       </div>
 
-      {/* Connection Status */}
-      <div className="flex items-center gap-2 text-sm text-white/60 mb-6">
-        {connected ? (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="flex items-center gap-2"
-          >
-            <BadgeCheck className="h-4 w-4 text-emerald-400" />
-            <span className="text-emerald-400 font-medium">Live</span>
-          </motion.div>
-        ) : (
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="flex items-center gap-2"
-          >
-            <BadgeCheck className="h-4 w-4 text-white/40" />
-            <span>Connecting...</span>
-          </motion.div>
-        )}
+      {/* Connection Status and Anonymization Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          {connected ? (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-2"
+            >
+              <BadgeCheck className="h-4 w-4 text-emerald-400" />
+              <span className="text-emerald-400 font-medium">Live</span>
+            </motion.div>
+          ) : (
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="flex items-center gap-2"
+            >
+              <BadgeCheck className="h-4 w-4 text-white/40" />
+              <span>Connecting...</span>
+            </motion.div>
+          )}
+        </div>
+        <AnonymizationToggle onToggle={setIsAnonymized} />
       </div>
 
       {/* Call Ended Popup */}
@@ -851,13 +856,19 @@ export default function LiveCallsPage() {
       </AnimatePresence>
 
       {/* Active Calls */}
-      {calls.length === 0 && hasLoadedCalls ? (
-        <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
-          No active calls
-        </div>
-      ) : calls.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          {calls.map((call, index) => {
+      {(() => {
+        // Apply anonymization to calls for display
+        const displayCalls = isAnonymized 
+          ? calls.map(call => applyAnonymization(call, true) as Call)
+          : calls;
+        
+        return displayCalls.length === 0 && hasLoadedCalls ? (
+          <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
+            No active calls
+          </div>
+        ) : displayCalls.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            {displayCalls.map((call, index) => {
             const hasTranscriptContent = hasTranscript(call);
             const messages = hasTranscriptContent ? getMessagesForCall(call) : [];
 
@@ -986,7 +997,8 @@ export default function LiveCallsPage() {
             );
           })}
         </div>
-      ) : null}
+        ) : null;
+      })()}
     </div>
   );
 }
