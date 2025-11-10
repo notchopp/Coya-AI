@@ -248,4 +248,26 @@ html {
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
 }
 
+/* Dropdown styling for dark mode */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Light mode dropdown styling */
+.light select {
+  color-scheme: light;
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
+.light select option {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
 

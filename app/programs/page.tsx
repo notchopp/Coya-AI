@@ -20,6 +20,7 @@ import {
   Clock,
   HelpCircle,
   User,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
@@ -896,7 +897,7 @@ export default function ProgramsPage() {
                                       ? editingProgram.hours as Record<string, string>
                                       : {};
                                     const currentHours = hoursObj[day] || "";
-                                    const isClosed = currentHours === "closed" || !currentHours;
+                                    const isClosed = currentHours === "closed";
                                     const commonHours = [
                                       "9am-5pm",
                                       "8am-6pm",
@@ -906,6 +907,9 @@ export default function ProgramsPage() {
                                       "24 hours",
                                       "Closed"
                                     ];
+                                    const isCustom = !isClosed && !commonHours.includes(currentHours) && currentHours !== "";
+                                    const dropdownValue = isClosed ? "Closed" : (commonHours.includes(currentHours) ? currentHours : "Custom");
+                                    const showCustomInput = dropdownValue === "Custom";
                                     
                                     return (
                                       <motion.div
@@ -921,34 +925,39 @@ export default function ProgramsPage() {
                                           </span>
                                         </div>
                                         <div className="flex items-center gap-2 flex-1">
-                                          <select
-                                            id={`hours-select-${day}-${program.id}`}
-                                            name={`hours-select-${day}-${program.id}`}
-                                            value={isClosed ? "Closed" : (commonHours.includes(currentHours) ? currentHours : "Custom")}
-                                            onChange={(e) => {
-                                              const updatedHours = { ...hoursObj };
-                                              if (e.target.value === "Closed") {
-                                                updatedHours[day] = "closed";
-                                              } else if (e.target.value === "Custom") {
-                                                // Keep current custom value or set empty
-                                                if (!updatedHours[day] || updatedHours[day] === "closed") {
+                                          <div className="relative flex-shrink-0">
+                                            <select
+                                              id={`hours-select-${day}-${program.id}`}
+                                              name={`hours-select-${day}-${program.id}`}
+                                              value={dropdownValue}
+                                              onChange={(e) => {
+                                                const updatedHours = { ...hoursObj };
+                                                if (e.target.value === "Closed") {
+                                                  updatedHours[day] = "closed";
+                                                } else if (e.target.value === "Custom") {
+                                                  // Set to empty string to trigger custom input
                                                   updatedHours[day] = "";
+                                                } else {
+                                                  updatedHours[day] = e.target.value;
                                                 }
-                                              } else {
-                                                updatedHours[day] = e.target.value;
-                                              }
-                                              setEditingProgram({ ...editingProgram, hours: updatedHours });
-                                            }}
-                                            className="px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all cursor-pointer"
-                                            style={{ colorScheme: "dark" }}
-                                          >
-                                            <option value="Closed">Closed</option>
-                                            {commonHours.filter(h => h !== "Closed").map(hour => (
-                                              <option key={hour} value={hour}>{hour}</option>
-                                            ))}
-                                            <option value="Custom">Custom...</option>
-                                          </select>
-                                          {!isClosed && (commonHours.includes(currentHours) ? null : (
+                                                setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                              }}
+                                              className="px-2.5 py-1.5 pr-8 rounded-lg glass border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all cursor-pointer appearance-none w-32"
+                                              style={{ 
+                                                colorScheme: "dark",
+                                                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                                                color: "#ffffff"
+                                              }}
+                                            >
+                                              <option value="Closed" style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>Closed</option>
+                                              {commonHours.filter(h => h !== "Closed").map(hour => (
+                                                <option key={hour} value={hour} style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>{hour}</option>
+                                              ))}
+                                              <option value="Custom" style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>Custom...</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                                          </div>
+                                          {showCustomInput && (
                                             <input
                                               type="text"
                                               id={`hours-${day}-${program.id}`}
@@ -959,17 +968,11 @@ export default function ProgramsPage() {
                                                 updatedHours[day] = e.target.value;
                                                 setEditingProgram({ ...editingProgram, hours: updatedHours });
                                               }}
-                                              onFocus={(e) => {
-                                                // Set dropdown to "Custom" when focusing on custom input
-                                                const select = document.getElementById(`hours-select-${day}-${program.id}`) as HTMLSelectElement;
-                                                if (select && select.value !== "Custom") {
-                                                  select.value = "Custom";
-                                                }
-                                              }}
+                                              autoFocus={showCustomInput && !currentHours}
                                               className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
-                                              placeholder="Enter custom hours"
+                                              placeholder="e.g., 8am-9pm"
                                             />
-                                          ))}
+                                          )}
                                         </div>
                                       </motion.div>
                                     );
