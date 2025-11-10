@@ -34,15 +34,15 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         return;
       }
 
-      // Check if user is admin (whochoppa@gmail.com or specific user ID)
+      // Check if user is superior admin (whochoppa@gmail.com or specific user ID)
       const userEmail = session.user.email?.toLowerCase();
       const userId = session.user.id;
-      const isAdminUser = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
-      setIsAdmin(isAdminUser);
+      const isSuperiorAdmin = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+      setIsAdmin(isSuperiorAdmin);
       
-      if (isAdminUser) {
-        // Admin user - skip users table check, redirect to ops if on regular pages
-        console.log("✅ Admin user detected:", userEmail);
+      if (isSuperiorAdmin) {
+        // Superior admin - skip users table check, redirect to ops if on regular pages
+        console.log("✅ Superior admin detected:", userEmail);
         if (pathname !== "/ops" && pathname !== "/login" && pathname !== "/auth/callback") {
           router.push("/ops");
           setLoading(false);

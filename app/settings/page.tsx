@@ -66,6 +66,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"profile" | "info" | "hours" | "content" | "appearance" | "team">("profile");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
+  const [inviteProgramId, setInviteProgramId] = useState<string | null>(null);
+  const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: string; name: string }>>([]);
   const [inviting, setInviting] = useState(false);
   const [inviteStatus, setInviteStatus] = useState<"idle" | "success" | "error">("idle");
   const [inviteError, setInviteError] = useState("");
@@ -230,6 +232,30 @@ export default function SettingsPage() {
 
     loadBusiness();
   }, [mounted]);
+
+  // Load available programs when team tab is active
+  useEffect(() => {
+    if (activeTab === "team" && isAdmin) {
+      async function loadPrograms() {
+        const supabase = getSupabaseClient();
+        const businessId = sessionStorage.getItem("business_id");
+        if (!businessId) return;
+
+        const { data, error } = await (supabase as any)
+          .from("programs")
+          .select("id, name")
+          .eq("business_id", businessId)
+          .order("name");
+
+        if (error) {
+          console.error("Error loading programs:", error);
+        } else {
+          setAvailablePrograms(data || []);
+        }
+      }
+      loadPrograms();
+    }
+  }, [activeTab, isAdmin]);
 
   async function handleSaveUserName() {
     setSavingUserName(true);
@@ -538,6 +564,7 @@ export default function SettingsPage() {
           email: inviteEmail.trim(),
           business_id: businessId,
           role: isAdmin ? inviteRole : "user", // Only admins can assign admin role
+          program_id: inviteProgramId || null, // Include program_id if selected
         }),
       });
 
@@ -572,6 +599,7 @@ export default function SettingsPage() {
 
       setInviteStatus("success");
       setInviteEmail("");
+      setInviteProgramId(null); // Reset program selection
       setTimeout(() => {
         setInviteStatus("idle");
       }, 3000);
@@ -1314,28 +1342,65 @@ export default function SettingsPage() {
                   />
                 </div>
                 {isAdmin && (
-                  <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">
-                      Role
-                    </label>
-                    <select
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
-                      className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = `${accentColor}80`;
-                        e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                      disabled={inviting}
-                    >
-                      <option value="user" className="bg-black text-white">User</option>
-                      <option value="admin" className="bg-black text-white">Admin</option>
-                    </select>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-2">
+                        Role
+                      </label>
+                      <select
+                        id="invite-role"
+                        name="invite-role"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
+                        className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = `${accentColor}80`;
+                          e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                        disabled={inviting}
+                      >
+                        <option value="user" className="bg-black text-white">User</option>
+                        <option value="admin" className="bg-black text-white">Admin</option>
+                      </select>
+                    </div>
+                    {availablePrograms.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-white/80 mb-2">
+                          Program (Optional)
+                        </label>
+                        <select
+                          id="invite-program"
+                          name="invite-program"
+                          value={inviteProgramId || ""}
+                          onChange={(e) => setInviteProgramId(e.target.value || null)}
+                          className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = `${accentColor}80`;
+                            e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                          disabled={inviting}
+                        >
+                          <option value="" className="bg-black text-white">All Programs (Default)</option>
+                          {availablePrograms.map((program) => (
+                            <option key={program.id} value={program.id} className="bg-black text-white">
+                              {program.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-white/60 mt-1">
+                          Assign user to a specific program, or leave blank for all programs
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
                 {!isAdmin && (
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">

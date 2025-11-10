@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const { email, business_id, role } = body;
+    const { email, business_id, role, program_id } = body;
 
     // Validate input
     if (!email || !business_id) {
@@ -97,14 +97,21 @@ export async function POST(request: NextRequest) {
       userId = user.id;
     } else {
       // Step 2: Create user record in users table (without auth_user_id initially)
+      const userData: any = {
+        email: email,
+        business_id: business_id,
+        is_active: true,
+        role: role || "user",
+      };
+      
+      // Add program_id if provided
+      if (program_id) {
+        userData.program_id = program_id;
+      }
+      
       const { data: newUser, error: createError } = await supabaseAdmin
         .from("users")
-        .insert({
-          email: email,
-          business_id: business_id,
-          is_active: true,
-          role: role || "user",
-        } as any)
+        .insert(userData)
         .select("id")
         .single();
 
@@ -127,6 +134,7 @@ export async function POST(request: NextRequest) {
         data: {
           business_id: business_id,
           role: role || "user",
+          program_id: program_id || null,
         }
       }
     );

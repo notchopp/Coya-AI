@@ -27,6 +27,7 @@ import {
   GitBranch,
   Brain,
   BarChart3,
+  Building2,
 } from "lucide-react";
 
 const navItems = [
@@ -34,7 +35,7 @@ const navItems = [
   { href: "/calls", label: "Live Calls", icon: Phone },
   { href: "/logs", label: "Call Logs", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/ops", label: "Operations", icon: BarChart3 },
+  { href: "/programs", label: "Programs", icon: Building2, adminOnly: true },
   { href: "/flowchart", label: "Flowchart", icon: GitBranch, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -515,6 +516,10 @@ function SidebarContent({
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
+          // Hide admin-only items from non-admins
+          if (item.adminOnly && !isAdmin) {
+            return null;
+          }
           return (
             <motion.div
               key={item.href}
