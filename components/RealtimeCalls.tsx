@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CallDetailsModal from "./CallDetailsModal";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { AnonymizationToggle, applyAnonymization } from "./AnonymizationToggle";
 
 type Call = {
   id: string;
@@ -42,6 +43,7 @@ function RealtimeCalls({ businessId }: Props) {
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isAnonymized, setIsAnonymized] = useState(false);
 
   // Get business_id from props or sessionStorage for multi-tenant
   // Use mounted state to avoid hydration mismatch
@@ -216,6 +218,12 @@ function RealtimeCalls({ businessId }: Props) {
     setIsModalOpen(true);
   }
 
+  // Apply anonymization to calls for display
+  const displayCalls = useMemo(() => {
+    if (!isAnonymized) return calls;
+    return calls.map(call => applyAnonymization(call, true) as Call);
+  }, [calls, isAnonymized]);
+
   return (
     <>
       <div className="w-full">
@@ -241,7 +249,10 @@ function RealtimeCalls({ businessId }: Props) {
               </motion.div>
             )}
           </div>
-          <span className="beta-badge">Beta</span>
+          <div className="flex items-center gap-3">
+            <AnonymizationToggle onToggle={setIsAnonymized} />
+            <span className="beta-badge">Beta</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -257,7 +268,7 @@ function RealtimeCalls({ businessId }: Props) {
                 No calls yet.
               </motion.div>
             )}
-            {calls.map((c, index) => (
+            {displayCalls.map((c, index) => (
               <motion.div
                 key={c.id}
                 initial={{ opacity: 0, y: 20 }}

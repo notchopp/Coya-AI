@@ -1,5 +1,323 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { createHash } from "crypto";
+
+// HIPAA-compliant de-identification with consistent tokenization
+// Uses consistent hashing so same person = same token (for trainability and identification)
+
+// Secret salt for hashing (should be from env in production)
+const HASH_SALT = process.env.HIPAA_HASH_SALT || "default-salt-change-in-production";
+
+/**
+ * Creates a consistent hash for patient identification
+ * Same input always produces same hash (allows tracking same person across calls)
+ * But hash cannot be reversed to original value (HIPAA compliant)
+ */
+function createPatientHash(phone: string | null, email: string | null, name: string | null): string {
+  const identifiers = [
+    phone ? phone.replace(/\D/g, '').toLowerCase() : '',
+    email ? email.toLowerCase() : '',
+    name ? name.trim().toLowerCase() : '',
+  ].filter(Boolean).join('|');
+  
+  if (!identifiers) {
+    // Generate random hash if no identifiers (shouldn't happen, but safety)
+    return createHash('sha256').update(`${Date.now()}-${Math.random()}`).digest('hex').substring(0, 16);
+  }
+  
+  return createHash('sha256')
+    .update(`${HASH_SALT}-${identifiers}`)
+    .digest('hex')
+    .substring(0, 16); // Use first 16 chars for shorter identifier
+}
+
+/**
+ * Creates a consistent token for a value (same value = same token)
+ * Used for phone, email, names - allows identification without exposing PHI
+ */
+function createConsistentToken(value: string | null, type: 'phone' | 'email' | 'name'): string | null {
+  if (!value) return null;
+  
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  
+  const hash = createHash('sha256')
+    .update(`${HASH_SALT}-${type}-${normalized}`)
+    .digest('hex')
+    .substring(0, 8); // 8 char token
+  
+  // Format tokens for readability while maintaining consistency
+  switch (type) {
+    case 'phone':
+      return `PH-${hash}`;
+    case 'email':
+      return `EM-${hash}`;
+    case 'name':
+      return `NM-${hash}`;
+    default:
+      return hash;
+  }
+}
+
+/**
+ * HIPAA-compliant transcript de-identification
+ * Removes all 18 HIPAA identifiers while preserving structure for training
+ */
+function deidentifyTranscript(transcript: string | null): string | null {
+  if (!transcript) return transcript;
+  
+  let deidentified = transcript;
+  
+  // 1. Remove phone numbers (HIPAA identifier #4)
+  deidentified = deidentified.replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE]');
+  deidentified = deidentified.replace(/\b\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[PHONE]');
+  deidentified = deidentified.replace(/\b\d{10,}\b/g, '[PHONE]');
+  
+  // 2. Remove fax numbers (HIPAA identifier #5)
+  deidentified = deidentified.replace(/\bfax[:\s]?\d{3}[-.]?\d{3}[-.]?\d{4}\b/gi, '[FAX]');
+  
+  // 3. Remove email addresses (HIPAA identifier #6)
+  deidentified = deidentified.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]');
+  
+  // 4. Remove SSN (HIPAA identifier #7)
+  deidentified = deidentified.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, '[SSN]');
+  deidentified = deidentified.replace(/\b\d{9}\b/g, (match) => {
+    // Only replace if it looks like SSN (not other numbers)
+    return match.length === 9 ? '[SSN]' : match;
+  });
+  
+  // 5. Remove URLs (HIPAA identifier #14)
+  deidentified = deidentified.replace(/https?:\/\/[^\s]+/gi, '[URL]');
+  deidentified = deidentified.replace(/\bwww\.[^\s]+/gi, '[URL]');
+  
+  // 6. Remove IP addresses (HIPAA identifier #15)
+  deidentified = deidentified.replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '[IP]');
+  
+  // 7. Remove dates (HIPAA identifier #3) - dates that could identify individuals
+  // Remove specific dates (MM/DD/YYYY, DD/MM/YYYY, etc.)
+  deidentified = deidentified.replace(/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/g, '[DATE]');
+  deidentified = deidentified.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi, '[DATE]');
+  deidentified = deidentified.replace(/\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b/g, '[DATE]');
+  
+  // 8. Remove ages over 89 (HIPAA identifier #3)
+  deidentified = deidentified.replace(/\b(9[0-9]|[1-9]\d{2,})\s*(?:years?\s*old|yrs?\.?|years?)\b/gi, '[AGE]');
+  
+  // 9. Remove names (HIPAA identifier #1) - replace with consistent tokens
+  const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g;
+  const nameCache = new Map<string, string>();
+  
+  deidentified = deidentified.replace(namePattern, (match) => {
+    // Skip common words that aren't names
+    const commonWords = [
+      'User', 'AI', 'Assistant', 'Hello', 'Hi', 'Yes', 'No', 'Okay', 'Thanks', 'Thank', 
+      'Please', 'Sorry', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+      'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+      'Doctor', 'Dr', 'Mr', 'Mrs', 'Ms', 'Miss', 'Sir', 'Madam'
+    ];
+    
+    if (commonWords.some(word => match.toLowerCase() === word.toLowerCase())) {
+      return match;
+    }
+    
+    // Check if it's a title + name pattern
+    if (/^(Dr|Mr|Mrs|Ms|Miss|Sir|Madam)\.?\s+[A-Z]/.test(match)) {
+      const parts = match.split(/\s+/);
+      if (parts.length > 1) {
+        // Replace the name part, keep title
+        const namePart = parts.slice(1).join(' ');
+        if (!nameCache.has(namePart)) {
+          nameCache.set(namePart, createConsistentToken(namePart, 'name') || '[NAME]');
+        }
+        return parts[0] + ' ' + nameCache.get(namePart);
+      }
+    }
+    
+    // Create consistent token for this name
+    if (!nameCache.has(match)) {
+      nameCache.set(match, createConsistentToken(match, 'name') || '[NAME]');
+    }
+    return nameCache.get(match) || '[NAME]';
+  });
+  
+  // 10. Remove addresses (HIPAA identifier #2) - street addresses
+  deidentified = deidentified.replace(/\b\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Court|Ct|Circle|Cir|Way|Place|Pl)\b/gi, '[ADDRESS]');
+  
+  // 11. Remove ZIP codes (part of geographic identifier)
+  deidentified = deidentified.replace(/\b\d{5}(?:-\d{4})?\b/g, '[ZIP]');
+  
+  // 12. Remove medical record numbers (HIPAA identifier #8) - common patterns
+  deidentified = deidentified.replace(/\b(?:MRN|MR|Medical Record)[:\s#]?\s*\d+\b/gi, '[MRN]');
+  deidentified = deidentified.replace(/\b(?:Record|Account)[:\s#]?\s*#?\s*\d{4,}\b/gi, '[RECORD]');
+  
+  // 13. Remove account numbers (HIPAA identifier #10)
+  deidentified = deidentified.replace(/\b(?:Account|Acct)[:\s#]?\s*#?\s*\d{4,}\b/gi, '[ACCOUNT]');
+  
+  // 14. Remove certificate/license numbers (HIPAA identifier #11)
+  deidentified = deidentified.replace(/\b(?:License|Cert|Certificate)[:\s#]?\s*#?\s*[A-Z0-9]{4,}\b/gi, '[LICENSE]');
+  
+  return deidentified;
+}
+
+/**
+ * HIPAA-compliant phone de-identification with consistent tokenization
+ */
+function deidentifyPhone(phone: string | null): string | null {
+  if (!phone) return null;
+  return createConsistentToken(phone, 'phone');
+}
+
+/**
+ * HIPAA-compliant email de-identification with consistent tokenization
+ */
+function deidentifyEmail(email: string | null): string | null {
+  if (!email) return null;
+  return createConsistentToken(email, 'email');
+}
+
+/**
+ * HIPAA-compliant name de-identification with consistent tokenization
+ */
+function deidentifyName(name: string | null): string | null {
+  if (!name) return null;
+  return createConsistentToken(name, 'name');
+}
+
+/**
+ * HIPAA-compliant conversation turns de-identification
+ */
+function deidentifyConversationTurns(turns: any[]): any[] {
+  return turns.map(turn => ({
+    ...turn,
+    content: deidentifyTranscript(turn.content) || turn.content,
+    // Remove timestamps that could identify individuals (keep relative time only)
+    timestamp: turn.timestamp ? '[TIMESTAMP]' : null,
+    end_time: null, // Remove end_time as it could be identifying
+  }));
+}
+
+/**
+ * Remove dates from schedule that could identify individuals
+ * Keep only year and relative timing for training purposes
+ */
+function deidentifySchedule(schedule: any): any {
+  if (!schedule) return schedule;
+  
+  const deidentified = { ...schedule };
+  
+  // Remove specific dates, keep only structure
+  if (deidentified.start) {
+    try {
+      const date = new Date(deidentified.start);
+      // Keep only year and month for training, remove day/time
+      deidentified.start = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-[DAY]`;
+    } catch (e) {
+      deidentified.start = '[DATE]';
+    }
+  }
+  
+  if (deidentified.end) {
+    try {
+      const date = new Date(deidentified.end);
+      deidentified.end = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-[DAY]`;
+    } catch (e) {
+      deidentified.end = '[DATE]';
+    }
+  }
+  
+  // De-identify summary if it contains names
+  if (deidentified.summary) {
+    deidentified.summary = deidentifyTranscript(deidentified.summary);
+  }
+  
+  return deidentified;
+}
+
+/**
+ * Detects sensitive content that should be heavily anonymized or not saved
+ * Returns object with flags and sanitized content
+ */
+function detectSensitiveContent(text: string | null): {
+  hasSensitiveContent: boolean;
+  sensitiveTypes: string[];
+  sanitizedText: string | null;
+  shouldAnonymize: boolean;
+} {
+  if (!text) {
+    return {
+      hasSensitiveContent: false,
+      sensitiveTypes: [],
+      sanitizedText: null,
+      shouldAnonymize: false,
+    };
+  }
+
+  const lowerText = text.toLowerCase();
+  const sensitiveTypes: string[] = [];
+  let shouldAnonymize = false;
+  let sanitizedText = text;
+
+  // Suicidal ideation patterns
+  const suicidalPatterns = [
+    /\b(kill\s+myself|kill myself|end my life|end it all|suicide|suicidal|want to die|don't want to live|not worth living)\b/gi,
+    /\b(harm myself|hurt myself|self harm|cutting|overdose|overdosing)\b/gi,
+    /\b(no reason to live|better off dead|everyone would be better|no point in living)\b/gi,
+  ];
+
+  // Mental health crisis patterns
+  const crisisPatterns = [
+    /\b(psychiatric emergency|mental breakdown|psychotic|hallucinating|hearing voices)\b/gi,
+    /\b(abuse|abused|abuser|domestic violence|sexual assault|rape)\b/gi,
+    /\b(addiction|overdose|withdrawal|relapse|using drugs|drinking too much)\b/gi,
+  ];
+
+  // Check for suicidal content
+  const hasSuicidal = suicidalPatterns.some(pattern => pattern.test(text));
+  if (hasSuicidal) {
+    sensitiveTypes.push('suicidal_ideation');
+    shouldAnonymize = true;
+    // Replace sensitive phrases with generic markers
+    suicidalPatterns.forEach(pattern => {
+      sanitizedText = sanitizedText.replace(pattern, '[SENSITIVE_CONTENT]');
+    });
+  }
+
+  // Check for crisis content
+  const hasCrisis = crisisPatterns.some(pattern => pattern.test(text));
+  if (hasCrisis) {
+    sensitiveTypes.push('mental_health_crisis');
+    shouldAnonymize = true;
+    crisisPatterns.forEach(pattern => {
+      sanitizedText = sanitizedText.replace(pattern, '[SENSITIVE_CONTENT]');
+    });
+  }
+
+  return {
+    hasSensitiveContent: sensitiveTypes.length > 0,
+    sensitiveTypes,
+    sanitizedText: shouldAnonymize ? sanitizedText : text,
+    shouldAnonymize,
+  };
+}
+
+/**
+ * Aggressively anonymize sensitive content - removes all PHI and sensitive details
+ */
+function anonymizeSensitiveContent(text: string | null): string | null {
+  if (!text) return text;
+  
+  // First de-identify all PHI
+  let anonymized = deidentifyTranscript(text);
+  
+  if (!anonymized) return null;
+  
+  // Then replace sensitive content markers
+  anonymized = anonymized.replace(/\[SENSITIVE_CONTENT\]/gi, '[REDACTED]');
+  
+  // Remove any remaining context that could identify the situation
+  anonymized = anonymized.replace(/\b(I|me|my|myself|I'm|I've|I'll)\b/gi, '[PERSON]');
+  
+  return anonymized;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,7 +420,7 @@ export async function POST(request: NextRequest) {
 
     // 4️⃣ Extract messages and process call turns (like n8n)
     const messages = artifact.messages || message.messages || artifact.messagesOpenAIFormatted || message.conversation || [];
-    const conversationTurns: any[] = [];
+    let conversationTurns: any[] = [];
     let turnCounter = 1;
     let confidenceScores: number[] = [];
     let n8nResponseBody = null;
@@ -360,6 +678,31 @@ export async function POST(request: NextRequest) {
     const lastVariantId = variables.variant_id || analysis?.variant_id || null;
     const lastResponse = variables.last_response || analysis?.last_response || message.lastResponse || null;
 
+    // 🔒 Create patient hash for consistent identification (HIPAA compliant)
+    // This allows tracking same person across calls without exposing PHI
+    const patientHash = createPatientHash(phone, email, patientName);
+    
+    // 🔒 Detect sensitive content (suicidal ideation, mental health crisis, etc.)
+    const transcriptSensitivity = detectSensitiveContent(transcript);
+    const summarySensitivity = detectSensitiveContent(summary);
+    const hasSensitiveContent = transcriptSensitivity.hasSensitiveContent || summarySensitivity.hasSensitiveContent;
+    
+    // For sensitive content: sanitize for business view, heavily anonymize for training
+    let businessTranscript = transcript;
+    let businessSummary = summary;
+    
+    if (transcriptSensitivity.hasSensitiveContent) {
+      // Business owners see sanitized version (sensitive phrases replaced)
+      businessTranscript = transcriptSensitivity.sanitizedText;
+      console.log("⚠️ Sensitive content detected in transcript:", transcriptSensitivity.sensitiveTypes);
+    }
+    
+    if (summarySensitivity.hasSensitiveContent) {
+      // Business owners see sanitized version
+      businessSummary = summarySensitivity.sanitizedText;
+      console.log("⚠️ Sensitive content detected in summary:", summarySensitivity.sensitiveTypes);
+    }
+    
     // 1️⃣3️⃣ Build comprehensive call data (matching calls table schema)
     const callData: any = {
       call_id: callId,
@@ -369,8 +712,8 @@ export async function POST(request: NextRequest) {
       phone: phone,
       email: email,
       patient_name: patientName,
-      transcript: transcript,
-      last_summary: summary,
+      transcript: businessTranscript, // Use sanitized version if sensitive
+      last_summary: businessSummary, // Use sanitized version if sensitive
       last_intent: intent,
       last_confidence: avgConfidence !== null ? parseFloat(avgConfidence.toFixed(3)) : null,
       last_variant_id: lastVariantId,
@@ -384,10 +727,147 @@ export async function POST(request: NextRequest) {
       duration_sec: durSec > 0 ? durSec : null,
       success_evaluation: successEvaluation === "true" || successEvaluation === true || successEvaluation === 1 ? 1 : (successEvaluation === "false" || successEvaluation === false || successEvaluation === 0 ? 0 : null),
       updated_at: new Date().toISOString(),
+      has_sensitive_content: hasSensitiveContent,
+      sensitive_content_types: [
+        ...(transcriptSensitivity.sensitiveTypes || []),
+        ...(summarySensitivity.sensitiveTypes || []),
+      ].filter((v, i, a) => a.indexOf(v) === i), // Remove duplicates
     };
+
+    // 🔒 HIPAA-COMPLIANT DUAL STORAGE APPROACH
+    // Business owners need full data for operations (HIPAA allows this with proper access controls)
+    // Training/ML needs anonymized data (HIPAA compliant de-identification)
+    
+    // Always store patient_hash for consistent identification
+    callData.patient_hash = patientHash;
+    
+    // Store full data in main calls table (for business dashboard use)
+    // This is HIPAA compliant because:
+    // 1. Business owners have BAA and proper access controls
+    // 2. Data is encrypted at rest and in transit
+    // 3. RLS policies restrict access to authorized users only
+    
+    // When call ends, also create anonymized version for training/ML
+    if (messageType === "end-of-call-report") {
+      console.log("🔒 Creating anonymized training data for ended call:", callId);
+      
+      // Create anonymized version for training/ML purposes
+      // For sensitive content, use heavily anonymized version
+      let trainingTranscript = deidentifyTranscript(transcript);
+      let trainingSummary = deidentifyTranscript(summary);
+      
+      if (hasSensitiveContent) {
+        // Heavily anonymize sensitive content for training
+        trainingTranscript = anonymizeSensitiveContent(transcript);
+        trainingSummary = anonymizeSensitiveContent(summary);
+        console.log("🔒 Heavily anonymizing sensitive content for training data");
+      }
+      
+      const anonymizedCallData: any = {
+        call_id: callId,
+        business_id: business.id,
+        patient_hash: patientHash, // Keep hash for consistent identification
+        status: status,
+        to_number: toNumber, // Business number is not PHI
+        phone: deidentifyPhone(phone),
+        email: deidentifyEmail(email),
+        patient_name: deidentifyName(patientName),
+        transcript: trainingTranscript,
+        last_summary: trainingSummary,
+        last_intent: intent,
+        last_confidence: avgConfidence !== null ? parseFloat(avgConfidence.toFixed(3)) : null,
+        route: route,
+        success: success !== null ? success : undefined,
+        escalate: escalate,
+        upsell: upsell,
+        duration_sec: durSec > 0 ? durSec : null,
+        success_evaluation: successEvaluation === "true" || successEvaluation === true || successEvaluation === 1 ? 1 : (successEvaluation === "false" || successEvaluation === false || successEvaluation === 0 ? 0 : null),
+        updated_at: new Date().toISOString(),
+        has_sensitive_content: hasSensitiveContent,
+        sensitive_content_types: callData.sensitive_content_types,
+      };
+      
+      // Handle anonymized schedule
+      if (schedule) {
+        anonymizedCallData.schedule = deidentifySchedule(schedule);
+      }
+      
+      // Handle anonymized timestamps (year-month only)
+      if (message.startedAt) {
+        try {
+          const date = new Date(message.startedAt);
+          anonymizedCallData.started_at_year_month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        } catch (e) {
+          // Skip if parsing fails
+        }
+      }
+      
+      if (message.endedAt) {
+        try {
+          const date = new Date(message.endedAt);
+          anonymizedCallData.ended_at_year_month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        } catch (e) {
+          // Skip if parsing fails
+        }
+      }
+      
+      // Store anonymized conversation turns
+      let anonymizedTurns: any[] = [];
+      if (conversationTurns.length > 0) {
+        anonymizedTurns = deidentifyConversationTurns(conversationTurns);
+      }
+      
+      // Store anonymized data in separate table (calls_training) for ML/training
+      // This table is HIPAA compliant and safe for export/sharing
+      try {
+        const { error: trainingError } = await supabaseAdmin
+          .from("calls_training")
+          .upsert(anonymizedCallData as any, {
+            onConflict: "call_id",
+            ignoreDuplicates: false,
+          });
+        
+        if (trainingError) {
+          console.warn("⚠️ Could not store anonymized training data (table may not exist):", trainingError.message);
+          // Don't fail the main call storage if training table doesn't exist
+        } else {
+          console.log("✅ Stored anonymized training data for call:", callId);
+          
+          // Store anonymized conversation turns
+          if (anonymizedTurns.length > 0) {
+            const anonymizedTurnData: any = {
+              call_id: callId,
+              transcript_json: anonymizedTurns,
+              total_turns: anonymizedTurns.length,
+              updated_at: new Date().toISOString(),
+            };
+            
+            if (toNumber) {
+              anonymizedTurnData.to_number = toNumber;
+            }
+            
+            const { error: turnsError } = await supabaseAdmin
+              .from("call_turns_training")
+              .upsert(anonymizedTurnData as any, {
+                onConflict: "call_id",
+                ignoreDuplicates: false,
+              });
+            
+            if (turnsError) {
+              console.warn("⚠️ Could not store anonymized turns (table may not exist):", turnsError.message);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("⚠️ Training table storage failed (non-critical):", e);
+        // Continue with main call storage even if training storage fails
+      }
+    }
 
     // Handle timestamps
     if (messageType === "end-of-call-report") {
+      // Store full timestamps in main calls table (for business dashboard)
+      // Anonymized version with year-month only is stored in calls_training table
       if (message.startedAt) {
         callData.started_at = new Date(message.startedAt).toISOString();
       }

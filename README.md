@@ -32,7 +32,11 @@ A sleek, real-time dashboard for monitoring live receptionist calls, viewing cal
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   HIPAA_HASH_SALT=your_secure_random_salt_for_hipaa_compliance
    ```
+   
+   **Important:** Set `HIPAA_HASH_SALT` to a secure random string (at least 32 characters) for HIPAA-compliant de-identification. This salt is used to create consistent patient hashes.
 
 3. **Run the development server:**
    ```bash
