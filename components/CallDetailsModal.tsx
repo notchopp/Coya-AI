@@ -37,6 +37,11 @@ type Message = {
 };
 
 function parseTranscript(transcript: string): Message[] {
+  if (typeof transcript !== "string") {
+    console.warn("⚠️ Transcript is not a string:", transcript);
+    return [];
+  }
+  
   if (!transcript) return [];
   
   const messages: Message[] = [];
@@ -416,7 +421,7 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                         )}
                         
                         {/* Transcript - Condensed with Scroll */}
-                        {call.transcript && (
+                        {typeof call.transcript === "string" && call.transcript.trim() !== "" ? (
                           <div>
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-4 w-4 text-white/60" />
@@ -432,19 +437,11 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                                 >
                                   <div className={`flex items-start gap-2 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                                    <div 
-                                      className={`p-1.5 rounded-full flex-shrink-0 border ${
-                                        message.role === "user"
-                                          ? ""
-                                          : ""
-                                      }`}
-                                      style={message.role === "user" ? {
-                                        backgroundColor: "rgba(59, 130, 246, 0.2)",
-                                        borderColor: "rgba(59, 130, 246, 0.3)",
-                                      } : {
-                                        backgroundColor: `${accentColor}33`,
-                                        borderColor: `${accentColor}4D`,
-                                      }}
+                                    <div
+                                      className="p-1.5 rounded-full flex-shrink-0 border"
+                                      style={message.role === "user"
+                                        ? { backgroundColor: "rgba(59,130,246,0.2)", borderColor: "rgba(59,130,246,0.3)" }
+                                        : { backgroundColor: `${accentColor}33`, borderColor: `${accentColor}4D` }}
                                     >
                                       {message.role === "user" ? (
                                         <UserCircle className="h-3.5 w-3.5 text-blue-400" />
@@ -452,11 +449,13 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                         <Bot className="h-3.5 w-3.5" style={{ color: accentColor }} />
                                       )}
                                     </div>
-                                    <div className={`px-4 py-2.5 rounded-2xl ${
-                                      message.role === "user"
-                                        ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
-                                        : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
-                                    }`}>
+                                    <div
+                                      className={`px-4 py-2.5 rounded-2xl ${
+                                        message.role === "user"
+                                          ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
+                                          : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
+                                      }`}
+                                    >
                                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
                                     </div>
                                   </div>
@@ -464,6 +463,8 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                               ))}
                             </div>
                           </div>
+                        ) : (
+                          <p className="text-sm text-white/40">No transcript available</p>
                         )}
                         
                         {/* Call ID */}
