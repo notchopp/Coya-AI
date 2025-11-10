@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -120,7 +120,7 @@ function parseTranscript(transcript: string): Message[] {
   return messages;
 }
 
-export default function LogsPage() {
+function LogsPageContent() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
   const searchParams = useSearchParams();
@@ -856,5 +856,17 @@ export default function LogsPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function LogsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-white/60">Loading call logs...</div>
+      </div>
+    }>
+      <LogsPageContent />
+    </Suspense>
   );
 }

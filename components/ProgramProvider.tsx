@@ -163,20 +163,20 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Stable default context value to prevent hook count changes
+const defaultContextValue: ProgramContextType = {
+  program: null,
+  programId: null,
+  businessId: null,
+  hasPrograms: false,
+  loading: false,
+  setProgram: () => {},
+  setProgramId: () => {},
+  refreshPrograms: async () => {},
+};
+
 export function useProgram() {
   const context = useContext(ProgramContext);
-  if (context === undefined) {
-    // Return default values instead of throwing to prevent hooks violations
-    return {
-      program: null,
-      programId: null,
-      businessId: null,
-      hasPrograms: false,
-      loading: false,
-      setProgram: () => {},
-      setProgramId: () => {},
-      refreshPrograms: async () => {},
-    };
-  }
-  return context;
+  // Always return a stable object to prevent hook count changes
+  return context ?? defaultContextValue;
 }
