@@ -146,7 +146,13 @@ function RealtimeCalls({ businessId }: Props) {
                 }
         })
         .subscribe((status) => {
-          console.log("Channel subscription status:", status);
+          // Only log status changes, not every status update
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Channel subscription active");
+          } else if (status === "CLOSED" && isMounted) {
+            // Only log if we're still mounted (unexpected close)
+            console.warn("⚠️ Channel closed unexpectedly");
+          }
           setConnected(status === "SUBSCRIBED");
         });
       channels.push(channel);
@@ -191,6 +197,9 @@ function RealtimeCalls({ businessId }: Props) {
           }
         )
         .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Realtime calls channel active");
+          }
           setConnected(status === "SUBSCRIBED");
         });
       channels.push(channel);

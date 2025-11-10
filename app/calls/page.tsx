@@ -631,7 +631,9 @@ export default function LiveCallsPage() {
           }
         )
         .subscribe((status) => {
-          console.log("Live calls channel status:", status);
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Live calls channel active");
+          }
           setConnected(status === "SUBSCRIBED");
         });
       
@@ -699,7 +701,9 @@ export default function LiveCallsPage() {
                  }
                )
                .subscribe((status) => {
-                 console.log("Call turns channel subscription status:", status);
+                 if (status === "SUBSCRIBED") {
+                   console.log("✅ Call turns channel active");
+                 }
                });
       
       channels.push(turnsChannel);
