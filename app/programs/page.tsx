@@ -907,15 +907,15 @@ export default function ProgramsPage() {
                                           isClosed ? "border-white/5 bg-white/2" : "border-white/10 hover:border-yellow-500/30 hover:bg-white/5"
                                         }`}
                                       >
-                                        <div className="w-20 flex-shrink-0">
+                                        <div className="w-24 flex-shrink-0">
                                           <span className={`text-xs font-semibold capitalize ${
                                             isClosed ? "text-white/40" : "text-white/90"
                                           }`}>
-                                            {day.slice(0, 3)}
+                                            {day.charAt(0).toUpperCase() + day.slice(1)}
                                           </span>
                                         </div>
                                         <div className="flex items-center gap-3 flex-1">
-                                          <label className="flex items-center gap-2 cursor-pointer group">
+                                          <label className="flex items-center gap-2 cursor-pointer group flex-shrink-0">
                                             <input
                                               type="checkbox"
                                               id={`closed-${day}-${program.id}`}
@@ -930,14 +930,14 @@ export default function ProgramsPage() {
                                                 }
                                                 setEditingProgram({ ...editingProgram, hours: updatedHours });
                                               }}
-                                              className="w-4 h-4 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer"
+                                              className="w-4 h-4 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer accent-yellow-400"
                                             />
-                                            <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors">
+                                            <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors whitespace-nowrap">
                                               Closed
                                             </span>
                                           </label>
                                           {!isClosed && (
-                                            <div className="flex-1 relative">
+                                            <div className="flex-1 relative min-w-0">
                                               <input
                                                 type="text"
                                                 id={`hours-${day}-${program.id}`}
@@ -954,7 +954,7 @@ export default function ProgramsPage() {
                                             </div>
                                           )}
                                           {isClosed && (
-                                            <div className="flex-1 flex items-center">
+                                            <div className="flex-1 flex items-center min-w-0">
                                               <span className="px-2.5 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs border border-white/10">
                                                 Closed
                                               </span>
