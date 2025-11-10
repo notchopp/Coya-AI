@@ -16,11 +16,25 @@ import {
   Plus,
   Trash2,
   Store,
+  Tag,
+  Clock,
+  HelpCircle,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { useUserRole } from "@/lib/useUserRole";
 import { useProgram } from "@/components/ProgramProvider";
+
+const DAYS_OF_WEEK = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 type Program = {
   id: string;
@@ -176,30 +190,40 @@ export default function ProgramsPage() {
     }
 
     setSaving(true);
-    const supabase = getSupabaseClient();
 
-    const { error } = await (supabase as any)
-      .from("programs")
-      .insert({
-        name: newProgram.name,
-        extension: newProgram.extension || null,
-        phone_number: newProgram.phone_number || null,
-        description: newProgram.description || null,
-        business_id: storedBusinessId,
-        services: null,
-        staff: null,
-        hours: null,
-        faqs: null,
-        promos: null,
+    try {
+      const response = await fetch("/api/programs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newProgram.name,
+          extension: newProgram.extension || null,
+          phone_number: newProgram.phone_number || null,
+          description: newProgram.description || null,
+          business_id: storedBusinessId,
+          services: null,
+          staff: null,
+          hours: null,
+          faqs: null,
+          promos: null,
+        }),
       });
 
-    if (error) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("Error creating program:", result);
+        alert(result.error || "Failed to create program");
+      } else {
+        setCreatingProgram(false);
+        setNewProgram({ name: "", extension: "", phone_number: "", description: "" });
+        await loadProgramsForBusiness(storedBusinessId);
+      }
+    } catch (error) {
       console.error("Error creating program:", error);
       alert("Failed to create program");
-    } else {
-      setCreatingProgram(false);
-      setNewProgram({ name: "", extension: "", phone_number: "", description: "" });
-      await loadProgramsForBusiness(storedBusinessId);
     }
 
     setSaving(false);
@@ -207,31 +231,39 @@ export default function ProgramsPage() {
 
   async function handleSaveProgram(program: Program) {
     setSaving(true);
-    const supabase = getSupabaseClient();
 
-    const updateData: any = {
-      name: program.name,
-      extension: program.extension,
-      phone_number: program.phone_number,
-      description: program.description,
-      services: program.services,
-      staff: program.staff,
-      hours: program.hours,
-      faqs: program.faqs,
-      promos: program.promos,
-    };
+    try {
+      const response = await fetch("/api/programs", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: program.id,
+          name: program.name,
+          extension: program.extension,
+          phone_number: program.phone_number,
+          description: program.description,
+          services: program.services,
+          staff: program.staff,
+          hours: program.hours,
+          faqs: program.faqs,
+          promos: program.promos,
+        }),
+      });
 
-    const { error } = await (supabase as any)
-      .from("programs")
-      .update(updateData)
-      .eq("id", program.id);
+      const result = await response.json();
 
-    if (error) {
+      if (!response.ok) {
+        console.error("Error saving program:", result);
+        alert(result.error || "Failed to save program");
+      } else {
+        setEditingProgram(null);
+        await loadProgramsForBusiness(program.business_id);
+      }
+    } catch (error) {
       console.error("Error saving program:", error);
       alert("Failed to save program");
-    } else {
-      setEditingProgram(null);
-      await loadProgramsForBusiness(program.business_id);
     }
 
     setSaving(false);
@@ -243,18 +275,23 @@ export default function ProgramsPage() {
     }
 
     setDeleting(programId);
-    const supabase = getSupabaseClient();
 
-    const { error } = await (supabase as any)
-      .from("programs")
-      .delete()
-      .eq("id", programId);
+    try {
+      const response = await fetch(`/api/programs?id=${programId}`, {
+        method: "DELETE",
+      });
 
-    if (error) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("Error deleting program:", result);
+        alert(result.error || "Failed to delete program");
+      } else {
+        await loadProgramsForBusiness(businessId || sessionStorage.getItem("business_id") || "");
+      }
+    } catch (error) {
       console.error("Error deleting program:", error);
       alert("Failed to delete program");
-    } else {
-      await loadProgramsForBusiness(businessId || sessionStorage.getItem("business_id") || "");
     }
 
     setDeleting(null);
@@ -618,8 +655,8 @@ export default function ProgramsPage() {
                             </div>
                           </div>
 
-                          {isEditing && (
-                            <div className="space-y-3 mb-4">
+                          {isEditing && editingProgram && (
+                            <div className="space-y-6 mb-4">
                               <div>
                                 <label className="text-sm text-white/60 mb-1 block">Extension</label>
                                 <input
@@ -652,6 +689,323 @@ export default function ProgramsPage() {
                                   className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
                                   rows={2}
                                 />
+                              </div>
+
+                              {/* Services */}
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4" style={{ color: accentColor }} />
+                                    <h4 className="text-base font-semibold text-white">Services</h4>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const currentServices = Array.isArray(editingProgram.services) ? editingProgram.services : [];
+                                      setEditingProgram({ ...editingProgram, services: [...currentServices, ""] });
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                    Add Service
+                                  </button>
+                                </div>
+                                <div className="space-y-3">
+                                  {(Array.isArray(editingProgram.services) && editingProgram.services.length > 0) ? (
+                                    editingProgram.services.map((service: string, idx: number) => (
+                                      <div key={idx} className="flex items-center gap-3">
+                                        <input
+                                          type="text"
+                                          id={`service-${idx}-${program.id}`}
+                                          name={`service-${idx}-${program.id}`}
+                                          value={service}
+                                          onChange={(e) => {
+                                            const currentServices = Array.isArray(editingProgram.services) ? editingProgram.services : [];
+                                            const updatedServices = currentServices.map((s, i) => (i === idx ? e.target.value : s));
+                                            setEditingProgram({ ...editingProgram, services: updatedServices });
+                                          }}
+                                          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                          placeholder="e.g., Teeth Cleaning"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const currentServices = Array.isArray(editingProgram.services) ? editingProgram.services : [];
+                                            const updatedServices = currentServices.filter((_, i) => i !== idx);
+                                            setEditingProgram({ ...editingProgram, services: updatedServices });
+                                          }}
+                                          className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-white/40 text-sm">No services added yet.</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Staff */}
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" style={{ color: accentColor }} />
+                                    <h4 className="text-base font-semibold text-white">Staff</h4>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                      setEditingProgram({ ...editingProgram, staff: [...currentStaff, { name: "", role: "" }] });
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                    Add Staff
+                                  </button>
+                                </div>
+                                <div className="space-y-3">
+                                  {(Array.isArray(editingProgram.staff) && editingProgram.staff.length > 0) ? (
+                                    editingProgram.staff.map((member: any, idx: number) => (
+                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                                        <div className="flex items-center gap-3">
+                                          <input
+                                            type="text"
+                                            id={`staff-name-${idx}-${program.id}`}
+                                            name={`staff-name-${idx}-${program.id}`}
+                                            value={member.name || ""}
+                                            onChange={(e) => {
+                                              const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                              const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, name: e.target.value } : m);
+                                              setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                            }}
+                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                            placeholder="Staff Name"
+                                          />
+                                          <input
+                                            type="text"
+                                            id={`staff-role-${idx}-${program.id}`}
+                                            name={`staff-role-${idx}-${program.id}`}
+                                            value={member.role || ""}
+                                            onChange={(e) => {
+                                              const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                              const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, role: e.target.value } : m);
+                                              setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                            }}
+                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                            placeholder="Role (e.g., Dentist)"
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                              const updatedStaff = currentStaff.filter((_, i) => i !== idx);
+                                              setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                            }}
+                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-white/40 text-sm">No staff members added yet.</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Hours */}
+                              <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                  <Clock className="h-4 w-4" style={{ color: accentColor }} />
+                                  <h4 className="text-base font-semibold text-white">Hours of Operation</h4>
+                                </div>
+                                <div className="space-y-3">
+                                  {DAYS_OF_WEEK.map((day) => {
+                                    const currentHours = (editingProgram.hours as Record<string, string>)?.[day] || "";
+                                    const isClosed = currentHours === "closed" || !currentHours;
+                                    return (
+                                      <div key={day} className="flex items-center gap-3">
+                                        <label htmlFor={`hours-${day}-${program.id}`} className="w-24 text-sm text-white/80 capitalize">
+                                          {day}
+                                        </label>
+                                        <input
+                                          type="text"
+                                          id={`hours-${day}-${program.id}`}
+                                          name={`hours-${day}-${program.id}`}
+                                          value={isClosed ? "" : currentHours}
+                                          onChange={(e) => {
+                                            const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
+                                            updatedHours[day] = e.target.value;
+                                            setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                          }}
+                                          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                          placeholder="9 AM - 5 PM"
+                                          disabled={isClosed}
+                                        />
+                                        <div className="flex items-center">
+                                          <input
+                                            type="checkbox"
+                                            id={`closed-${day}-${program.id}`}
+                                            name={`closed-${day}-${program.id}`}
+                                            checked={isClosed}
+                                            onChange={(e) => {
+                                              const updatedHours = { ...(editingProgram.hours as Record<string, string> || {}) };
+                                              if (e.target.checked) {
+                                                updatedHours[day] = "closed";
+                                              } else {
+                                                delete updatedHours[day];
+                                              }
+                                              setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                            }}
+                                            className="h-4 w-4 text-yellow-500 bg-gray-800 border-gray-600 rounded focus:ring-yellow-500"
+                                          />
+                                          <label htmlFor={`closed-${day}-${program.id}`} className="ml-2 text-sm text-white/80">
+                                            Closed
+                                          </label>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* FAQs */}
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <HelpCircle className="h-4 w-4" style={{ color: accentColor }} />
+                                    <h4 className="text-base font-semibold text-white">FAQs</h4>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
+                                      setEditingProgram({ ...editingProgram, faqs: [...currentFaqs, { question: "", answer: "" }] });
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                    Add FAQ
+                                  </button>
+                                </div>
+                                <div className="space-y-3">
+                                  {(Array.isArray(editingProgram.faqs) && editingProgram.faqs.length > 0) ? (
+                                    editingProgram.faqs.map((faq: any, idx: number) => (
+                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                                        <div>
+                                          <input
+                                            type="text"
+                                            id={`faq-question-${idx}-${program.id}`}
+                                            name={`faq-question-${idx}-${program.id}`}
+                                            value={faq.question || ""}
+                                            onChange={(e) => {
+                                              const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
+                                              const updatedFaqs = currentFaqs.map((f, i) => i === idx ? { ...f, question: e.target.value } : f);
+                                              setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
+                                            }}
+                                            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                            placeholder="Question"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <textarea
+                                            id={`faq-answer-${idx}-${program.id}`}
+                                            name={`faq-answer-${idx}-${program.id}`}
+                                            value={faq.answer || ""}
+                                            onChange={(e) => {
+                                              const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
+                                              const updatedFaqs = currentFaqs.map((f, i) => i === idx ? { ...f, answer: e.target.value } : f);
+                                              setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
+                                            }}
+                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm min-h-[60px]"
+                                            placeholder="Answer"
+                                            rows={2}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
+                                              const updatedFaqs = currentFaqs.filter((_, i) => i !== idx);
+                                              setEditingProgram({ ...editingProgram, faqs: updatedFaqs });
+                                            }}
+                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-white/40 text-sm">No FAQs added yet.</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Promotions */}
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4" style={{ color: accentColor }} />
+                                    <h4 className="text-base font-semibold text-white">Promotions</h4>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
+                                      setEditingProgram({ ...editingProgram, promos: [...currentPromos, { title: "", description: "" }] });
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors flex items-center gap-2 text-sm text-white/80"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                    Add Promo
+                                  </button>
+                                </div>
+                                <div className="space-y-3">
+                                  {(Array.isArray(editingProgram.promos) && editingProgram.promos.length > 0) ? (
+                                    editingProgram.promos.map((promo: any, idx: number) => (
+                                      <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                                        <div>
+                                          <input
+                                            type="text"
+                                            id={`promo-title-${idx}-${program.id}`}
+                                            name={`promo-title-${idx}-${program.id}`}
+                                            value={promo.title || ""}
+                                            onChange={(e) => {
+                                              const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
+                                              const updatedPromos = currentPromos.map((p, i) => i === idx ? { ...p, title: e.target.value } : p);
+                                              setEditingProgram({ ...editingProgram, promos: updatedPromos });
+                                            }}
+                                            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm"
+                                            placeholder="Promotion Title"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <textarea
+                                            id={`promo-description-${idx}-${program.id}`}
+                                            name={`promo-description-${idx}-${program.id}`}
+                                            value={promo.description || ""}
+                                            onChange={(e) => {
+                                              const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
+                                              const updatedPromos = currentPromos.map((p, i) => i === idx ? { ...p, description: e.target.value } : p);
+                                              setEditingProgram({ ...editingProgram, promos: updatedPromos });
+                                            }}
+                                            className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-white/40 text-sm min-h-[60px]"
+                                            placeholder="Promotion Description"
+                                            rows={2}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
+                                              const updatedPromos = currentPromos.filter((_, i) => i !== idx);
+                                              setEditingProgram({ ...editingProgram, promos: updatedPromos });
+                                            }}
+                                            className="p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-white/40 text-sm">No promotions added yet.</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )}
