@@ -131,12 +131,7 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
   const router = useRouter();
   const { logPHIAccess } = useAuditLog();
   
-  if (!call) return null;
-  
-  // TypeScript guard - call is guaranteed to be non-null after this point
-  const callData = call;
-  
-  // Log PHI access when modal opens
+  // Log PHI access when modal opens - MUST be before early return to prevent hooks violation
   useEffect(() => {
     if (isOpen && call) {
       logPHIAccess("call", call.id, {
@@ -147,6 +142,12 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
       });
     }
   }, [isOpen, call, logPHIAccess]);
+  
+  // Early return AFTER all hooks to ensure consistent hook count
+  if (!call) return null;
+  
+  // TypeScript guard - call is guaranteed to be non-null after this point
+  const callData = call;
 
   // Extract date from schedule JSONB - handle various structures
   function getScheduleDate(): Date | null {
