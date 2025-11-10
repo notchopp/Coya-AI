@@ -91,20 +91,42 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
       // Check if business has programs and user needs to select one
       if (!isSelectProgramPage && !isAdmin) {
-        const query = (supabase as any).from("programs");
-        const { data: programs } = await query
-          .select("id")
-          .eq("business_id", storedBusinessId || "")
-          .limit(1);
-
-        const hasPrograms = (programs?.length || 0) > 0;
         const storedProgramId = sessionStorage.getItem("program_id");
+        
+        // First check if business has a default program_id
+        if (!storedProgramId && storedBusinessId) {
+          const { data: businessData } = await supabase
+            .from("businesses")
+            .select("program_id")
+            .eq("id", storedBusinessId)
+            .maybeSingle();
+          
+          if (businessData && (businessData as any).program_id) {
+            // Auto-set program from business.program_id
+            const businessProgramId = (businessData as any).program_id;
+            sessionStorage.setItem("program_id", businessProgramId);
+            console.log("✅ Auto-selected program from business:", businessProgramId);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // If still no program_id, check if business has multiple programs
+        if (!storedProgramId) {
+          const query = (supabase as any).from("programs");
+          const { data: programs } = await query
+            .select("id")
+            .eq("business_id", storedBusinessId || "")
+            .limit(1);
 
-        // If business has programs but no program selected, redirect to select-program
-        if (hasPrograms && !storedProgramId) {
-          router.push("/select-program");
-          setLoading(false);
-          return;
+          const hasPrograms = (programs?.length || 0) > 0;
+
+          // If business has programs but no program selected, redirect to select-program
+          if (hasPrograms) {
+            router.push("/select-program");
+            setLoading(false);
+            return;
+          }
         }
       }
 

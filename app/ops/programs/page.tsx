@@ -148,19 +148,32 @@ export default function ProgramsManagementPage() {
       settings: program.settings,
     };
 
-    const { error } = await (supabase
+    const { error: programError } = await (supabase
       .from("programs") as any)
       .update(updateData)
       .eq("id", program.id);
 
-    if (error) {
-      console.error("Error saving program:", error);
+    if (programError) {
+      console.error("Error saving program:", programError);
       alert("Failed to save program");
-    } else {
-      setEditingProgram(null);
-      await loadPrograms();
+      setSaving(false);
+      return;
     }
 
+    // Also update business.program_id if this is the default program
+    // This links the business to this program
+    const { error: businessError } = await (supabase
+      .from("businesses") as any)
+      .update({ program_id: program.id })
+      .eq("id", program.business_id);
+
+    if (businessError) {
+      console.warn("Warning: Could not update business.program_id:", businessError);
+      // Don't fail the whole operation if business update fails
+    }
+
+    setEditingProgram(null);
+    await loadPrograms();
     setSaving(false);
   }
 

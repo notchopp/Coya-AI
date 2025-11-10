@@ -82,7 +82,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  // Load program from sessionStorage on mount
+  // Load program from sessionStorage or business.program_id on mount
   useEffect(() => {
     // Only access sessionStorage in browser
     if (typeof window === "undefined") {
@@ -90,24 +90,45 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const storedProgramId = sessionStorage.getItem("program_id");
-    const storedBusinessId = sessionStorage.getItem("business_id");
-    
-    if (storedBusinessId) {
-      setBusinessId(storedBusinessId);
-    }
-    
-    if (storedProgramId) {
-      setProgramIdState(storedProgramId);
-      loadProgram(storedProgramId);
-    } else {
-      // Check if business has programs
+    async function initializeProgram() {
+      const storedProgramId = sessionStorage.getItem("program_id");
+      const storedBusinessId = sessionStorage.getItem("business_id");
+      
       if (storedBusinessId) {
-        checkForPrograms(storedBusinessId);
+        setBusinessId(storedBusinessId);
+      }
+      
+      if (storedProgramId) {
+        setProgramIdState(storedProgramId);
+        await loadProgram(storedProgramId);
+        return;
+      }
+      
+      // If no program_id in sessionStorage, check business.program_id
+      if (storedBusinessId) {
+        const supabase = getSupabaseClient();
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("program_id")
+          .eq("id", storedBusinessId)
+          .maybeSingle();
+        
+        if (businessData && (businessData as any).program_id) {
+          // Auto-select program from business.program_id
+          const businessProgramId = (businessData as any).program_id;
+          setProgramIdState(businessProgramId);
+          await loadProgram(businessProgramId);
+          return;
+        }
+        
+        // Check if business has any programs (for manual selection)
+        await checkForPrograms(storedBusinessId);
       } else {
         setLoading(false);
       }
     }
+    
+    initializeProgram();
   }, [loadProgram, checkForPrograms]);
 
   const setProgram = useCallback((newProgram: Program | null) => {

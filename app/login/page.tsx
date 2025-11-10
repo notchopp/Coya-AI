@@ -99,6 +99,18 @@ export default function LoginPage() {
           sessionStorage.setItem("user_role", userData.role);
         }
 
+        // Check if business has a default program_id and auto-set it
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("program_id")
+          .eq("id", userData.business_id)
+          .maybeSingle();
+        
+        if (businessData && (businessData as any).program_id) {
+          sessionStorage.setItem("program_id", (businessData as any).program_id);
+          console.log("✅ Auto-selected program from business on login");
+        }
+
         router.push("/");
         router.refresh();
       }
