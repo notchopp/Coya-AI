@@ -897,69 +897,79 @@ export default function ProgramsPage() {
                                       : {};
                                     const currentHours = hoursObj[day] || "";
                                     const isClosed = currentHours === "closed" || !currentHours;
+                                    const commonHours = [
+                                      "9am-5pm",
+                                      "8am-6pm",
+                                      "10am-4pm",
+                                      "9am-12pm",
+                                      "1pm-5pm",
+                                      "24 hours",
+                                      "Closed"
+                                    ];
+                                    
                                     return (
                                       <motion.div
                                         key={day}
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: dayIndex * 0.03 }}
-                                        className={`flex items-center gap-4 p-2 rounded-lg glass border transition-all ${
-                                          isClosed ? "border-white/5 bg-white/2" : "border-white/10 hover:border-yellow-500/30 hover:bg-white/5"
-                                        }`}
+                                        className="flex items-center gap-3 p-2 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all"
                                       >
                                         <div className="w-24 flex-shrink-0">
-                                          <span className={`text-xs font-semibold capitalize ${
-                                            isClosed ? "text-white/40" : "text-white/90"
-                                          }`}>
+                                          <span className="text-xs font-semibold capitalize text-white/90">
                                             {day.charAt(0).toUpperCase() + day.slice(1)}
                                           </span>
                                         </div>
-                                        <div className="flex items-center gap-3 flex-1">
-                                          <label className="flex items-center gap-2 cursor-pointer group flex-shrink-0">
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <select
+                                            id={`hours-select-${day}-${program.id}`}
+                                            name={`hours-select-${day}-${program.id}`}
+                                            value={isClosed ? "Closed" : (commonHours.includes(currentHours) ? currentHours : "Custom")}
+                                            onChange={(e) => {
+                                              const updatedHours = { ...hoursObj };
+                                              if (e.target.value === "Closed") {
+                                                updatedHours[day] = "closed";
+                                              } else if (e.target.value === "Custom") {
+                                                // Keep current custom value or set empty
+                                                if (!updatedHours[day] || updatedHours[day] === "closed") {
+                                                  updatedHours[day] = "";
+                                                }
+                                              } else {
+                                                updatedHours[day] = e.target.value;
+                                              }
+                                              setEditingProgram({ ...editingProgram, hours: updatedHours });
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all cursor-pointer"
+                                            style={{ colorScheme: "dark" }}
+                                          >
+                                            <option value="Closed">Closed</option>
+                                            {commonHours.filter(h => h !== "Closed").map(hour => (
+                                              <option key={hour} value={hour}>{hour}</option>
+                                            ))}
+                                            <option value="Custom">Custom...</option>
+                                          </select>
+                                          {!isClosed && (commonHours.includes(currentHours) ? null : (
                                             <input
-                                              type="checkbox"
-                                              id={`closed-${day}-${program.id}`}
-                                              name={`closed-${day}-${program.id}`}
-                                              checked={isClosed}
+                                              type="text"
+                                              id={`hours-${day}-${program.id}`}
+                                              name={`hours-${day}-${program.id}`}
+                                              value={currentHours}
                                               onChange={(e) => {
                                                 const updatedHours = { ...hoursObj };
-                                                if (e.target.checked) {
-                                                  updatedHours[day] = "closed";
-                                                } else {
-                                                  delete updatedHours[day];
-                                                }
+                                                updatedHours[day] = e.target.value;
                                                 setEditingProgram({ ...editingProgram, hours: updatedHours });
                                               }}
-                                              className="w-4 h-4 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer accent-yellow-400"
+                                              onFocus={(e) => {
+                                                // Set dropdown to "Custom" when focusing on custom input
+                                                const select = document.getElementById(`hours-select-${day}-${program.id}`) as HTMLSelectElement;
+                                                if (select && select.value !== "Custom") {
+                                                  select.value = "Custom";
+                                                }
+                                              }}
+                                              className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                              placeholder="Enter custom hours"
                                             />
-                                            <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors whitespace-nowrap">
-                                              Closed
-                                            </span>
-                                          </label>
-                                          {!isClosed && (
-                                            <div className="flex-1 relative min-w-0">
-                                              <input
-                                                type="text"
-                                                id={`hours-${day}-${program.id}`}
-                                                name={`hours-${day}-${program.id}`}
-                                                value={currentHours}
-                                                onChange={(e) => {
-                                                  const updatedHours = { ...hoursObj };
-                                                  updatedHours[day] = e.target.value;
-                                                  setEditingProgram({ ...editingProgram, hours: updatedHours });
-                                                }}
-                                                className="w-full px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
-                                                placeholder="9am-5pm"
-                                              />
-                                            </div>
-                                          )}
-                                          {isClosed && (
-                                            <div className="flex-1 flex items-center min-w-0">
-                                              <span className="px-2.5 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs border border-white/10">
-                                                Closed
-                                              </span>
-                                            </div>
-                                          )}
+                                          ))}
                                         </div>
                                       </motion.div>
                                     );
