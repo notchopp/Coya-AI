@@ -191,6 +191,23 @@ export default function Dashboard() {
         return;
       }
 
+      // Get user's program_id if they have one assigned (for non-admins)
+      let userProgramId: string | null = null;
+      if (!isAdmin) {
+        const authUserId = (await supabase.auth.getUser()).data.user?.id;
+        if (authUserId) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("program_id")
+            .eq("auth_user_id", authUserId)
+            .maybeSingle();
+          
+          if (userData && (userData as any).program_id) {
+            userProgramId = (userData as any).program_id;
+          }
+        }
+      }
+
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       
@@ -226,15 +243,21 @@ export default function Dashboard() {
         comparePeriodEnd = periodStart;
       }
 
-      // Build query - filter by program_id if program is selected
+      // Build query - filter by program_id
+      // For non-admins with assigned program_id, use that
+      // For admins or users without assigned program_id, use selected programId
       let callsQuery = supabase
         .from("calls")
-        .select("id, started_at, ended_at, status, schedule, success, last_intent, patient_name")
+        .select("id, started_at, ended_at, status, schedule, success, last_intent, patient_name, program_id")
         .eq("business_id", businessId!);
       
-      // Filter by program_id if program is selected
-      if (programId) {
-        callsQuery = callsQuery.eq("program_id", programId);
+      // Filter by program_id:
+      // - If user has assigned program_id (non-admin), use that
+      // - Otherwise, if program is selected, use that
+      // - Admins without selected program see all calls
+      const filterProgramId = userProgramId || programId;
+      if (filterProgramId) {
+        callsQuery = callsQuery.eq("program_id", filterProgramId);
       }
       
       const { data: allCallsData, error: callsError } = await callsQuery
@@ -268,7 +291,7 @@ export default function Dashboard() {
       // Clear any previous errors
       setError(null);
 
-      const allCalls = (allCallsData || []) as DashboardCall[];
+      const allCalls = ((allCallsData || []) as any[]) as DashboardCall[];
 
       // Always set loading to false, even if no calls
       setLoading(false);
@@ -911,15 +934,17 @@ export default function Dashboard() {
         className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
       >
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Dashboard</h1>
-            {businessName && (
-              <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {businessName}</span>
-            )}
+          <div className="flex flex-col gap-1 mb-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Dashboard</h1>
+              {businessName && (
+                <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {businessName}</span>
+              )}
+              <span className="beta-badge">Beta</span>
+            </div>
             {program?.name && (
-              <span className="text-base sm:text-lg lg:text-xl font-medium text-white/40">/ {program.name}</span>
+              <span className="text-sm sm:text-base font-medium text-white/40 ml-0 sm:ml-0">{program.name}</span>
             )}
-            <span className="beta-badge">Beta</span>
           </div>
           <motion.span
             initial={{ opacity: 0 }}

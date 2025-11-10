@@ -647,7 +647,14 @@ export default function ProgramsPage() {
                               ) : (
                                 <>
                                   <button
-                                    onClick={() => setEditingProgram({ ...program })}
+                                    onClick={() => {
+                                      // Ensure hours is properly initialized as an object
+                                      const programWithHours = {
+                                        ...program,
+                                        hours: program.hours && typeof program.hours === "object" ? program.hours : (program.hours || {})
+                                      };
+                                      setEditingProgram(programWithHours);
+                                    }}
                                     className="p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
                                   >
                                     <Edit className="h-4 w-4" />
@@ -788,7 +795,7 @@ export default function ProgramsPage() {
                                   <button
                                     onClick={() => {
                                       const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
-                                      setEditingProgram({ ...editingProgram, staff: [...currentStaff, { name: "", role: "" }] });
+                                      setEditingProgram({ ...editingProgram, staff: [...currentStaff, { name: "", role: "", hours: {} }] });
                                     }}
                                     className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
@@ -803,7 +810,7 @@ export default function ProgramsPage() {
                                         key={idx}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all"
+                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
                                       >
                                         <div className="flex items-center gap-2">
                                           <label htmlFor={`staff-name-${idx}-${program.id}`} className="sr-only">Staff Name</label>
@@ -844,6 +851,103 @@ export default function ProgramsPage() {
                                           >
                                             <X className="h-3.5 w-3.5" />
                                           </button>
+                                        </div>
+                                        {/* Staff Hours Section */}
+                                        <div className="space-y-2 pt-2 border-t border-white/5">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Clock className="h-3 w-3 text-white/60" />
+                                            <span className="text-xs font-medium text-white/80">Availability Hours</span>
+                                          </div>
+                                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                            {DAYS_OF_WEEK.map((day) => {
+                                              const staffHours = typeof member.hours === "object" && member.hours !== null 
+                                                ? (member.hours as Record<string, string>)?.[day] || "" 
+                                                : "";
+                                              const isClosed = staffHours === "closed" || !staffHours;
+                                              return (
+                                                <div
+                                                  key={day}
+                                                  className={`flex flex-col gap-1 p-1.5 rounded border transition-all ${
+                                                    isClosed ? "border-white/5 bg-white/2" : "border-white/10 bg-white/5"
+                                                  }`}
+                                                >
+                                                  <label className="flex items-center gap-1 cursor-pointer group">
+                                                    <input
+                                                      type="checkbox"
+                                                      id={`staff-closed-${day}-${idx}-${program.id}`}
+                                                      name={`staff-closed-${day}-${idx}-${program.id}`}
+                                                      checked={isClosed}
+                                                      onChange={(e) => {
+                                                        const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                                        const currentHours = typeof member.hours === "object" && member.hours !== null 
+                                                          ? { ...(member.hours as Record<string, string>) } 
+                                                          : {};
+                                                        if (e.target.checked) {
+                                                          currentHours[day] = "closed";
+                                                        } else {
+                                                          delete currentHours[day];
+                                                        }
+                                                        const updatedStaff = currentStaff.map((m, i) => 
+                                                          i === idx ? { ...m, hours: currentHours } : m
+                                                        );
+                                                        setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                                      }}
+                                                      className="w-3 h-3 rounded border-white/20 bg-white/5 text-yellow-400 focus:ring-yellow-500/50 cursor-pointer"
+                                                    />
+                                                    <span className="text-[10px] text-white/60 group-hover:text-white/80 transition-colors capitalize">
+                                                      {day.slice(0, 3)}
+                                                    </span>
+                                                  </label>
+                                                  {!isClosed && (
+                                                    <input
+                                                      type="text"
+                                                      id={`staff-hours-${day}-${idx}-${program.id}`}
+                                                      name={`staff-hours-${day}-${idx}-${program.id}`}
+                                                      value={staffHours}
+                                                      onChange={(e) => {
+                                                        const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                                        const currentHours = typeof member.hours === "object" && member.hours !== null 
+                                                          ? { ...(member.hours as Record<string, string>) } 
+                                                          : {};
+                                                        currentHours[day] = e.target.value;
+                                                        const updatedStaff = currentStaff.map((m, i) => 
+                                                          i === idx ? { ...m, hours: currentHours } : m
+                                                        );
+                                                        setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                                      }}
+                                                      className="w-full px-1.5 py-0.5 rounded text-[10px] glass border border-white/10 bg-white/5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                                                      placeholder="9am-5pm"
+                                                    />
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          {/* Additional notes field for vacation/availability notes */}
+                                          <div className="mt-2">
+                                            <label htmlFor={`staff-notes-${idx}-${program.id}`} className="sr-only">Additional Availability Notes</label>
+                                            <input
+                                              type="text"
+                                              id={`staff-notes-${idx}-${program.id}`}
+                                              name={`staff-notes-${idx}-${program.id}`}
+                                              value={typeof member.hours === "object" && member.hours !== null && (member.hours as any).notes 
+                                                ? (member.hours as any).notes 
+                                                : ""}
+                                              onChange={(e) => {
+                                                const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
+                                                const currentHours = typeof member.hours === "object" && member.hours !== null 
+                                                  ? { ...(member.hours as Record<string, string>) } 
+                                                  : {};
+                                                (currentHours as any).notes = e.target.value;
+                                                const updatedStaff = currentStaff.map((m, i) => 
+                                                  i === idx ? { ...m, hours: currentHours } : m
+                                                );
+                                                setEditingProgram({ ...editingProgram, staff: updatedStaff });
+                                              }}
+                                              className="w-full px-2 py-1 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-xs"
+                                              placeholder="e.g., Out on vacation till Friday"
+                                            />
+                                          </div>
                                         </div>
                                       </motion.div>
                                     ))

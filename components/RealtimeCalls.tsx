@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import CallDetailsModal from "./CallDetailsModal";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
+import { useProgram } from "@/components/ProgramProvider";
+import { useUserRole } from "@/lib/useUserRole";
 import { AnonymizationToggle, applyAnonymization } from "./AnonymizationToggle";
 
 type Call = {
@@ -33,10 +35,14 @@ type Call = {
 
 type Props = {
   businessId?: string;
+  readOnly?: boolean;
 };
 
-function RealtimeCalls({ businessId }: Props) {
+function RealtimeCalls({ businessId, readOnly = false }: Props) {
   const { accentColor } = useAccentColor();
+  const { programId } = useProgram();
+  const { role: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
   const [connected, setConnected] = useState<boolean>(false);
@@ -44,6 +50,7 @@ function RealtimeCalls({ businessId }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isAnonymized, setIsAnonymized] = useState(false);
+  const [userProgramId, setUserProgramId] = useState<string | null>(null);
 
   // Get business_id from props or sessionStorage for multi-tenant
   // Use mounted state to avoid hydration mismatch
@@ -54,6 +61,34 @@ function RealtimeCalls({ businessId }: Props) {
     }
     return undefined;
   }, [businessId, mounted]);
+
+  // Get user's program_id if they have one assigned (for non-admins)
+  useEffect(() => {
+    if (!mounted) return;
+    
+    async function loadUserProgramId() {
+      if (isAdmin) {
+        // Admins don't have assigned program_id, they can see all programs
+        setUserProgramId(null);
+        return;
+      }
+      
+      const authUserId = (await supabase.auth.getUser()).data.user?.id;
+      if (authUserId) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("program_id")
+          .eq("auth_user_id", authUserId)
+          .maybeSingle();
+        
+        if (userData && (userData as any).program_id) {
+          setUserProgramId((userData as any).program_id);
+        }
+      }
+    }
+    
+    loadUserProgramId();
+  }, [mounted, supabase, isAdmin]);
 
   useEffect(() => {
     setMounted(true);
@@ -75,12 +110,22 @@ function RealtimeCalls({ businessId }: Props) {
 
       console.log("🔄 Loading calls for business_id:", effectiveBusinessId);
 
-            const { data, error } = await supabase
-              .from("calls")
-              .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns")
-              .eq("business_id", effectiveBusinessId)
-              .order("started_at", { ascending: false })
-              .limit(5); // Show last 5 calls
+      // Determine which program_id to filter by:
+      // - If user has assigned program_id (non-admin), use that
+      // - Otherwise, if program is selected, use that
+      // - Admins without selected program see all calls
+      const filterProgramId = userProgramId || programId;
+      
+      let callsQuery = supabase
+        .from("calls")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns")
+        .eq("business_id", effectiveBusinessId);
+      
+      // Note: program_id filtering is handled at the database level via RLS or will be added later
+      // For now, we filter client-side if needed
+      const { data, error } = await callsQuery
+        .order("started_at", { ascending: false })
+        .limit(100); // Get more calls to filter client-side
 
       if (!isMounted) return;
       if (error) {
@@ -92,9 +137,19 @@ function RealtimeCalls({ businessId }: Props) {
         console.error("Query attempted:", effectiveBusinessId ? `business_id = ${effectiveBusinessId}` : "all calls");
         return;
       }
-      console.log("✅ Loaded calls:", data?.length || 0, "Business ID:", effectiveBusinessId);
-      if (data && data.length > 0) {
-        console.log("Sample call:", data[0]);
+      
+      // Filter by program_id client-side if needed
+      let filteredData = data || [];
+      if (filterProgramId) {
+        filteredData = filteredData.filter((c: any) => c.program_id === filterProgramId);
+      }
+      
+      // Take only the last 5 calls
+      filteredData = filteredData.slice(0, 5);
+      
+      console.log("✅ Loaded calls:", filteredData.length, "Business ID:", effectiveBusinessId);
+      if (filteredData.length > 0) {
+        console.log("Sample call:", filteredData[0]);
       } else {
         console.warn("⚠️ No calls found. Check:");
         console.warn("1. Do you have calls in the database?");
@@ -102,7 +157,7 @@ function RealtimeCalls({ businessId }: Props) {
         console.warn("3. Does business_id match?", effectiveBusinessId);
       }
       // Show last 5 calls regardless of status
-      setCalls(data || []);
+      setCalls(filteredData as Call[]);
     }
 
     loadInitial();
@@ -110,6 +165,9 @@ function RealtimeCalls({ businessId }: Props) {
     const channels: ReturnType<typeof supabase.channel>[] = [];
 
     if (effectiveBusinessId) {
+      // Determine which program_id to filter by for realtime updates
+      const filterProgramId = userProgramId || programId;
+      
       const channel = supabase
         .channel(`business:CALLS:${effectiveBusinessId}`, { config: { private: true } })
         .on("broadcast", { event: "changes" }, (payload) => {
@@ -119,6 +177,11 @@ function RealtimeCalls({ businessId }: Props) {
 
           let callData: Call | null = null;
           let eventType = "UPDATE";
+          
+          // Filter by program_id if needed
+          if (filterProgramId && eventData.data && (eventData.data as any).program_id !== filterProgramId) {
+            return; // Skip this update if it's not for the user's program
+          }
 
           if (eventData.data) {
             callData = eventData.data as Call;
@@ -220,7 +283,7 @@ function RealtimeCalls({ businessId }: Props) {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted]);
+  }, [supabase, effectiveBusinessId, mounted, userProgramId, programId]);
 
   function handleCallClick(call: Call) {
     setSelectedCall(call);
@@ -396,6 +459,7 @@ function RealtimeCalls({ businessId }: Props) {
           setIsModalOpen(false);
           setSelectedCall(null);
         }}
+        readOnly={readOnly}
       />
     </>
   );

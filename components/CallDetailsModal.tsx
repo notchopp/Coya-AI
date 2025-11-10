@@ -124,9 +124,10 @@ type CallDetailsModalProps = {
   call: Call | null;
   isOpen: boolean;
   onClose: () => void;
+  readOnly?: boolean;
 };
 
-export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsModalProps) {
+export default function CallDetailsModal({ call, isOpen, onClose, readOnly = false }: CallDetailsModalProps) {
   const { accentColor } = useAccentColor();
   const router = useRouter();
   const { logPHIAccess } = useAuditLog();
@@ -385,8 +386,13 @@ export default function CallDetailsModal({ call, isOpen, onClose }: CallDetailsM
                                 {call.schedule && (
                                   <button
                                     type="button"
-                                    onClick={handleViewCalendar}
-                                    className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80 flex items-center gap-1.5 cursor-pointer"
+                                    onClick={readOnly ? undefined : handleViewCalendar}
+                                    disabled={readOnly}
+                                    className={`ml-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+                                      readOnly 
+                                        ? "opacity-50 cursor-not-allowed" 
+                                        : "hover:opacity-80 cursor-pointer"
+                                    }`}
                                     style={{
                                       backgroundColor: `${accentColor}33`,
                                       color: accentColor,
