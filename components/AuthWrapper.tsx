@@ -18,10 +18,11 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   const isLoginPage = pathname === "/login";
   const isAuthCallback = pathname === "/auth/callback";
   const isSelectProgramPage = pathname === "/select-program";
+  const isDemoDashboard = pathname === "/demo-dashboard";
 
   useEffect(() => {
     async function checkAuth() {
-      if (isLoginPage || isAuthCallback) {
+      if (isLoginPage || isAuthCallback || isDemoDashboard) {
         setLoading(false);
         return;
       }
@@ -144,7 +145,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage || isAuthCallback || isSelectProgramPage) {
+  if (isLoginPage || isAuthCallback || isSelectProgramPage || isDemoDashboard) {
     return <>{children}</>;
   }
 
