@@ -10,14 +10,14 @@ USING (
     WHERE c.business_id::text = (regexp_split_to_array(channel, ':'))[3]
     AND c.business_id IN (
       SELECT business_id FROM public.user_businesses 
-      WHERE user_id = auth.uid()
+      WHERE user_id = (select auth.uid())
       -- OR adjust based on your auth structure:
-      -- SELECT business_id FROM public.users WHERE id = auth.uid()
+      -- SELECT business_id FROM public.users WHERE auth_user_id = (select auth.uid())
     )
   )
   OR
   -- Allow service role to see all broadcasts (for admin purposes)
-  auth.jwt() ->> 'role' = 'service_role'
+  (auth.jwt() ->> 'role') = 'service_role'
 );
 
 -- Optional: Allow users to send broadcasts (if needed for client-to-client communication)

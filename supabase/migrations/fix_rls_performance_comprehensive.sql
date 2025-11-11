@@ -58,6 +58,8 @@ DROP POLICY IF EXISTS "Users can view call_turns for their business calls" ON pu
 DROP POLICY IF EXISTS "Service role can manage call_turns" ON public.call_turns;
 
 -- Recreate with optimized auth.uid()
+-- Note: Service role bypasses RLS automatically, so we don't need a separate policy for it
+-- This eliminates the multiple permissive policies warning
 CREATE POLICY "Users can view call_turns for their business calls"
 ON public.call_turns FOR SELECT
 USING (
@@ -68,12 +70,6 @@ USING (
     AND users.auth_user_id = (select auth.uid())
   )
 );
-
--- Service role policy (bypasses RLS)
-CREATE POLICY "Service role can manage call_turns"
-ON public.call_turns FOR ALL
-USING (true)
-WITH CHECK (true);
 
 -- ============================================
 -- 4. CALLS TABLE
@@ -178,10 +174,27 @@ WITH CHECK (
 -- 7. REALTIME.MESSAGES TABLE
 -- ============================================
 
--- Note: This is in the realtime schema managed by Supabase
--- You may need to handle this separately or contact Supabase support
--- The policy "Users can receive their business call broadcasts" needs:
--- Replace auth.uid() with (select auth.uid())
+-- Fix the realtime.messages policy
+-- Note: This is in the realtime schema, but we can still update the policy
+-- The channel format is: business:CALLS:{business_id}
+DROP POLICY IF EXISTS "Users can receive their business call broadcasts" ON realtime.messages;
+
+-- Recreate with optimized auth.uid()
+CREATE POLICY "Users can receive their business call broadcasts"
+ON realtime.messages FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM public.calls c
+    WHERE c.business_id::text = (regexp_split_to_array(channel, ':'))[3]
+    AND c.business_id IN (
+      SELECT business_id FROM public.users
+      WHERE auth_user_id = (select auth.uid())
+    )
+  )
+  OR
+  -- Allow service role to see all broadcasts (for admin purposes)
+  (auth.jwt() ->> 'role') = 'service_role'
+);
 
 -- ============================================
 -- 8. FIX DUPLICATE INDEXES
