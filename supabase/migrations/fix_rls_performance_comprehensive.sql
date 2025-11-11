@@ -195,7 +195,7 @@ ON realtime.messages FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.calls c
-    WHERE c.business_id::text = (regexp_split_to_array(channel, ':'))[3]
+    WHERE c.business_id::text = split_part(topic, ':', 3)
     AND c.business_id IN (
       SELECT business_id FROM public.users
       WHERE auth_user_id = (select auth.uid())
