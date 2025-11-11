@@ -92,14 +92,43 @@ export async function POST(request: NextRequest) {
       withoutPlusOne,
     });
 
-    // Try multiple formats
+    // PRIORITY 1: Check if to_number matches a program's phone_number (direct program routing)
+    // This enables extension forwarding: clinic forwards extension → program phone number → direct program context
+    let program: any = null;
     let business: any = null;
     let businessError: any = null;
 
-    // Optimized: Only select needed columns for faster queries
-    // Note: insurances column doesn't exist in programs or businesses tables
-    // Include program_id to auto-select default program for this business
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
+    const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+    const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+
+    // Try to find program by phone number first (highest priority for direct routing)
+    for (const format of phoneFormats) {
+      const { data: programData, error: programError } = await (supabaseAdmin
+        .from("programs") as any)
+        .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .eq("phone_number", format)
+        .maybeSingle();
+
+      if (programError && programError.code !== "PGRST116") {
+        console.warn("⚠️ Error checking program phone number:", programError);
+      } else if (programData) {
+        program = programData;
+        business = programData.business;
+        console.log("✅ Found program by phone number (direct routing):", {
+          program: program.name,
+          phone: format,
+          business: business?.name
+        });
+        break; // Found program, exit loop
+      }
+    }
+
+    // PRIORITY 2: If no program found by phone, check businesses table (existing logic)
+    if (!business) {
+      // Optimized: Only select needed columns for faster queries
+      // Note: insurances column doesn't exist in programs or businesses tables
+      // Include program_id to auto-select default program for this business
+      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
     
     // Try 1: Exact match with cleaned number
     let { data, error } = await supabaseAdmin
@@ -206,58 +235,68 @@ export async function POST(request: NextRequest) {
         }
       );
     }
+    } // Close the if (!business) block
 
-    // Fetch program: Priority order:
-    // 1. Explicit program_id from request (highest priority)
-    // 2. Extension from request
-    // 3. business.program_id (default program for this business)
-    let program: any = null;
-    const businessData = business as any;
-    const defaultProgramId = businessData.program_id; // Auto-select default program if business has one
+    // PRIORITY 3: If program not found by phone number, check by extension/program_id
+    // Priority order:
+    // 1. Program found by phone_number (already handled above - highest priority)
+    // 2. Explicit program_id from request
+    // 3. Extension from request
+    // 4. business.program_id (default program for this business)
     
-    // Determine which program to fetch
-    const targetProgramId = programId || defaultProgramId;
-    
-    if (targetProgramId || extension) {
-      // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
-      // insurances, settings, vertical, and address do NOT exist in programs table
-      const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
-      let programQuery = (supabaseAdmin
-        .from("programs") as any)
-        .select(programColumns)
-        .eq("business_id", business.id);
+    // Only fetch program if we haven't already found one by phone number
+    if (!program && business) {
+      const businessData = business as any;
+      const defaultProgramId = businessData.program_id; // Auto-select default program if business has one
+      
+      // Determine which program to fetch
+      const targetProgramId = programId || defaultProgramId;
+      
+      if (targetProgramId || extension) {
+        // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
+        // insurances, settings, vertical, and address do NOT exist in programs table
+        const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+        let programQuery = (supabaseAdmin
+          .from("programs") as any)
+          .select(programColumns)
+          .eq("business_id", business.id);
 
-      if (targetProgramId) {
-        programQuery = programQuery.eq("id", targetProgramId);
-        console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
-      } else if (extension) {
-        programQuery = programQuery.eq("extension", extension);
-        console.log("🔍 Fetching program by extension:", extension);
+        if (targetProgramId) {
+          programQuery = programQuery.eq("id", targetProgramId);
+          console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
+        } else if (extension) {
+          programQuery = programQuery.eq("extension", extension);
+          console.log("🔍 Fetching program by extension:", extension);
+        }
+
+        const { data: programData, error: programError } = await programQuery.maybeSingle();
+
+        if (programError && programError.code !== "PGRST116") {
+          console.warn("⚠️ Error fetching program:", programError);
+          // Continue with business defaults if program lookup fails
+        } else if (programData) {
+          program = programData;
+          console.log("✅ Found program:", { 
+            id: program.id, 
+            name: program.name, 
+            extension: program.extension,
+            source: programId ? "request" : (extension ? "extension" : "business default")
+          });
+        } else if (targetProgramId || extension) {
+          console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
+        }
+      } else {
+        console.log("ℹ️ No program specified or default - using business context only");
       }
-
-      const { data: programData, error: programError } = await programQuery.maybeSingle();
-
-      if (programError && programError.code !== "PGRST116") {
-        console.warn("⚠️ Error fetching program:", programError);
-        // Continue with business defaults if program lookup fails
-      } else if (programData) {
-        program = programData;
-        console.log("✅ Found program:", { 
-          id: program.id, 
-          name: program.name, 
-          extension: program.extension,
-          source: programId ? "request" : (extension ? "extension" : "business default")
-        });
-      } else if (targetProgramId || extension) {
-        console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
-      }
-    } else {
-      console.log("ℹ️ No program specified or default - using business context only");
+    } else if (program) {
+      // Program already found by phone number, skip additional lookup
+      console.log("ℹ️ Program already found by phone number, skipping extension/program_id lookup");
     }
 
     // Build structured context with separate business and program sections
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
+    const businessData = business as any;
     const context: any = {
       // Business-level information (always present)
       business: {
@@ -392,26 +431,55 @@ export async function GET(request: NextRequest) {
     const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
     const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
 
-    // Note: insurances column doesn't exist in programs or businesses tables
-    // Include program_id to auto-select default program for this business
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
+    // PRIORITY 1: Check if to_number matches a program's phone_number (direct program routing)
+    let program: any = null;
     let business: any = null;
 
-    // Try multiple formats
-    for (const format of [toNumber, normalizedNumber, withPlusOne, withoutPlusOne]) {
-      const { data, error } = await supabaseAdmin
-        .from("businesses")
-        .select(businessColumns)
-        .eq("to_number", format)
+    const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+    const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+
+    // Try to find program by phone number first (highest priority for direct routing)
+    for (const format of phoneFormats) {
+      const { data: programData, error: programError } = await (supabaseAdmin
+        .from("programs") as any)
+        .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .eq("phone_number", format)
         .maybeSingle();
 
-      if (error && error.code !== "PGRST116") {
-        throw error;
+      if (programError && programError.code !== "PGRST116") {
+        console.warn("⚠️ Error checking program phone number:", programError);
+      } else if (programData) {
+        program = programData;
+        business = programData.business;
+        console.log("✅ Found program by phone number (direct routing):", {
+          program: program.name,
+          phone: format,
+          business: business?.name
+        });
+        break; // Found program, exit loop
       }
+    }
 
-      if (data) {
-        business = data;
-        break;
+    // PRIORITY 2: If no program found by phone, check businesses table
+    if (!business) {
+      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
+      
+      // Try multiple formats
+      for (const format of phoneFormats) {
+        const { data, error } = await supabaseAdmin
+          .from("businesses")
+          .select(businessColumns)
+          .eq("to_number", format)
+          .maybeSingle();
+
+        if (error && error.code !== "PGRST116") {
+          throw error;
+        }
+
+        if (data) {
+          business = data;
+          break;
+        }
       }
     }
 
@@ -426,56 +494,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch program: Priority order:
-    // 1. Explicit program_id from request (highest priority)
-    // 2. Extension from request
-    // 3. business.program_id (default program for this business)
-    let program: any = null;
-    const businessData = business as any;
-    const defaultProgramId = businessData.program_id; // Auto-select default program if business has one
-    
-    // Determine which program to fetch
-    const targetProgramId = programId || defaultProgramId;
-    
-    if (targetProgramId || extension) {
-      // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
-      // insurances, settings, vertical, and address do NOT exist in programs table
-      const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
-      let programQuery = (supabaseAdmin
-        .from("programs") as any)
-        .select(programColumns)
-        .eq("business_id", business.id);
+    // PRIORITY 3: If program not found by phone number, check by extension/program_id
+    if (!program && business) {
+      const businessData = business as any;
+      const defaultProgramId = businessData.program_id;
+      const targetProgramId = programId || defaultProgramId;
+      
+      if (targetProgramId || extension) {
+        const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+        let programQuery = (supabaseAdmin
+          .from("programs") as any)
+          .select(programColumns)
+          .eq("business_id", business.id);
 
-      if (targetProgramId) {
-        programQuery = programQuery.eq("id", targetProgramId);
-        console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
-      } else if (extension) {
-        programQuery = programQuery.eq("extension", extension);
-        console.log("🔍 Fetching program by extension:", extension);
+        if (targetProgramId) {
+          programQuery = programQuery.eq("id", targetProgramId);
+          console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
+        } else if (extension) {
+          programQuery = programQuery.eq("extension", extension);
+          console.log("🔍 Fetching program by extension:", extension);
+        }
+
+        const { data: programData, error: programError } = await programQuery.maybeSingle();
+
+        if (programError && programError.code !== "PGRST116") {
+          console.warn("⚠️ Error fetching program:", programError);
+        } else if (programData) {
+          program = programData;
+          console.log("✅ Found program:", { 
+            id: program.id, 
+            name: program.name, 
+            extension: program.extension,
+            source: programId ? "request" : (extension ? "extension" : "business default")
+          });
+        } else if (targetProgramId || extension) {
+          console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
+        }
+      } else {
+        console.log("ℹ️ No program specified or default - using business context only");
       }
-
-      const { data: programData, error: programError } = await programQuery.maybeSingle();
-
-      if (programError && programError.code !== "PGRST116") {
-        console.warn("⚠️ Error fetching program:", programError);
-      } else if (programData) {
-        program = programData;
-        console.log("✅ Found program:", { 
-          id: program.id, 
-          name: program.name, 
-          extension: program.extension,
-          source: programId ? "request" : (extension ? "extension" : "business default")
-        });
-      } else if (targetProgramId || extension) {
-        console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
-      }
-    } else {
-      console.log("ℹ️ No program specified or default - using business context only");
+    } else if (program) {
+      console.log("ℹ️ Program already found by phone number, skipping extension/program_id lookup");
     }
 
     // Build structured context with separate business and program sections
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
+    const businessData = business as any;
     const context: any = {
       // Business-level information (always present)
       business: {
