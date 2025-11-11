@@ -730,7 +730,7 @@ export async function POST(request: NextRequest) {
       duration_sec: durSec > 0 ? durSec : null,
       success_evaluation: successEvaluation === "true" || successEvaluation === true || successEvaluation === 1 ? 1 : (successEvaluation === "false" || successEvaluation === false || successEvaluation === 0 ? 0 : null),
       updated_at: new Date().toISOString(),
-      has_sensitive_content: hasSensitiveContent,
+      // Note: has_sensitive_content column doesn't exist in calls table - removed
       sensitive_content_types: [
         ...(transcriptSensitivity.sensitiveTypes || []),
         ...(summarySensitivity.sensitiveTypes || []),
@@ -791,7 +791,7 @@ export async function POST(request: NextRequest) {
         duration_sec: durSec > 0 ? durSec : null,
         success_evaluation: successEvaluation === "true" || successEvaluation === true || successEvaluation === 1 ? 1 : (successEvaluation === "false" || successEvaluation === false || successEvaluation === 0 ? 0 : null),
         updated_at: new Date().toISOString(),
-        has_sensitive_content: hasSensitiveContent,
+        // Note: has_sensitive_content column doesn't exist in calls_training table - removed
         sensitive_content_types: callData.sensitive_content_types,
       };
       
@@ -954,7 +954,7 @@ export async function POST(request: NextRequest) {
           ignoreDuplicates: false,
         })
         .select()
-        .single();
+        .maybeSingle();
       
       upsertedCall = data;
       callError = error;
