@@ -348,20 +348,74 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     // 1️⃣ Lookup business by to_number or workflowId
+    // PRIORITY 1: Check if to_number matches a program's to_number (direct program routing)
+    // PRIORITY 2: Check businesses.to_number
+    // PRIORITY 3: Check workflowId as business.id
     let business: any = null;
+    let program: any = null;
     
     if (toNumber) {
-      const { data: businessByNumber } = await supabaseAdmin
-        .from("businesses")
-        .select("*")
-        .eq("to_number", toNumber)
-        .maybeSingle();
-      
-      if (businessByNumber) {
-        business = businessByNumber;
+      // Normalize phone number - try multiple formats
+      const normalizedNumber = toNumber.replace(/[^\d+]/g, '');
+      const digitsOnly = normalizedNumber.replace(/\+/g, '');
+      const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
+      const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
+      const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+
+      // PRIORITY 1: Check if to_number matches a program's to_number
+      for (const format of phoneFormats) {
+        const { data: programData, error: programError } = await (supabaseAdmin
+          .from("programs") as any)
+          .select("id,business_id,to_number,name")
+          .eq("to_number", format)
+          .maybeSingle();
+
+        if (programError && programError.code !== "PGRST116") {
+          console.warn("⚠️ Error checking program to_number:", programError);
+        } else if (programData) {
+          program = programData;
+          console.log("✅ Found program by to_number (direct routing):", {
+            program: program.name,
+            phone: format,
+            program_id: program.id
+          });
+          break;
+        }
+      }
+
+      // If program found, get business from program's business_id
+      if (program) {
+        const { data: businessByProgram } = await supabaseAdmin
+          .from("businesses")
+          .select("*")
+          .eq("id", program.business_id)
+          .maybeSingle();
+        
+        if (businessByProgram) {
+          business = businessByProgram;
+          console.log("✅ Found business via program:", business.name);
+        }
+      }
+
+      // PRIORITY 2: If no program found, check businesses.to_number
+      if (!business) {
+        for (const format of phoneFormats) {
+          const { data: businessByNumber } = await supabaseAdmin
+            .from("businesses")
+            .select("*")
+            .eq("to_number", format)
+            .maybeSingle();
+          
+          if (businessByNumber) {
+            business = businessByNumber;
+            console.log("✅ Found business by to_number:", format);
+            break;
+          }
+        }
       }
     }
     
+    // PRIORITY 3: If still no business, try workflowId as business.id
     if (!business && workflowId) {
       const { data: businessById } = await supabaseAdmin
         .from("businesses")
@@ -371,6 +425,7 @@ export async function POST(request: NextRequest) {
       
       if (businessById) {
         business = businessById;
+        console.log("✅ Found business by workflowId:", workflowId);
       }
     }
 
@@ -710,6 +765,7 @@ export async function POST(request: NextRequest) {
     const callData: any = {
       call_id: callId,
       business_id: business.id,
+      program_id: program?.id || null,
       status: status,
       to_number: toNumber,
       phone: phone,
@@ -974,6 +1030,7 @@ export async function POST(request: NextRequest) {
         transcript_json: conversationTurns,
         total_turns: conversationTurns.length,
         updated_at: new Date().toISOString(),
+        program_id: program?.id || null,
       };
       
       if (toNumber) {

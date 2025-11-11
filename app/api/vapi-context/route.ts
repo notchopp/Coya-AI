@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
       withoutPlusOne,
     });
 
-    // PRIORITY 1: Check if to_number matches a program's phone_number (direct program routing)
-    // This enables extension forwarding: clinic forwards extension → program phone number → direct program context
+    // PRIORITY 1: Check if to_number matches a program's direct number (direct program routing)
+    // This enables extension forwarding: clinic forwards extension → program number → direct program context
     let program: any = null;
     let business: any = null;
     let businessError: any = null;
 
-    const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+    const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
     const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
 
     // Try to find program by phone number first (highest priority for direct routing)
@@ -106,11 +106,11 @@ export async function POST(request: NextRequest) {
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
         .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
-        .eq("phone_number", format)
+        .eq("to_number", format)
         .maybeSingle();
 
       if (programError && programError.code !== "PGRST116") {
-        console.warn("⚠️ Error checking program phone number:", programError);
+        console.warn("⚠️ Error checking program number:", programError);
       } else if (programData) {
         program = programData;
         business = programData.business;
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     // PRIORITY 3: If program not found by phone number, check by extension/program_id
     // Priority order:
-    // 1. Program found by phone_number (already handled above - highest priority)
+    // 1. Program found by direct number (already handled above - highest priority)
     // 2. Explicit program_id from request
     // 3. Extension from request
     // 4. business.program_id (default program for this business)
@@ -253,9 +253,9 @@ export async function POST(request: NextRequest) {
       const targetProgramId = programId || defaultProgramId;
       
       if (targetProgramId || extension) {
-        // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
+        // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, to_number, services, staff, hours, faqs, promos
         // insurances, settings, vertical, and address do NOT exist in programs table
-        const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
         let programQuery = (supabaseAdmin
           .from("programs") as any)
           .select(programColumns)
@@ -316,7 +316,7 @@ export async function POST(request: NextRequest) {
         id: program.id,
         name: program.name,
         extension: program.extension || null,
-        phone_number: program.phone_number || null,
+        phone_number: program.to_number || null,
         description: program.description || null,
         hours: program.hours || null,
         services: program.services || null,
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
       context.program_id = program.id;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
-      if (program.phone_number) context.program_phone_number = program.phone_number;
+      if (program.to_number) context.program_phone_number = program.to_number;
     }
 
     const duration = Date.now() - startTime;
@@ -431,11 +431,11 @@ export async function GET(request: NextRequest) {
     const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
     const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
 
-    // PRIORITY 1: Check if to_number matches a program's phone_number (direct program routing)
+    // PRIORITY 1: Check if to_number matches a program's direct number (direct program routing)
     let program: any = null;
     let business: any = null;
 
-    const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+    const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
     const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
 
     // Try to find program by phone number first (highest priority for direct routing)
@@ -443,11 +443,11 @@ export async function GET(request: NextRequest) {
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
         .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
-        .eq("phone_number", format)
+        .eq("to_number", format)
         .maybeSingle();
 
       if (programError && programError.code !== "PGRST116") {
-        console.warn("⚠️ Error checking program phone number:", programError);
+        console.warn("⚠️ Error checking program number:", programError);
       } else if (programData) {
         program = programData;
         business = programData.business;
@@ -501,7 +501,7 @@ export async function GET(request: NextRequest) {
       const targetProgramId = programId || defaultProgramId;
       
       if (targetProgramId || extension) {
-        const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
+        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
         let programQuery = (supabaseAdmin
           .from("programs") as any)
           .select(programColumns)
@@ -560,7 +560,7 @@ export async function GET(request: NextRequest) {
         id: program.id,
         name: program.name,
         extension: program.extension || null,
-        phone_number: program.phone_number || null,
+        phone_number: program.to_number || null,
         description: program.description || null,
         hours: program.hours || null,
         services: program.services || null,
@@ -593,7 +593,7 @@ export async function GET(request: NextRequest) {
       context.program_id = program.id;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
-      if (program.phone_number) context.program_phone_number = program.phone_number;
+      if (program.to_number) context.program_phone_number = program.to_number;
     }
 
     const duration = Date.now() - startTime;
