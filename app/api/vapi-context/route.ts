@@ -255,35 +255,59 @@ export async function POST(request: NextRequest) {
       console.log("ℹ️ No program specified or default - using business context only");
     }
 
-    // Build combined context: program-level data takes priority, business as fallback
-    // Include both business_hours and program_hours so AI can reference both
-    // (e.g., "our business closes at 5 but outpatient closes at 2")
+    // Build structured context with separate business and program sections
+    // This makes it easier for AI to understand what's business-level vs program-level
+    // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
     const context: any = {
+      // Business-level information (always present)
+      business: {
+        id: businessData.id,
+        name: businessData.name || null,
+        phone: businessData.to_number || null,
+        vertical: businessData.vertical || null,
+        address: businessData.address || null,
+        hours: businessData.hours || null,
+        services: businessData.services || null,
+        staff: businessData.staff || null,
+        faqs: businessData.faqs || null,
+        promos: businessData.promos || null,
+      },
+      // Program-level information (if program exists)
+      program: program ? {
+        id: program.id,
+        name: program.name,
+        extension: program.extension || null,
+        phone_number: program.phone_number || null,
+        description: program.description || null,
+        hours: program.hours || null,
+        services: program.services || null,
+        staff: program.staff || null,
+        faqs: program.faqs || null,
+        promos: program.promos || null,
+      } : null,
+      // Merged fields (program takes priority, business as fallback) - for backward compatibility
       business_id: businessData.id,
-      business_name: program?.name || businessData.name || null,
+      business_name: businessData.name || null, // Always use actual business name
+      program_name: program?.name || null, // Program name if exists
       business_phone: businessData.to_number || null,
-      // vertical and address only exist in businesses table, not programs
       vertical: businessData.vertical || null,
       address: businessData.address || null,
-      // Program hours take priority, but include business hours for reference
-      hours: program?.hours || businessData.hours || null,
+      hours: program?.hours || businessData.hours || null, // Program hours take priority
       business_hours: businessData.hours || null, // Always include business hours for AI reference
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      // Note: insurances column doesn't exist in programs or businesses tables
-      insurances: null,
+      insurances: null, // Note: insurances column doesn't exist in programs or businesses tables
       // Legacy fields for backward compatibility
       id: businessData.id,
-      name: program?.name || businessData.name || null,
+      name: program?.name || businessData.name || null, // Program name takes priority for legacy "name" field
       to_number: businessData.to_number || null,
     };
 
     // Add program-specific fields if program exists
     if (program) {
       context.program_id = program.id;
-      context.program_name = program.name;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
       if (program.phone_number) context.program_phone_number = program.phone_number;
@@ -449,34 +473,59 @@ export async function GET(request: NextRequest) {
       console.log("ℹ️ No program specified or default - using business context only");
     }
 
-    // Build combined context: program-level data takes priority, business as fallback
-    // Include both business_hours and program_hours so AI can reference both
-    // (e.g., "our business closes at 5 but outpatient closes at 2")
+    // Build structured context with separate business and program sections
+    // This makes it easier for AI to understand what's business-level vs program-level
+    // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
     const context: any = {
+      // Business-level information (always present)
+      business: {
+        id: businessData.id,
+        name: businessData.name || null,
+        phone: businessData.to_number || null,
+        vertical: businessData.vertical || null,
+        address: businessData.address || null,
+        hours: businessData.hours || null,
+        services: businessData.services || null,
+        staff: businessData.staff || null,
+        faqs: businessData.faqs || null,
+        promos: businessData.promos || null,
+      },
+      // Program-level information (if program exists)
+      program: program ? {
+        id: program.id,
+        name: program.name,
+        extension: program.extension || null,
+        phone_number: program.phone_number || null,
+        description: program.description || null,
+        hours: program.hours || null,
+        services: program.services || null,
+        staff: program.staff || null,
+        faqs: program.faqs || null,
+        promos: program.promos || null,
+      } : null,
+      // Merged fields (program takes priority, business as fallback) - for backward compatibility
       business_id: businessData.id,
-      business_name: program?.name || businessData.name || null,
+      business_name: businessData.name || null, // Always use actual business name
+      program_name: program?.name || null, // Program name if exists
       business_phone: businessData.to_number || null,
-      // vertical and address only exist in businesses table, not programs
       vertical: businessData.vertical || null,
       address: businessData.address || null,
-      // Program hours take priority, but include business hours for reference
-      hours: program?.hours || businessData.hours || null,
+      hours: program?.hours || businessData.hours || null, // Program hours take priority
       business_hours: businessData.hours || null, // Always include business hours for AI reference
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      // Note: insurances column doesn't exist in programs or businesses tables
-      insurances: null,
+      insurances: null, // Note: insurances column doesn't exist in programs or businesses tables
       // Legacy fields for backward compatibility
       id: businessData.id,
-      name: program?.name || businessData.name || null,
+      name: program?.name || businessData.name || null, // Program name takes priority for legacy "name" field
       to_number: businessData.to_number || null,
     };
 
+    // Add program-specific fields if program exists
     if (program) {
       context.program_id = program.id;
-      context.program_name = program.name;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
       if (program.phone_number) context.program_phone_number = program.phone_number;
