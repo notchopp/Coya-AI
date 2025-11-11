@@ -109,6 +109,20 @@ WITH CHECK (
 -- 5. USERS TABLE
 -- ============================================
 
+-- Create helper function to avoid recursive lookups in RLS policies
+CREATE OR REPLACE FUNCTION public.user_business_ids()
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT business_id
+  FROM public.users
+  WHERE auth_user_id = auth.uid();
+$$;
+
+GRANT EXECUTE ON FUNCTION public.user_business_ids() TO anon, authenticated, service_role;
+
 -- Drop existing policies
 DROP POLICY IF EXISTS "Users can view own record" ON public.users;
 DROP POLICY IF EXISTS "Users can view business members" ON public.users;
@@ -119,11 +133,7 @@ CREATE POLICY "Users can view business members"
 ON public.users FOR SELECT
 USING (
   auth_user_id = (select auth.uid())
-  OR EXISTS (
-    SELECT 1 FROM public.users u2
-    WHERE u2.business_id = users.business_id
-    AND u2.auth_user_id = (select auth.uid())
-  )
+  OR business_id IN (SELECT * FROM public.user_business_ids())
 );
 
 -- UPDATE policy

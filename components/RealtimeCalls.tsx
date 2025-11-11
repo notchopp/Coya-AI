@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, memo } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { BadgeCheck, PhoneIncoming, PhoneOff, ChevronRight } from "lucide-react";
+import { BadgeCheck, PhoneIncoming, PhoneOff, ChevronRight, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CallDetailsModal from "./CallDetailsModal";
 import { format } from "date-fns";
@@ -31,6 +31,7 @@ type Call = {
   schedule: any;
   context: any;
   total_turns: number | null;
+  program_id?: string | null;
 };
 
 type Props = {
@@ -45,12 +46,16 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
   const isAdmin = userRole === "admin";
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
+  const [callsByProgram, setCallsByProgram] = useState<Record<string, Call[]>>({});
+  const [programs, setPrograms] = useState<Array<{ id: string; name: string | null }>>([]);
+  const [hasLoadedPrograms, setHasLoadedPrograms] = useState(false);
   const [connected, setConnected] = useState<boolean>(false);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isAnonymized, setIsAnonymized] = useState(false);
   const [userProgramId, setUserProgramId] = useState<string | null>(null);
+  const NO_PROGRAM_KEY = "__NO_PROGRAM__";
 
   // Get business_id from props or sessionStorage for multi-tenant
   // Use mounted state to avoid hydration mismatch
@@ -61,6 +66,16 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
     }
     return undefined;
   }, [businessId, mounted]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setPrograms([]);
+      setCallsByProgram({});
+      setHasLoadedPrograms(false);
+    } else {
+      setHasLoadedPrograms(false);
+    }
+  }, [isAdmin, effectiveBusinessId]);
 
   // Get user's program_id if they have one assigned (for non-admins)
   useEffect(() => {
@@ -105,6 +120,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
       if (!effectiveBusinessId) {
         console.warn("⚠️ No business_id found, cannot load calls");
         setCalls([]);
+        setCallsByProgram({});
         return;
       }
 
@@ -114,11 +130,11 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
       // - If user has assigned program_id (non-admin), use that
       // - Otherwise, if program is selected, use that
       // - Admins without selected program see all calls
-      const filterProgramId = userProgramId || programId;
+      const filterProgramId = !isAdmin ? (userProgramId || programId) : null;
       
       let callsQuery = supabase
         .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns")
+        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns,program_id")
         .eq("business_id", effectiveBusinessId);
       
       // Note: program_id filtering is handled at the database level via RLS or will be added later
@@ -143,21 +159,67 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
       if (filterProgramId) {
         filteredData = filteredData.filter((c: any) => c.program_id === filterProgramId);
       }
-      
-      // Take only the last 5 calls
-      filteredData = filteredData.slice(0, 5);
-      
-      console.log("✅ Loaded calls:", filteredData.length, "Business ID:", effectiveBusinessId);
-      if (filteredData.length > 0) {
-        console.log("Sample call:", filteredData[0]);
+
+      if (isAdmin) {
+        if (!hasLoadedPrograms) {
+          const { data: programRows, error: programError } = await (supabase as any)
+            .from("programs")
+            .select("id,name")
+            .eq("business_id", effectiveBusinessId)
+            .order("name", { ascending: true });
+
+          if (!isMounted) return;
+
+          if (programError) {
+            console.warn("⚠️ Failed to load programs:", programError);
+          } else if (programRows) {
+            const programGroups = (programRows as Array<{ id: string; name: string | null }>).map(
+              (row) => ({ id: row.id, name: row.name })
+            );
+            setPrograms(programGroups);
+            setHasLoadedPrograms(true);
+          }
+        }
+
+        const grouped: Record<string, Call[]> = {};
+        filteredData.forEach((call: any) => {
+          const programKey = call.program_id || NO_PROGRAM_KEY;
+          if (!grouped[programKey]) {
+            grouped[programKey] = [];
+          }
+          if (grouped[programKey].length < 5) {
+            grouped[programKey].push(call as Call);
+          }
+        });
+
+        setCalls([]);
+        setCallsByProgram(grouped);
+
+        const totalLoaded = Object.values(grouped).reduce((acc, arr) => acc + arr.length, 0);
+        console.log(
+          "✅ Loaded admin calls:",
+          totalLoaded,
+          "across",
+          Object.keys(grouped).length,
+          "program groups"
+        );
       } else {
-        console.warn("⚠️ No calls found. Check:");
-        console.warn("1. Do you have calls in the database?");
-        console.warn("2. Is RLS blocking the query?");
-        console.warn("3. Does business_id match?", effectiveBusinessId);
+        // Take only the last 5 calls
+        filteredData = filteredData.slice(0, 5);
+        
+        console.log("✅ Loaded calls:", filteredData.length, "Business ID:", effectiveBusinessId);
+        if (filteredData.length > 0) {
+          console.log("Sample call:", filteredData[0]);
+        } else {
+          console.warn("⚠️ No calls found. Check:");
+          console.warn("1. Do you have calls in the database?");
+          console.warn("2. Is RLS blocking the query?");
+          console.warn("3. Does business_id match?", effectiveBusinessId);
+        }
+        // Show last 5 calls regardless of status
+        setCalls((filteredData || []) as any as Call[]);
+        setCallsByProgram({});
       }
-      // Show last 5 calls regardless of status
-      setCalls(filteredData as Call[]);
     }
 
     loadInitial();
@@ -283,7 +345,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted, userProgramId, programId]);
+  }, [supabase, effectiveBusinessId, mounted, userProgramId, programId, isAdmin, hasLoadedPrograms]);
 
   function handleCallClick(call: Call) {
     setSelectedCall(call);
@@ -329,125 +391,289 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
-            {calls.length === 0 && (
-              <motion.div
-                key="empty-state"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10"
-              >
-                No calls yet.
-              </motion.div>
-            )}
-            {displayCalls.map((c, index) => (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ 
-                  delay: index * 0.05,
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 25
-                }}
-                whileHover={{ scale: 1.01, y: -2 }}
-                onClick={() => handleCallClick(c)}
-                className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10"
-                style={{
-                  borderColor: "rgba(255, 255, 255, 0.1)",
-                  transition: "border-color 0.2s ease, background-color 0.2s ease",
-                }}
-                onHoverStart={(e) => {
-                  const target = e.currentTarget as HTMLElement;
-                  if (target) {
-                    target.style.borderColor = `${accentColor}80`;
-                  }
-                }}
-                onHoverEnd={(e) => {
-                  const target = e.currentTarget as HTMLElement;
-                  if (target) {
-                    target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                  }
-                }}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {c.status === "active" ? (
-                      <div 
-                        className="p-2 rounded-xl border"
-                        style={{
-                          backgroundColor: `${accentColor}33`,
-                          borderColor: `${accentColor}4D`,
-                        }}
-                      >
-                        <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-xl bg-white/10">
-                        <PhoneOff className="h-5 w-5 text-white/60" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white font-semibold truncate">
-                        {c.patient_name ?? "Unknown"}
-                      </div>
-                      {c.phone && (
-                        <div className="text-white/60 text-sm truncate">{c.phone}</div>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight 
-                    className="h-5 w-5 text-white/40 transition-colors flex-shrink-0" 
-                    style={{ color: "rgba(255, 255, 255, 0.4)" }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = accentColor;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "rgba(255, 255, 255, 0.4)";
-                    }}
-                  />
-                </div>
+            {isAdmin ? (
+              (() => {
+                const orderedPrograms = [
+                  ...programs,
+                  { id: NO_PROGRAM_KEY, name: "Business Calls" },
+                ];
+                const hasAnyCalls = orderedPrograms.some((program) => {
+                  const key = program.id ?? NO_PROGRAM_KEY;
+                  return (callsByProgram[key] ?? []).length > 0;
+                });
 
-                {c.last_intent && (
-                  <div className="mb-3">
-                    <span 
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium border"
-                      style={{
-                        backgroundColor: `${accentColor}33`,
-                        color: accentColor,
-                        borderColor: `${accentColor}4D`,
-                      }}
+                if (!hasAnyCalls) {
+                  return (
+                    <motion.div
+                      key="empty-state-admin"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10"
                     >
-                      {c.last_intent}
-                    </span>
-                  </div>
-                )}
+                      No calls yet.
+                    </motion.div>
+                  );
+                }
 
-                {c.last_summary && (
-                  <p className="text-white/70 text-sm line-clamp-2 mb-3">
-                    {c.last_summary}
-                  </p>
-                )}
+                return orderedPrograms.map((program) => {
+                  const key = program.id ?? NO_PROGRAM_KEY;
+                  const programCalls = callsByProgram[key] ?? [];
+                  if (programCalls.length === 0) {
+                    return null;
+                  }
 
-                <div className="flex items-center justify-between text-xs text-white/50">
-                  <span>{format(new Date(c.started_at), "MMM d, h:mm a")}</span>
-                  <div className="flex items-center gap-2">
-                    {c.success !== null && (
-                      <span className={c.success ? "text-emerald-400" : "text-red-400"}>
-                        {c.success ? "✓" : "✗"}
-                      </span>
+                  const label =
+                    program.id === NO_PROGRAM_KEY
+                      ? "Business Calls"
+                      : program.name || "Program";
+
+                  return (
+                    <div key={key} className="col-span-full space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-white/60">
+                        <Building2 className="h-4 w-4 text-white/40" />
+                        <span className="font-semibold text-white/80">{label}</span>
+                        <span className="text-white/40">
+                          ({programCalls.length} live)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {programCalls.map((c, index) => (
+                          <motion.div
+                            key={c.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{
+                              delay: index * 0.05,
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 25,
+                            }}
+                            whileHover={{ scale: 1.01, y: -2 }}
+                            onClick={() => handleCallClick(c)}
+                            className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10"
+                            style={{
+                              borderColor: "rgba(255, 255, 255, 0.1)",
+                              transition: "border-color 0.2s ease, background-color 0.2s ease",
+                            }}
+                            onHoverStart={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              if (target) {
+                                target.style.borderColor = `${accentColor}80`;
+                              }
+                            }}
+                            onHoverEnd={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              if (target) {
+                                target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                {c.status === "active" ? (
+                                  <div
+                                    className="p-2 rounded-xl border"
+                                    style={{
+                                      backgroundColor: `${accentColor}33`,
+                                      borderColor: `${accentColor}4D`,
+                                    }}
+                                  >
+                                    <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
+                                  </div>
+                                ) : (
+                                  <div className="p-2 rounded-xl bg-white/10">
+                                    <PhoneOff className="h-5 w-5 text-white/60" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-white font-semibold truncate">
+                                    {c.patient_name ?? "Unknown"}
+                                  </div>
+                                  {c.phone && (
+                                    <div className="text-white/60 text-sm truncate">{c.phone}</div>
+                                  )}
+                                </div>
+                              </div>
+                              <ChevronRight 
+                                className="h-5 w-5 text-white/40 transition-colors flex-shrink-0" 
+                                style={{ color: "rgba(255, 255, 255, 0.4)" }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = accentColor;
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = "rgba(255, 255, 255, 0.4)";
+                                }}
+                              />
+                            </div>
+
+                            {c.last_intent && (
+                              <div className="mb-3">
+                                <span 
+                                  className="px-2.5 py-1 rounded-lg text-xs font-medium border"
+                                  style={{
+                                    backgroundColor: `${accentColor}33`,
+                                    color: accentColor,
+                                    borderColor: `${accentColor}4D`,
+                                  }}
+                                >
+                                  {c.last_intent}
+                                </span>
+                              </div>
+                            )}
+
+                            {c.last_summary && (
+                              <p className="text-white/70 text-sm line-clamp-2 mb-3">
+                                {c.last_summary}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between text-xs text-white/50">
+                              <span>{format(new Date(c.started_at), "MMM d, h:mm a")}</span>
+                              <div className="flex items-center gap-2">
+                                {c.success !== null && (
+                                  <span className={c.success ? "text-emerald-400" : "text-red-400"}>
+                                    {c.success ? "✓" : "✗"}
+                                  </span>
+                                )}
+                                {c.escalate && (
+                                  <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-xs border border-red-500/30">
+                                    Escalated
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            ) : (
+              <>
+                {calls.length === 0 && (
+                  <motion.div
+                    key="empty-state"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10"
+                  >
+                    No calls yet.
+                  </motion.div>
+                )}
+                {displayCalls.map((c, index) => (
+                  <motion.div
+                    key={c.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ 
+                      delay: index * 0.05,
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 25
+                    }}
+                    whileHover={{ scale: 1.01, y: -2 }}
+                    onClick={() => handleCallClick(c)}
+                    className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10"
+                    style={{
+                      borderColor: "rgba(255, 255, 255, 0.1)",
+                      transition: "border-color 0.2s ease, background-color 0.2s ease",
+                    }}
+                    onHoverStart={(e) => {
+                      const target = e.currentTarget as HTMLElement;
+                      if (target) {
+                        target.style.borderColor = `${accentColor}80`;
+                      }
+                    }}
+                    onHoverEnd={(e) => {
+                      const target = e.currentTarget as HTMLElement;
+                      if (target) {
+                        target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      }
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        {c.status === "active" ? (
+                          <div 
+                            className="p-2 rounded-xl border"
+                            style={{
+                              backgroundColor: `${accentColor}33`,
+                              borderColor: `${accentColor}4D`,
+                            }}
+                          >
+                            <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded-xl bg-white/10">
+                            <PhoneOff className="h-5 w-5 text-white/60" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white font-semibold truncate">
+                            {c.patient_name ?? "Unknown"}
+                          </div>
+                          {c.phone && (
+                            <div className="text-white/60 text-sm truncate">{c.phone}</div>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight 
+                        className="h-5 w-5 text-white/40 transition-colors flex-shrink-0" 
+                        style={{ color: "rgba(255, 255, 255, 0.4)" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = accentColor;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "rgba(255, 255, 255, 0.4)";
+                        }}
+                      />
+                    </div>
+
+                    {c.last_intent && (
+                      <div className="mb-3">
+                        <span 
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium border"
+                          style={{
+                            backgroundColor: `${accentColor}33`,
+                            color: accentColor,
+                            borderColor: `${accentColor}4D`,
+                          }}
+                        >
+                          {c.last_intent}
+                        </span>
+                      </div>
                     )}
-                    {c.escalate && (
-                      <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-xs border border-red-500/30">
-                        Escalated
-                      </span>
+
+                    {c.last_summary && (
+                      <p className="text-white/70 text-sm line-clamp-2 mb-3">
+                        {c.last_summary}
+                      </p>
                     )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+
+                    <div className="flex items-center justify-between text-xs text-white/50">
+                      <span>{format(new Date(c.started_at), "MMM d, h:mm a")}</span>
+                      <div className="flex items-center gap-2">
+                        {c.success !== null && (
+                          <span className={c.success ? "text-emerald-400" : "text-red-400"}>
+                            {c.success ? "✓" : "✗"}
+                          </span>
+                        )}
+                        {c.escalate && (
+                          <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-xs border border-red-500/30">
+                            Escalated
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </>
+            )}
           </AnimatePresence>
         </div>
       </div>
