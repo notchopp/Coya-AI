@@ -39,7 +39,8 @@ function normalizePhoneNumber(phone: string): string[] {
  */
 async function fetchBusiness(supabase: any, toNumber: string) {
   const formats = normalizePhoneNumber(toNumber);
-  const columns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,insurances";
+  // Note: insurances column only exists in programs table, not businesses
+  const columns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos";
 
   for (const format of formats) {
     const { data, error } = await supabase
@@ -108,7 +109,7 @@ function buildContext(program: any, business: any) {
     staff: program?.staff || business?.staff || null,
     faqs: program?.faqs || business?.faqs || null,
     promos: program?.promos || business?.promos || null,
-    insurances: program?.insurances || business?.insurances || null,
+    insurances: program?.insurances || null, // insurances only exists in programs table
   };
 
   // Add program-specific fields if program exists

@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
     let businessError: any = null;
 
     // Optimized: Only select needed columns for faster queries
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,insurances";
+    // Note: insurances column only exists in programs table, not businesses
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos";
     
     // Try 1: Exact match with cleaned number
     let { data, error } = await supabaseAdmin
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      insurances: program?.insurances || businessData.insurances || null,
+      insurances: program?.insurances || null, // insurances only exists in programs table
       // Legacy fields for backward compatibility
       id: businessData.id,
       name: program?.name || businessData.name || null,
@@ -339,7 +340,8 @@ export async function GET(request: NextRequest) {
     const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
     const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
 
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,insurances";
+    // Note: insurances column only exists in programs table, not businesses
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos";
     let business: any = null;
 
     // Try multiple formats
@@ -408,7 +410,7 @@ export async function GET(request: NextRequest) {
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      insurances: program?.insurances || businessData.insurances || null,
+      insurances: program?.insurances || null, // insurances only exists in programs table
       id: businessData.id,
       name: program?.name || businessData.name || null,
       to_number: businessData.to_number || null,
