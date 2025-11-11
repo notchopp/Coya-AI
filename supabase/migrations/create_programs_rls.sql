@@ -11,7 +11,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.business_id = programs.business_id
-    AND users.auth_user_id = auth.uid()
+    AND users.auth_user_id = (select auth.uid())
   )
 );
 
@@ -23,7 +23,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.business_id = programs.business_id
-    AND users.auth_user_id = auth.uid()
+    AND users.auth_user_id = (select auth.uid())
     AND users.role = 'admin'
   )
 );
@@ -36,7 +36,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.business_id = programs.business_id
-    AND users.auth_user_id = auth.uid()
+    AND users.auth_user_id = (select auth.uid())
     AND users.role = 'admin'
   )
 )
@@ -44,7 +44,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.business_id = programs.business_id
-    AND users.auth_user_id = auth.uid()
+    AND users.auth_user_id = (select auth.uid())
     AND users.role = 'admin'
   )
 );
@@ -57,7 +57,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.business_id = programs.business_id
-    AND users.auth_user_id = auth.uid()
+    AND users.auth_user_id = (select auth.uid())
     AND users.role = 'admin'
   )
 );

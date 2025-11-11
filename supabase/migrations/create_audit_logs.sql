@@ -33,10 +33,10 @@ CREATE POLICY "Users can view audit logs for their business"
 ON public.audit_logs FOR SELECT
 USING (
   business_id IN (
-    SELECT business_id FROM users WHERE id = auth.uid() OR auth_user_id = auth.uid()
+    SELECT business_id FROM users WHERE id = (select auth.uid()) OR auth_user_id = (select auth.uid())
   )
   OR user_id IN (
-    SELECT id FROM users WHERE auth_user_id = auth.uid()
+    SELECT id FROM users WHERE auth_user_id = (select auth.uid())
   )
 );
 
