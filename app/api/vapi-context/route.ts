@@ -98,7 +98,8 @@ export async function POST(request: NextRequest) {
 
     // Optimized: Only select needed columns for faster queries
     // Note: insurances column only exists in programs table, not businesses
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos";
+    // Include program_id to auto-select default program for this business
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
     
     // Try 1: Exact match with cleaned number
     let { data, error } = await supabaseAdmin
@@ -206,19 +207,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch program if extension or program_id provided
+    // Fetch program: Priority order:
+    // 1. Explicit program_id from request (highest priority)
+    // 2. Extension from request
+    // 3. business.program_id (default program for this business)
     let program: any = null;
-    if (extension || programId) {
+    const businessData = business as any;
+    const defaultProgramId = businessData.program_id; // Auto-select default program if business has one
+    
+    // Determine which program to fetch
+    const targetProgramId = programId || defaultProgramId;
+    
+    if (targetProgramId || extension) {
       const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
         .eq("business_id", business.id);
 
-      if (programId) {
-        programQuery = programQuery.eq("id", programId);
+      if (targetProgramId) {
+        programQuery = programQuery.eq("id", targetProgramId);
+        console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
       } else if (extension) {
         programQuery = programQuery.eq("extension", extension);
+        console.log("🔍 Fetching program by extension:", extension);
       }
 
       const { data: programData, error: programError } = await programQuery.maybeSingle();
@@ -228,19 +240,31 @@ export async function POST(request: NextRequest) {
         // Continue with business defaults if program lookup fails
       } else if (programData) {
         program = programData;
-        console.log("✅ Found program:", { id: program.id, name: program.name, extension: program.extension });
+        console.log("✅ Found program:", { 
+          id: program.id, 
+          name: program.name, 
+          extension: program.extension,
+          source: programId ? "request" : (extension ? "extension" : "business default")
+        });
+      } else if (targetProgramId || extension) {
+        console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
       }
+    } else {
+      console.log("ℹ️ No program specified or default - using business context only");
     }
 
-    // Build combined context: program-level data if exists, otherwise business defaults
-    const businessData = business as any;
+    // Build combined context: program-level data takes priority, business as fallback
+    // Include both business_hours and program_hours so AI can reference both
+    // (e.g., "our business closes at 5 but outpatient closes at 2")
     const context: any = {
       business_id: businessData.id,
       business_name: program?.name || businessData.name || null,
       business_phone: businessData.to_number || null,
       vertical: program?.vertical || businessData.vertical || null,
       address: program?.address || businessData.address || null,
+      // Program hours take priority, but include business hours for reference
       hours: program?.hours || businessData.hours || null,
+      business_hours: businessData.hours || null, // Always include business hours for AI reference
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
@@ -341,7 +365,8 @@ export async function GET(request: NextRequest) {
     const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
 
     // Note: insurances column only exists in programs table, not businesses
-    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos";
+    // Include program_id to auto-select default program for this business
+    const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
     let business: any = null;
 
     // Try multiple formats
@@ -373,19 +398,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch program if extension or program_id provided
+    // Fetch program: Priority order:
+    // 1. Explicit program_id from request (highest priority)
+    // 2. Extension from request
+    // 3. business.program_id (default program for this business)
     let program: any = null;
-    if (extension || programId) {
+    const businessData = business as any;
+    const defaultProgramId = businessData.program_id; // Auto-select default program if business has one
+    
+    // Determine which program to fetch
+    const targetProgramId = programId || defaultProgramId;
+    
+    if (targetProgramId || extension) {
       const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
         .eq("business_id", business.id);
 
-      if (programId) {
-        programQuery = programQuery.eq("id", programId);
+      if (targetProgramId) {
+        programQuery = programQuery.eq("id", targetProgramId);
+        console.log("🔍 Fetching program by ID:", targetProgramId, programId ? "(from request)" : "(default from business)");
       } else if (extension) {
         programQuery = programQuery.eq("extension", extension);
+        console.log("🔍 Fetching program by extension:", extension);
       }
 
       const { data: programData, error: programError } = await programQuery.maybeSingle();
@@ -394,23 +430,37 @@ export async function GET(request: NextRequest) {
         console.warn("⚠️ Error fetching program:", programError);
       } else if (programData) {
         program = programData;
+        console.log("✅ Found program:", { 
+          id: program.id, 
+          name: program.name, 
+          extension: program.extension,
+          source: programId ? "request" : (extension ? "extension" : "business default")
+        });
+      } else if (targetProgramId || extension) {
+        console.warn("⚠️ Program not found:", { targetProgramId, extension, business_id: business.id });
       }
+    } else {
+      console.log("ℹ️ No program specified or default - using business context only");
     }
 
-    // Build combined context
-    const businessData = business as any;
+    // Build combined context: program-level data takes priority, business as fallback
+    // Include both business_hours and program_hours so AI can reference both
+    // (e.g., "our business closes at 5 but outpatient closes at 2")
     const context: any = {
       business_id: businessData.id,
       business_name: program?.name || businessData.name || null,
       business_phone: businessData.to_number || null,
       vertical: program?.vertical || businessData.vertical || null,
       address: program?.address || businessData.address || null,
+      // Program hours take priority, but include business hours for reference
       hours: program?.hours || businessData.hours || null,
+      business_hours: businessData.hours || null, // Always include business hours for AI reference
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
       insurances: program?.insurances || null, // insurances only exists in programs table
+      // Legacy fields for backward compatibility
       id: businessData.id,
       name: program?.name || businessData.name || null,
       to_number: businessData.to_number || null,
