@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     let businessError: any = null;
 
     // Optimized: Only select needed columns for faster queries
-    // Note: insurances column only exists in programs table, not businesses
+    // Note: insurances column doesn't exist in programs or businesses tables
     // Include program_id to auto-select default program for this business
     const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
     
@@ -219,8 +219,9 @@ export async function POST(request: NextRequest) {
     const targetProgramId = programId || defaultProgramId;
     
     if (targetProgramId || extension) {
-      // Note: vertical and address only exist in businesses table, not programs
-      const programColumns = "id,name,extension,business_id,hours,services,staff,faqs,promos,insurances,description,settings";
+      // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
+      // insurances, settings, vertical, and address do NOT exist in programs table
+      const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
@@ -271,7 +272,8 @@ export async function POST(request: NextRequest) {
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      insurances: program?.insurances || null, // insurances only exists in programs table
+      // Note: insurances column doesn't exist in programs or businesses tables
+      insurances: null,
       // Legacy fields for backward compatibility
       id: businessData.id,
       name: program?.name || businessData.name || null,
@@ -284,7 +286,7 @@ export async function POST(request: NextRequest) {
       context.program_name = program.name;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
-      if (program.settings) context.program_settings = program.settings;
+      if (program.phone_number) context.program_phone_number = program.phone_number;
     }
 
     const duration = Date.now() - startTime;
@@ -366,7 +368,7 @@ export async function GET(request: NextRequest) {
     const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
     const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
 
-    // Note: insurances column only exists in programs table, not businesses
+    // Note: insurances column doesn't exist in programs or businesses tables
     // Include program_id to auto-select default program for this business
     const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
     let business: any = null;
@@ -412,8 +414,9 @@ export async function GET(request: NextRequest) {
     const targetProgramId = programId || defaultProgramId;
     
     if (targetProgramId || extension) {
-      // Note: vertical and address only exist in businesses table, not programs
-      const programColumns = "id,name,extension,business_id,hours,services,staff,faqs,promos,insurances,description,settings";
+      // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, phone_number, services, staff, hours, faqs, promos
+      // insurances, settings, vertical, and address do NOT exist in programs table
+      const programColumns = "id,name,extension,business_id,phone_number,hours,services,staff,faqs,promos,description";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
@@ -463,7 +466,8 @@ export async function GET(request: NextRequest) {
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
-      insurances: program?.insurances || null, // insurances only exists in programs table
+      // Note: insurances column doesn't exist in programs or businesses tables
+      insurances: null,
       // Legacy fields for backward compatibility
       id: businessData.id,
       name: program?.name || businessData.name || null,
@@ -475,7 +479,7 @@ export async function GET(request: NextRequest) {
       context.program_name = program.name;
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
-      if (program.settings) context.program_settings = program.settings;
+      if (program.phone_number) context.program_phone_number = program.phone_number;
     }
 
     const duration = Date.now() - startTime;
