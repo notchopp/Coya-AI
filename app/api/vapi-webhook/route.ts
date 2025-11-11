@@ -360,40 +360,48 @@ export async function POST(request: NextRequest) {
       const digitsOnly = normalizedNumber.replace(/\+/g, '');
       const withPlusOne = digitsOnly.startsWith('1') ? `+${digitsOnly}` : `+1${digitsOnly}`;
       const withoutPlusOne = digitsOnly.startsWith('1') ? digitsOnly.substring(1) : digitsOnly;
-      const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+      const phoneFormats = Array.from(new Set([toNumber, normalizedNumber, withPlusOne, withoutPlusOne].filter(Boolean)));
 
       // PRIORITY 1: Check if to_number matches a program's to_number
       for (const format of phoneFormats) {
         const { data: programData, error: programError } = await (supabaseAdmin
           .from("programs") as any)
-          .select("id,business_id,to_number,name")
+          .select(`
+            id,
+            name,
+            to_number,
+            business_id,
+            business:businesses!programs_business_id_fkey (
+              id,
+              name,
+              to_number,
+              vertical,
+              address,
+              hours,
+              services,
+              staff,
+              faqs,
+              promos,
+              program_id
+            )
+          `)
           .eq("to_number", format)
           .maybeSingle();
 
         if (programError && programError.code !== "PGRST116") {
           console.warn("⚠️ Error checking program to_number:", programError);
-        } else if (programData) {
+        }
+
+        if (programData) {
           program = programData;
+          business = programData.business || null;
           console.log("✅ Found program by to_number (direct routing):", {
             program: program.name,
+            business: business?.name,
             phone: format,
             program_id: program.id
           });
           break;
-        }
-      }
-
-      // If program found, get business from program's business_id
-      if (program) {
-        const { data: businessByProgram } = await supabaseAdmin
-          .from("businesses")
-          .select("*")
-          .eq("id", program.business_id)
-          .maybeSingle();
-        
-        if (businessByProgram) {
-          business = businessByProgram;
-          console.log("✅ Found business via program:", business.name);
         }
       }
 
