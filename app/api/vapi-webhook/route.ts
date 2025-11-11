@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
             name,
             to_number,
             business_id,
-            business:businesses!programs_business_id_fkey (
+            business:businesses!programs_parent_business_fkey (
               id,
               name,
               to_number,

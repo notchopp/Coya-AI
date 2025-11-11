@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     for (const format of phoneFormats) {
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
-        .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
         .eq("to_number", format)
         .maybeSingle();
 
@@ -442,7 +442,7 @@ export async function GET(request: NextRequest) {
     for (const format of phoneFormats) {
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
-        .select(`${programColumns}, business:businesses(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
         .eq("to_number", format)
         .maybeSingle();
 
