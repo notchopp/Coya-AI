@@ -219,7 +219,8 @@ export async function POST(request: NextRequest) {
     const targetProgramId = programId || defaultProgramId;
     
     if (targetProgramId || extension) {
-      const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
+      // Note: vertical and address only exist in businesses table, not programs
+      const programColumns = "id,name,extension,business_id,hours,services,staff,faqs,promos,insurances,description,settings";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
@@ -260,8 +261,9 @@ export async function POST(request: NextRequest) {
       business_id: businessData.id,
       business_name: program?.name || businessData.name || null,
       business_phone: businessData.to_number || null,
-      vertical: program?.vertical || businessData.vertical || null,
-      address: program?.address || businessData.address || null,
+      // vertical and address only exist in businesses table, not programs
+      vertical: businessData.vertical || null,
+      address: businessData.address || null,
       // Program hours take priority, but include business hours for reference
       hours: program?.hours || businessData.hours || null,
       business_hours: businessData.hours || null, // Always include business hours for AI reference
@@ -410,7 +412,8 @@ export async function GET(request: NextRequest) {
     const targetProgramId = programId || defaultProgramId;
     
     if (targetProgramId || extension) {
-      const programColumns = "id,name,extension,business_id,vertical,address,hours,services,staff,faqs,promos,insurances,description,settings";
+      // Note: vertical and address only exist in businesses table, not programs
+      const programColumns = "id,name,extension,business_id,hours,services,staff,faqs,promos,insurances,description,settings";
       let programQuery = (supabaseAdmin
         .from("programs") as any)
         .select(programColumns)
@@ -450,8 +453,9 @@ export async function GET(request: NextRequest) {
       business_id: businessData.id,
       business_name: program?.name || businessData.name || null,
       business_phone: businessData.to_number || null,
-      vertical: program?.vertical || businessData.vertical || null,
-      address: program?.address || businessData.address || null,
+      // vertical and address only exist in businesses table, not programs
+      vertical: businessData.vertical || null,
+      address: businessData.address || null,
       // Program hours take priority, but include business hours for reference
       hours: program?.hours || businessData.hours || null,
       business_hours: businessData.hours || null, // Always include business hours for AI reference
