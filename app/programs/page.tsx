@@ -41,7 +41,7 @@ type Program = {
   id: string;
   name: string;
   extension: string | null;
-  phone_number: string | null;
+  to_number: string | null;
   business_id: string;
   description: string | null;
   services: any;
@@ -82,7 +82,7 @@ export default function ProgramsPage() {
   const [newProgram, setNewProgram] = useState<Partial<Program>>({
     name: "",
     extension: "",
-    phone_number: "",
+    to_number: "",
     description: "",
   });
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
@@ -202,7 +202,7 @@ export default function ProgramsPage() {
         body: JSON.stringify({
           name: newProgram.name,
           extension: newProgram.extension || null,
-          phone_number: newProgram.phone_number || null,
+          to_number: newProgram.to_number || null,
           description: newProgram.description || null,
           business_id: storedBusinessId,
           services: null,
@@ -222,7 +222,7 @@ export default function ProgramsPage() {
         return;
       } else {
         setCreatingProgram(false);
-        setNewProgram({ name: "", extension: "", phone_number: "", description: "" });
+        setNewProgram({ name: "", extension: "", to_number: "", description: "" });
         // Force reload by resetting loading state
         setLoading(true);
         await loadProgramsForBusiness(storedBusinessId);
@@ -248,7 +248,7 @@ export default function ProgramsPage() {
           id: program.id,
           name: program.name,
           extension: program.extension,
-          phone_number: program.phone_number,
+          to_number: program.to_number,
           description: program.description,
           services: program.services,
           staff: program.staff,
@@ -458,8 +458,8 @@ export default function ProgramsPage() {
                       type="text"
                       id="new-program-phone"
                       name="new-program-phone"
-                      value={newProgram.phone_number || ""}
-                      onChange={(e) => setNewProgram({ ...newProgram, phone_number: e.target.value })}
+                      value={newProgram.to_number || ""}
+                      onChange={(e) => setNewProgram({ ...newProgram, to_number: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
                       placeholder="Phone Number"
                     />
@@ -620,10 +620,10 @@ export default function ProgramsPage() {
                               )}
                               <div className="flex items-center gap-3 text-sm text-white/60">
                                 {program.extension && <span>Ext: {program.extension}</span>}
-                                {program.phone_number && (
+                                {program.to_number && (
                                   <>
                                     {program.extension && <span>•</span>}
-                                    <span>{program.phone_number}</span>
+                                    <span>{program.to_number}</span>
                                   </>
                                 )}
                               </div>
@@ -703,8 +703,8 @@ export default function ProgramsPage() {
                                     type="text"
                                     id={`program-phone-${program.id}`}
                                     name={`program-phone-${program.id}`}
-                                    value={editingProgram.phone_number || ""}
-                                    onChange={(e) => setEditingProgram({ ...editingProgram, phone_number: e.target.value })}
+                                    value={editingProgram.to_number || ""}
+                                    onChange={(e) => setEditingProgram({ ...editingProgram, to_number: e.target.value })}
                                     className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                     placeholder="Phone Number"
                                   />

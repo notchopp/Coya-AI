@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, extension, phone_number, description, business_id, services, staff, hours, faqs, promos } = body;
+    const { name, extension, to_number, description, business_id, services, staff, hours, faqs, promos } = body;
 
     if (!name || !business_id) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name,
         extension: extension || null,
-        phone_number: phone_number || null,
+        to_number: to_number || null,
         description: description || null,
         business_id,
         services: services || null,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, extension, phone_number, description, services, staff, hours, faqs, promos } = body;
+    const { id, name, extension, to_number, description, services, staff, hours, faqs, promos } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {
       name,
       extension: extension || null,
-      phone_number: phone_number || null,
+      to_number: to_number || null,
       description: description || null,
       services: services || null,
       staff: staff || null,
