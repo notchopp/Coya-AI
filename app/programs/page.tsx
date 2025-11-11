@@ -21,6 +21,7 @@ import {
   HelpCircle,
   User,
   ChevronDown,
+  Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
@@ -90,6 +91,8 @@ export default function ProgramsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"programs" | "business">("programs");
+  const [programCalendarConnections, setProgramCalendarConnections] = useState<Record<string, { id: string; email: string; calendar_id: string }>>({});
+  const [connectingCalendar, setConnectingCalendar] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -144,12 +147,31 @@ export default function ProgramsPage() {
     const programsData = data || [];
     setPrograms(programsData);
     
-    // Load stats for each program
+    // Load stats and calendar connections for each program
     for (const program of programsData) {
       await loadProgramStats(program.id);
+      await loadProgramCalendarConnection(program.id);
     }
     
     setLoading(false);
+  }
+
+  async function loadProgramCalendarConnection(programId: string) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await (supabase as any)
+      .from("calendar_connections")
+      .select("id, email, calendar_id")
+      .eq("program_id", programId)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Error loading calendar connection for program:", error);
+    } else if (data) {
+      setProgramCalendarConnections(prev => ({
+        ...prev,
+        [programId]: data,
+      }));
+    }
   }
 
   async function loadProgramStats(programId: string) {
@@ -301,6 +323,83 @@ export default function ProgramsPage() {
     }
 
     setDeleting(null);
+  }
+
+  async function handleConnectProgramCalendar(programId: string) {
+    setConnectingCalendar(programId);
+    try {
+      const storedBusinessId = businessId || sessionStorage.getItem("business_id");
+      if (!storedBusinessId) {
+        throw new Error("Business ID not found");
+      }
+
+      const response = await fetch(`/api/calendar/connect?business_id=${storedBusinessId}&program_id=${programId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get calendar connection URL");
+      }
+
+      // Open OAuth popup
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        data.auth_url,
+        "Connect Google Calendar",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+
+      if (!popup) {
+        throw new Error("Popup blocked. Please allow popups and try again.");
+      }
+
+      // Poll for popup to close
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          setConnectingCalendar(null);
+          // Reload calendar connection
+          loadProgramCalendarConnection(programId);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("Error connecting calendar:", error);
+      setConnectingCalendar(null);
+      alert(error instanceof Error ? error.message : "Failed to connect calendar");
+    }
+  }
+
+  async function handleDisconnectProgramCalendar(programId: string) {
+    const connection = programCalendarConnections[programId];
+    if (!connection) return;
+    
+    if (!confirm("Are you sure you want to disconnect this program's Google Calendar?")) {
+      return;
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await (supabase as any)
+        .from("calendar_connections")
+        .delete()
+        .eq("id", connection.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setProgramCalendarConnections(prev => {
+        const updated = { ...prev };
+        delete updated[programId];
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error disconnecting calendar:", error);
+      alert("Failed to disconnect calendar");
+    }
   }
 
   async function handleSaveBusiness(business: Business) {
@@ -1055,6 +1154,64 @@ export default function ProgramsPage() {
                                     <p className="text-white/40 text-xs">No FAQs added yet.</p>
                                   )}
                                 </div>
+                              </div>
+
+                              {/* Google Calendar Connection */}
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg border" style={{ background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`, borderColor: `${accentColor}4D` }}>
+                                      <Calendar className="h-3.5 w-3.5" style={{ color: accentColor }} />
+                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">Google Calendar</h4>
+                                  </div>
+                                </div>
+                                {programCalendarConnections[program.id] ? (
+                                  <div className="space-y-2">
+                                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className="text-xs font-medium text-white">Connected</p>
+                                          <p className="text-xs text-white/60 mt-0.5">{programCalendarConnections[program.id].email}</p>
+                                        </div>
+                                        <button
+                                          onClick={() => handleDisconnectProgramCalendar(program.id)}
+                                          className="p-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-white/60">
+                                      This program's calendar is connected. The AI can schedule appointments for this program.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <p className="text-xs text-white/60">
+                                      Connect a Google Calendar for this program to enable appointment scheduling.
+                                    </p>
+                                    <motion.button
+                                      onClick={() => handleConnectProgramCalendar(program.id)}
+                                      disabled={connectingCalendar === program.id}
+                                      whileHover={{ scale: connectingCalendar === program.id ? 1 : 1.02 }}
+                                      whileTap={{ scale: connectingCalendar === program.id ? 1 : 0.98 }}
+                                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white text-xs font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {connectingCalendar === program.id ? (
+                                        <>
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Connecting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Link2 className="h-3 w-3" />
+                                          Connect Calendar
+                                        </>
+                                      )}
+                                    </motion.button>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Promotions */}

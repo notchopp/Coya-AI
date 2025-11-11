@@ -101,8 +101,11 @@ export async function POST(request: NextRequest) {
     const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
     const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
 
+    console.log("🔍 PRIORITY 1: Checking programs.to_number for formats:", phoneFormats);
+
     // Try to find program by phone number first (highest priority for direct routing)
     for (const format of phoneFormats) {
+      console.log(`🔍 Checking program with format: "${format}"`);
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
         .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
@@ -135,7 +138,13 @@ export async function POST(request: NextRequest) {
           business: business?.name
         });
         break; // Found program, exit loop
+      } else {
+        console.log(`❌ No program found for format: "${format}"`);
       }
+    }
+
+    if (!program) {
+      console.log("⚠️ No program found for any format, falling back to businesses lookup");
     }
 
     // PRIORITY 2: If no program found by phone, check businesses table (existing logic)

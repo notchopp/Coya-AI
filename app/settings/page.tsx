@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette, Mail, UserPlus, Lock } from "lucide-react";
+import { Building2, Tag, Save, CheckCircle, XCircle, Loader2, Clock, Users, HelpCircle, Plus, X, User, Palette, Mail, UserPlus, Lock, Calendar, Link2, Trash2 } from "lucide-react";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { useUserRole } from "@/lib/useUserRole";
@@ -74,6 +74,8 @@ export default function SettingsPage() {
   const [userName, setUserName] = useState<string>("");
   const [savingUserName, setSavingUserName] = useState(false);
   const [userNameSaveStatus, setUserNameSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [calendarConnection, setCalendarConnection] = useState<{ id: string; email: string; calendar_id: string } | null>(null);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     vertical: "",
@@ -233,7 +235,7 @@ export default function SettingsPage() {
     loadBusiness();
   }, [mounted]);
 
-  // Load available programs when team tab is active
+  // Load available programs and calendar connection when team tab is active
   useEffect(() => {
     if (activeTab === "team" && isAdmin) {
       async function loadPrograms() {
@@ -253,7 +255,28 @@ export default function SettingsPage() {
           setAvailablePrograms(data || []);
         }
       }
+      
+      async function loadCalendarConnection() {
+        const supabase = getSupabaseClient();
+        const businessId = sessionStorage.getItem("business_id");
+        if (!businessId) return;
+
+        const { data, error } = await (supabase as any)
+          .from("calendar_connections")
+          .select("id, email, calendar_id")
+          .eq("business_id", businessId)
+          .is("program_id", null)
+          .maybeSingle();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error loading calendar connection:", error);
+        } else if (data) {
+          setCalendarConnection(data);
+        }
+      }
+
       loadPrograms();
+      loadCalendarConnection();
     }
   }, [activeTab, isAdmin]);
 
@@ -613,6 +636,90 @@ export default function SettingsPage() {
       }, 5000);
     } finally {
       setInviting(false);
+    }
+  }
+
+  async function handleConnectCalendar() {
+    setConnectingCalendar(true);
+    try {
+      const businessId = sessionStorage.getItem("business_id");
+      if (!businessId) {
+        throw new Error("Business ID not found");
+      }
+
+      const response = await fetch(`/api/calendar/connect?business_id=${businessId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get calendar connection URL");
+      }
+
+      // Open OAuth popup
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        data.auth_url,
+        "Connect Google Calendar",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+
+      // Check if popup was blocked
+      if (!popup) {
+        throw new Error("Popup blocked. Please allow popups and try again.");
+      }
+
+      // Poll for popup to close (user completed OAuth)
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          setConnectingCalendar(false);
+          // Reload calendar connection
+          const supabase = getSupabaseClient();
+          (supabase as any)
+            .from("calendar_connections")
+            .select("id, email, calendar_id")
+            .eq("business_id", businessId)
+            .is("program_id", null)
+            .maybeSingle()
+            .then(({ data, error }: { data: any; error: any }) => {
+              if (!error && data) {
+                setCalendarConnection(data);
+              }
+            });
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("Error connecting calendar:", error);
+      setConnectingCalendar(false);
+      alert(error instanceof Error ? error.message : "Failed to connect calendar");
+    }
+  }
+
+  async function handleDisconnectCalendar() {
+    if (!calendarConnection) return;
+    
+    if (!confirm("Are you sure you want to disconnect your Google Calendar? This will prevent AI from scheduling appointments.")) {
+      return;
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await (supabase as any)
+        .from("calendar_connections")
+        .delete()
+        .eq("id", calendarConnection.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setCalendarConnection(null);
+    } catch (error) {
+      console.error("Error disconnecting calendar:", error);
+      alert("Failed to disconnect calendar");
     }
   }
 
@@ -1460,6 +1567,75 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
+            </motion.div>
+
+            {/* Google Calendar Connection */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+            >
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div 
+                  className="p-2 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${accentColor}33, ${accentColor}4D)`,
+                    borderColor: `${accentColor}4D`,
+                  }}
+                >
+                  <Calendar className="h-5 w-5" style={{ color: accentColor }} />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Google Calendar</h2>
+              </div>
+              
+              {calendarConnection ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-white">Connected</p>
+                        <p className="text-xs text-white/60 mt-1">{calendarConnection.email}</p>
+                      </div>
+                      <motion.button
+                        onClick={handleDisconnectCalendar}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </motion.button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-white/60">
+                    Your Google Calendar is connected. The AI receptionist can now check availability, create, reschedule, and cancel appointments.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-white/80">
+                    Connect your Google Calendar to enable automatic appointment scheduling. The AI receptionist will be able to check availability and book appointments directly to your calendar.
+                  </p>
+                  <motion.button
+                    onClick={handleConnectCalendar}
+                    disabled={connectingCalendar}
+                    whileHover={{ scale: connectingCalendar ? 1 : 1.02 }}
+                    whileTap={{ scale: connectingCalendar ? 1 : 0.98 }}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-white font-medium hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {connectingCalendar ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4" />
+                        Connect Google Calendar
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
