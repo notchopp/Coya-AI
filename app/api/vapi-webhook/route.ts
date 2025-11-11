@@ -395,6 +395,21 @@ export async function POST(request: NextRequest) {
         if (programData) {
           program = programData;
           business = programData.business || null;
+          
+          // If program found but business join failed, fetch business separately
+          if (program && !business && program.business_id) {
+            const { data: businessData } = await supabaseAdmin
+              .from("businesses")
+              .select("*")
+              .eq("id", program.business_id)
+              .maybeSingle();
+            
+            if (businessData) {
+              business = businessData;
+              console.log("✅ Fetched business separately for program:", business.name);
+            }
+          }
+          
           console.log("✅ Found program by to_number (direct routing):", {
             program: program.name,
             business: business?.name,
@@ -406,7 +421,7 @@ export async function POST(request: NextRequest) {
       }
 
       // PRIORITY 2: If no program found, check businesses.to_number
-      if (!business) {
+      if (!business && !program) {
         for (const format of phoneFormats) {
           const { data: businessByNumber } = await supabaseAdmin
             .from("businesses")

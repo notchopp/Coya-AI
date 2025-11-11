@@ -114,6 +114,21 @@ export async function POST(request: NextRequest) {
       } else if (programData) {
         program = programData;
         business = programData.business;
+        
+        // If program found but business join failed, fetch business separately
+        if (program && !business && program.business_id) {
+          const { data: businessData } = await supabaseAdmin
+            .from("businesses")
+            .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id")
+            .eq("id", program.business_id)
+            .maybeSingle();
+          
+          if (businessData) {
+            business = businessData;
+            console.log("✅ Fetched business separately for program:", business.name);
+          }
+        }
+        
         console.log("✅ Found program by phone number (direct routing):", {
           program: program.name,
           phone: format,
@@ -124,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     // PRIORITY 2: If no program found by phone, check businesses table (existing logic)
-    if (!business) {
+    if (!business && !program) {
       // Optimized: Only select needed columns for faster queries
       // Note: insurances column doesn't exist in programs or businesses tables
       // Include program_id to auto-select default program for this business
@@ -451,6 +466,21 @@ export async function GET(request: NextRequest) {
       } else if (programData) {
         program = programData;
         business = programData.business;
+        
+        // If program found but business join failed, fetch business separately
+        if (program && !business && program.business_id) {
+          const { data: businessData } = await supabaseAdmin
+            .from("businesses")
+            .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id")
+            .eq("id", program.business_id)
+            .maybeSingle();
+          
+          if (businessData) {
+            business = businessData;
+            console.log("✅ Fetched business separately for program:", business.name);
+          }
+        }
+        
         console.log("✅ Found program by phone number (direct routing):", {
           program: program.name,
           phone: format,
@@ -461,7 +491,7 @@ export async function GET(request: NextRequest) {
     }
 
     // PRIORITY 2: If no program found by phone, check businesses table
-    if (!business) {
+    if (!business && !program) {
       const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
       
       // Try multiple formats
