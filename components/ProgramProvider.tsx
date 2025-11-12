@@ -129,7 +129,8 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
     }
     
     initializeProgram();
-  }, [loadProgram, checkForPrograms]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - loadProgram and checkForPrograms are stable
 
   const setProgram = useCallback((newProgram: Program | null) => {
     setProgramState(newProgram);

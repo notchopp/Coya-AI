@@ -115,10 +115,11 @@ export default function Dashboard() {
     setMounted(true);
   }, []);
 
+  // Load business name immediately - don't wait for mounted
   useEffect(() => {
-    if (!mounted) return;
-
     async function loadBusinessName() {
+      if (typeof window === "undefined") return;
+      
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
       
@@ -141,12 +142,13 @@ export default function Dashboard() {
     // Refresh business name every 30 seconds to catch updates
     const interval = setInterval(loadBusinessName, 30000);
     return () => clearInterval(interval);
-  }, [mounted]);
+  }, []); // Remove mounted dependency - load immediately
 
+  // Load user data immediately - don't wait for mounted
   useEffect(() => {
-    if (!mounted) return;
-
     async function loadUserData() {
+      if (typeof window === "undefined") return;
+      
       const supabase = getSupabaseClient();
       const authUserId = (await supabase.auth.getUser()).data.user?.id;
       
@@ -179,12 +181,12 @@ export default function Dashboard() {
     return () => {
       window.removeEventListener("userNameUpdated", handleUserNameUpdate as EventListener);
     };
-  }, [mounted]);
+  }, []); // Remove mounted dependency - load immediately
 
   useEffect(() => {
-    if (!mounted) return;
-
+    // Load data immediately - don't wait for mounted
     async function loadDashboardData() {
+      if (typeof window === "undefined") return;
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
 
@@ -766,7 +768,7 @@ export default function Dashboard() {
     loadDashboardData();
     const interval = setInterval(loadDashboardData, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [mounted, timePeriod, programId]);
+  }, [timePeriod, programId, isAdmin]); // Remove mounted dependency, add isAdmin
 
   async function generateFunFact(calls: any[], businessId: string) {
     if (!calls || calls.length === 0) {
@@ -999,11 +1001,18 @@ export default function Dashboard() {
         >
           <span>{error}</span>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              // Force reload by toggling timePeriod (will immediately toggle back)
+              const currentPeriod = timePeriod;
+              setTimePeriod(currentPeriod === "daily" ? "weekly" : "daily");
+              setTimeout(() => setTimePeriod(currentPeriod), 10);
+            }}
             className="px-3 py-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/40 transition-colors text-sm font-medium"
-            aria-label="Reload page"
+            aria-label="Retry"
           >
-            Reload
+            Retry
           </button>
         </motion.div>
       )}

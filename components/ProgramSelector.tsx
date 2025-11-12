@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useProgram } from "@/components/ProgramProvider";
 import { ChevronDown, Building2, Check } from "lucide-react";
@@ -17,6 +18,7 @@ type Program = {
 export default function ProgramSelector() {
   const { program, programId, setProgramId, businessId } = useProgram();
   const { accentColor } = useAccentColor();
+  const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,8 +58,8 @@ export default function ProgramSelector() {
   const handleSelectProgram = (programIdToSelect: string | null) => {
     setProgramId(programIdToSelect);
     setIsOpen(false);
-    // Refresh the page to update stats
-    window.location.reload();
+    // Refresh data without full page reload
+    router.refresh();
   };
 
   return (
