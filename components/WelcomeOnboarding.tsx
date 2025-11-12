@@ -25,11 +25,19 @@ export default function WelcomeOnboarding() {
 
   useEffect(() => {
     async function checkIfNewUser() {
-      // First check if we have a flag to show welcome (from signup)
+      // First check if we have a flag to show welcome (from signup/login)
       const showWelcomeFlag = sessionStorage.getItem("show_welcome");
       
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
+      
+      // If we have the flag, show welcome immediately (don't wait for business check)
+      if (showWelcomeFlag === "true") {
+        setShowWelcome(true);
+        setBusinessName(null);
+        // Don't clear flag yet - wait until user dismisses
+        return;
+      }
       
       if (businessId) {
         const { data: businessData } = await supabase
@@ -40,51 +48,39 @@ export default function WelcomeOnboarding() {
         
         const business = businessData as { name: string | null } | null;
         
-        // Show welcome if:
-        // 1. We have the show_welcome flag (just signed up)
-        // 2. OR business name is empty or null
-        if (showWelcomeFlag === "true" || !business || !business.name || business.name.trim() === "") {
+        // Show welcome if business name is empty or null (for both users and admins)
+        if (!business || !business.name || business.name.trim() === "") {
           setShowWelcome(true);
           setBusinessName(null);
-          // Clear the flag after showing
-          if (showWelcomeFlag === "true") {
-            sessionStorage.removeItem("show_welcome");
-          }
         } else {
           setBusinessName(business.name);
         }
-      } else if (showWelcomeFlag === "true") {
-        // No business ID yet but we have the flag - show welcome anyway
-        setShowWelcome(true);
-        sessionStorage.removeItem("show_welcome");
       }
     }
 
+    // Check immediately
     checkIfNewUser();
     
-    // Also check when business_id changes (after signup redirect)
-    const handleStorageChange = () => {
-      checkIfNewUser();
-    };
-    
-    window.addEventListener("storage", handleStorageChange);
-    // Check periodically in case business_id is set after component mounts
-    const interval = setInterval(checkIfNewUser, 500);
+    // Check periodically in case business_id or flag is set after component mounts
+    const interval = setInterval(checkIfNewUser, 300);
     
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
       clearInterval(interval);
     };
   }, []);
 
   const handleGetStarted = () => {
     setShowWelcome(false);
+    // Clear the flag
+    sessionStorage.removeItem("show_welcome");
     // Redirect to settings to set business name
     router.push("/settings");
   };
 
   const handleSkipTutorial = () => {
     setShowWelcome(false);
+    // Clear the flag
+    sessionStorage.removeItem("show_welcome");
   };
 
   const tutorialSteps = [
