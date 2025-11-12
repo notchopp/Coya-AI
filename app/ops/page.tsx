@@ -22,6 +22,7 @@ import OperationsOverview from "@/components/ops/OperationsOverview";
 import BusinessesTab from "@/components/ops/BusinessesTab";
 import CallsTab from "@/components/ops/CallsTab";
 import AnalyticsTab from "@/components/ops/AnalyticsTab";
+import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 
 type Tab = "overview" | "businesses" | "calls" | "analytics" | "programs";
 
@@ -68,6 +69,9 @@ export default function OperationsDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Welcome Onboarding Modal - shows for new users/admins */}
+      <WelcomeOnboarding />
+      
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
