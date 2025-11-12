@@ -22,6 +22,16 @@ function SignupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const emailParam = searchParams.get("email");
+
+  // Pre-fill email from URL parameter (from login page)
+  useEffect(() => {
+    if (emailParam) {
+      setEmail(emailParam);
+      // Check if this email exists in users table without auth_user_id
+      checkEmailForSignup(emailParam);
+    }
+  }, [emailParam]);
 
   // Check if user came from invite link
   useEffect(() => {
@@ -114,9 +124,8 @@ function SignupPageContent() {
     }
   }
 
-  async function checkEmail() {
-    if (!email) {
-      setError("Please enter your email address.");
+  async function checkEmailForSignup(emailToCheck: string) {
+    if (!emailToCheck) {
       return;
     }
 
@@ -133,7 +142,7 @@ function SignupPageContent() {
       const result = await supabase
         .from("users")
         .select("id, email, auth_user_id, business_id, program_id")
-        .eq("email", email.toLowerCase())
+        .eq("email", emailToCheck.toLowerCase())
         .maybeSingle();
       
       if (result.error && result.error.message?.includes("program_id")) {
@@ -141,7 +150,7 @@ function SignupPageContent() {
         const retryResult = await supabase
           .from("users")
           .select("id, email, auth_user_id, business_id")
-          .eq("email", email.toLowerCase())
+          .eq("email", emailToCheck.toLowerCase())
           .maybeSingle();
         userData = retryResult.data;
         userError = retryResult.error;
@@ -151,7 +160,6 @@ function SignupPageContent() {
       }
 
       if (userError && userError.code !== "PGRST116") {
-        setError("Failed to check email. Please try again.");
         setCheckingEmail(false);
         return;
       }
@@ -167,19 +175,25 @@ function SignupPageContent() {
           return;
         }
 
-        // Email exists but no auth account - allow password setup
-        // Note: If they were invited, they should use the invite link, but we'll still allow signup
+        // Email exists but no auth account - show password creation form immediately
         setEmailExists(true);
+        setCheckingEmail(false);
       } else {
         // Email doesn't exist in users table
-        setError("This email is not registered. Please contact your administrator to be added to the system.");
+        setCheckingEmail(false);
       }
-
-      setCheckingEmail(false);
     } catch (err) {
-      setError("An unexpected error occurred.");
       setCheckingEmail(false);
     }
+  }
+
+  async function checkEmail() {
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    await checkEmailForSignup(email);
   }
 
   async function handleSignup(e: React.FormEvent) {

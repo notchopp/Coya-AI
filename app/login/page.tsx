@@ -286,7 +286,10 @@ function LoginPageContent() {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => router.push("/signup")}
+                onClick={() => {
+                  const emailParam = email ? `?email=${encodeURIComponent(email)}` : "";
+                  router.push(`/signup${emailParam}`);
+                }}
                 className="text-sm text-white/60 hover:text-white/80 transition-colors"
               >
                 Don't have an account? Sign up
