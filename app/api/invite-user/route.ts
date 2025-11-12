@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       // User exists in users table
       // Type assertion needed because Supabase types can be complex
-      const user = existingUser as { id: string; email: string; auth_user_id: string | null; business_id: string };
+      const user = existingUser as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id: string | null };
       const hasAuthAccount = user.auth_user_id !== null && user.auth_user_id !== undefined;
       
       if (hasAuthAccount) {
@@ -93,8 +93,21 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      // User exists but no auth_user_id - we'll update it after invite
+      // User exists but no auth_user_id - update program_id if provided
       userId = user.id;
+      
+      // Update program_id if provided and different from current
+      if (program_id && user.program_id !== program_id) {
+        const { error: updateError } = await (supabaseAdmin
+          .from("users") as any)
+          .update({ program_id: program_id })
+          .eq("id", userId);
+        
+        if (updateError) {
+          console.error("Error updating program_id:", updateError);
+          // Don't fail - continue with invite
+        }
+      }
     } else {
       // Step 2: Create user record in users table (without auth_user_id initially)
       const userData: any = {

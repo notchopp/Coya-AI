@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Check if email exists in users table without auth_user_id
     const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
-      .select("id, email, auth_user_id, business_id")
+      .select("id, email, auth_user_id, business_id, program_id")
       .eq("email", email.toLowerCase())
       .maybeSingle();
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string };
+    const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id: string | null };
 
     if (user.auth_user_id) {
       return NextResponse.json(
@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
         id: signInData.user?.id,
         email: signInData.user?.email,
       },
+      business_id: user.business_id,
+      program_id: user.program_id,
       session: signInData.session ? "created" : null,
     });
 

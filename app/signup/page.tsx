@@ -52,22 +52,61 @@ function SignupPageContent() {
         setEmail(userEmail);
         setTokenVerified(true); // Mark that we've verified the token and have a session
         
+        // Extract program_id from user metadata (set during invite)
+        const programId = data.user.user_metadata?.program_id || null;
+        
         // Check if user exists in users table and if they have auth_user_id
-        const { data: userData } = await supabase
+        // Try to select program_id, but handle if column doesn't exist
+        const { data: userData, error: userError } = await supabase
           .from("users")
-          .select("id, email, auth_user_id, business_id")
+          .select("id, email, auth_user_id, business_id, program_id")
           .eq("email", userEmail)
           .maybeSingle();
         
-        if (userData && userData.auth_user_id) {
-          // User already has a complete account - show option to sign in
-          setHasExistingAccount(true);
-          setEmailExists(false); // Don't show password form
+        // Handle case where program_id column might not exist
+        if (userError && userError.message?.includes("program_id")) {
+          // Retry without program_id
+          const { data: userDataRetry } = await supabase
+            .from("users")
+            .select("id, email, auth_user_id, business_id")
+            .eq("email", userEmail)
+            .maybeSingle();
+          
+          const user = userDataRetry as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null } | null;
+          
+          if (user && user.auth_user_id) {
+            setHasExistingAccount(true);
+            setEmailExists(false);
+          } else {
+            setEmailExists(true);
+            setLoading(false);
+          }
         } else {
-          // User exists in users table but no auth_user_id, or invite created auth user
-          // Go directly to password creation screen (we already have session from token verification)
-          setEmailExists(true);
-          setLoading(false);
+          const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null } | null;
+          
+          if (user && user.auth_user_id) {
+            // User already has a complete account - show option to sign in
+            setHasExistingAccount(true);
+            setEmailExists(false); // Don't show password form
+          } else {
+            // User exists in users table but no auth_user_id, or invite created auth user
+            // Update program_id if it was in the invite metadata and user doesn't have it
+            if (programId && user && !user.program_id) {
+              try {
+                await (supabase
+                  .from("users") as any)
+                  .update({ program_id: programId })
+                  .eq("id", user.id);
+              } catch (updateError) {
+                // Column might not exist, ignore error
+                console.log("Could not update program_id:", updateError);
+              }
+            }
+            
+            // Go directly to password creation screen (we already have session from token verification)
+            setEmailExists(true);
+            setLoading(false);
+          }
         }
       }
     } catch (err) {
@@ -87,11 +126,29 @@ function SignupPageContent() {
     try {
       const supabase = getSupabaseClient();
       // Check if email exists in users table
-      const { data: userData, error: userError } = await supabase
+      // Try with program_id first, fallback if column doesn't exist
+      let userData: any = null;
+      let userError: any = null;
+      
+      const result = await supabase
         .from("users")
-        .select("id, email, auth_user_id, business_id")
+        .select("id, email, auth_user_id, business_id, program_id")
         .eq("email", email.toLowerCase())
         .maybeSingle();
+      
+      if (result.error && result.error.message?.includes("program_id")) {
+        // Retry without program_id
+        const retryResult = await supabase
+          .from("users")
+          .select("id, email, auth_user_id, business_id")
+          .eq("email", email.toLowerCase())
+          .maybeSingle();
+        userData = retryResult.data;
+        userError = retryResult.error;
+      } else {
+        userData = result.data;
+        userError = result.error;
+      }
 
       if (userError && userError.code !== "PGRST116") {
         setError("Failed to check email. Please try again.");
@@ -100,7 +157,7 @@ function SignupPageContent() {
       }
 
       if (userData) {
-        const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string };
+        const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null };
         
         if (user.auth_user_id) {
           // User already has account - show option to sign in
@@ -146,11 +203,29 @@ function SignupPageContent() {
       const supabase = getSupabaseClient();
       
       // First, check if user exists in users table
-      const { data: userData, error: userError } = await supabase
+      // Try with program_id first, fallback if column doesn't exist
+      let userData: any = null;
+      let userError: any = null;
+      
+      const result = await supabase
         .from("users")
-        .select("id, email, auth_user_id, business_id")
+        .select("id, email, auth_user_id, business_id, program_id")
         .eq("email", email.toLowerCase())
         .maybeSingle();
+      
+      if (result.error && result.error.message?.includes("program_id")) {
+        // Retry without program_id
+        const retryResult = await supabase
+          .from("users")
+          .select("id, email, auth_user_id, business_id")
+          .eq("email", email.toLowerCase())
+          .maybeSingle();
+        userData = retryResult.data;
+        userError = retryResult.error;
+      } else {
+        userData = result.data;
+        userError = result.error;
+      }
 
       if (userError && userError.code !== "PGRST116") {
         setError("Failed to verify email. Please try again.");
@@ -164,7 +239,7 @@ function SignupPageContent() {
         return;
       }
 
-      const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string };
+      const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null };
 
       if (user.auth_user_id) {
         setError("This email already has an account. Please sign in instead.");
@@ -205,6 +280,11 @@ function SignupPageContent() {
 
           // Store in sessionStorage
           sessionStorage.setItem("business_id", user.business_id);
+          
+          // Store program_id if user has one
+          if (user.program_id) {
+            sessionStorage.setItem("program_id", user.program_id);
+          }
 
           // Go to dashboard
           router.push("/");
@@ -253,8 +333,13 @@ function SignupPageContent() {
 
             // Password set successfully
             if (result.session) {
-              // Session created, store business_id and redirect
-              sessionStorage.setItem("business_id", user.business_id);
+              // Session created, store business_id and program_id, then redirect
+              sessionStorage.setItem("business_id", result.business_id || user.business_id);
+              if (result.program_id) {
+                sessionStorage.setItem("program_id", result.program_id);
+              } else if (user.program_id) {
+                sessionStorage.setItem("program_id", user.program_id);
+              }
               router.push("/");
               router.refresh();
             } else {
@@ -292,6 +377,11 @@ function SignupPageContent() {
 
         // Store in sessionStorage
         sessionStorage.setItem("business_id", user.business_id);
+        
+        // Store program_id if user has one
+        if (user.program_id) {
+          sessionStorage.setItem("program_id", user.program_id);
+        }
 
         // For beta: Skip email confirmation and go directly to dashboard
         router.push("/");
