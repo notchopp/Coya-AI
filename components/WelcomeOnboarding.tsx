@@ -21,6 +21,7 @@ export default function WelcomeOnboarding() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [businessName, setBusinessName] = useState<string | null>(null);
+  const [showBusinessNamePrompt, setShowBusinessNamePrompt] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -35,6 +36,8 @@ export default function WelcomeOnboarding() {
       if (showWelcomeFlag === "true") {
         setShowWelcome(true);
         setBusinessName(null);
+        // Start at tutorial step 0 (welcome screen)
+        setCurrentStep(0);
         // Don't clear flag yet - wait until user dismisses
         return;
       }
@@ -71,16 +74,42 @@ export default function WelcomeOnboarding() {
 
   const handleGetStarted = () => {
     setShowWelcome(false);
-    // Clear the flag
+    // Clear the flags
     sessionStorage.removeItem("show_welcome");
-    // Redirect to settings to set business name
-    router.push("/settings");
+    sessionStorage.removeItem("show_tutorial");
+    
+    // Check if business name is empty and show prompt
+    checkBusinessNameAndPrompt();
   };
 
   const handleSkipTutorial = () => {
     setShowWelcome(false);
-    // Clear the flag
+    // Clear the flags
     sessionStorage.removeItem("show_welcome");
+    sessionStorage.removeItem("show_tutorial");
+    
+    // Check if business name is empty and show prompt
+    checkBusinessNameAndPrompt();
+  };
+
+  const checkBusinessNameAndPrompt = async () => {
+    const supabase = getSupabaseClient();
+    const businessId = sessionStorage.getItem("business_id");
+    
+    if (businessId) {
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("name")
+        .eq("id", businessId)
+        .maybeSingle();
+      
+      const business = businessData as { name: string | null } | null;
+      
+      // If business name is empty, show prompt to go to settings
+      if (!business || !business.name || business.name.trim() === "") {
+        setShowBusinessNamePrompt(true);
+      }
+    }
   };
 
   const tutorialSteps = [
@@ -317,6 +346,66 @@ export default function WelcomeOnboarding() {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Business Name Prompt Modal */}
+      <AnimatePresence>
+        {showBusinessNamePrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowBusinessNamePrompt(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md glass-strong rounded-3xl p-8 border border-white/10 shadow-2xl"
+            >
+              <button
+                onClick={() => setShowBusinessNamePrompt(false)}
+                className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 text-white/60" />
+              </button>
+
+              <div className="text-center space-y-6">
+                <div className="flex justify-center mb-4">
+                  <Coyalogo src="/logo.gif" size={60} />
+                </div>
+                <h2 className="text-2xl font-bold text-white">Welcome to COYA AI!</h2>
+                <p className="text-white/70">
+                  To get started, please set your business name in settings. This helps personalize your dashboard.
+                </p>
+                <div className="flex gap-3">
+                  <motion.button
+                    onClick={() => {
+                      setShowBusinessNamePrompt(false);
+                      router.push("/settings");
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/30 to-yellow-600/30 border border-yellow-500/40 text-white font-semibold hover:from-yellow-500/40 hover:to-yellow-600/40 transition-all"
+                  >
+                    Go to Settings
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setShowBusinessNamePrompt(false)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-all"
+                  >
+                    Later
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

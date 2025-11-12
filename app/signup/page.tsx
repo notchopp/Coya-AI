@@ -286,10 +286,11 @@ function SignupPageContent() {
             sessionStorage.setItem("program_id", user.program_id);
           }
 
-          // Mark as new user to show welcome page
+          // Mark as new user to show welcome/tutorial page
           sessionStorage.setItem("show_welcome", "true");
+          sessionStorage.setItem("show_tutorial", "true");
 
-          // Go to dashboard
+          // Go to dashboard (welcome page will show as modal)
           router.push("/");
           router.refresh();
           setLoading(false);
@@ -344,8 +345,9 @@ function SignupPageContent() {
                 sessionStorage.setItem("program_id", user.program_id);
               }
               
-              // Mark as new user to show welcome page
+              // Mark as new user to show welcome/tutorial page
               sessionStorage.setItem("show_welcome", "true");
+              sessionStorage.setItem("show_tutorial", "true");
               
               router.push("/");
               router.refresh();
@@ -390,12 +392,13 @@ function SignupPageContent() {
           sessionStorage.setItem("program_id", user.program_id);
         }
 
-        // Mark as new user to show welcome page
-        sessionStorage.setItem("show_welcome", "true");
+          // Mark as new user to show welcome/tutorial page
+          sessionStorage.setItem("show_welcome", "true");
+          sessionStorage.setItem("show_tutorial", "true");
 
-        // For beta: Skip email confirmation and go directly to dashboard
-        router.push("/");
-        router.refresh();
+          // For beta: Skip email confirmation and go directly to dashboard (welcome page will show as modal)
+          router.push("/");
+          router.refresh();
       }
     } catch (err) {
       setError("An unexpected error occurred.");
