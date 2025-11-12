@@ -284,7 +284,7 @@ function SignupPageContent() {
       }
 
       // Regular signup flow (not from invite)
-      // For beta: Skip email confirmation
+      // Try to sign up - this will create auth user if it doesn't exist
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.toLowerCase(),
         password: password,
@@ -351,8 +351,17 @@ function SignupPageContent() {
             return;
           }
         } else {
-          setError(signUpError.message);
+          // Other signup error
+          console.error("SignUp error:", signUpError);
+          setError(signUpError.message || "Failed to create account. Please try again.");
         }
+        setLoading(false);
+        return;
+      }
+
+      // Check if signUp actually created a user (might return null if email confirmation is required)
+      if (!authData.user) {
+        setError("Account creation failed. Please try again or contact support.");
         setLoading(false);
         return;
       }
@@ -369,21 +378,62 @@ function SignupPageContent() {
           // Continue anyway - callback will handle it
         }
 
-        // Store in sessionStorage
-        sessionStorage.setItem("business_id", user.business_id);
-        
-        // Store program_id if user has one
-        if (user.program_id) {
-          sessionStorage.setItem("program_id", user.program_id);
-        }
+        // Check if we have a session - if not, sign in to create one
+        if (!authData.session) {
+          // Sign in to create a session
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: email.toLowerCase(),
+            password: password,
+          });
+
+          if (signInError) {
+            console.error("Error signing in after account creation:", signInError);
+            setError("Account created but failed to sign in. Please try signing in manually.");
+            setTimeout(() => {
+              router.push(`/login?email=${encodeURIComponent(email)}`);
+            }, 2000);
+            setLoading(false);
+            return;
+          }
+
+          // Use the session from sign in
+          if (signInData.session) {
+            // Store in sessionStorage
+            sessionStorage.setItem("business_id", user.business_id);
+            
+            // Store program_id if user has one
+            if (user.program_id) {
+              sessionStorage.setItem("program_id", user.program_id);
+            }
+
+            // Mark as new user to show welcome/tutorial page
+            sessionStorage.setItem("show_welcome", "true");
+            sessionStorage.setItem("show_tutorial", "true");
+
+            // Redirect to dashboard
+            router.push("/");
+            router.refresh();
+            setLoading(false);
+            return;
+          }
+        } else {
+          // We have a session from signUp
+          // Store in sessionStorage
+          sessionStorage.setItem("business_id", user.business_id);
+          
+          // Store program_id if user has one
+          if (user.program_id) {
+            sessionStorage.setItem("program_id", user.program_id);
+          }
 
           // Mark as new user to show welcome/tutorial page
           sessionStorage.setItem("show_welcome", "true");
           sessionStorage.setItem("show_tutorial", "true");
 
-          // For beta: Skip email confirmation and go directly to dashboard (welcome page will show as modal)
+          // Redirect to dashboard
           router.push("/");
           router.refresh();
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred.");
