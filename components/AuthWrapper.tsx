@@ -16,13 +16,14 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const isLoginPage = pathname === "/login";
+  const isSignupPage = pathname === "/signup";
   const isAuthCallback = pathname === "/auth/callback";
   const isSelectProgramPage = pathname === "/select-program";
   const isDemoDashboard = pathname === "/demo-dashboard";
 
   useEffect(() => {
     async function checkAuth() {
-      if (isLoginPage || isAuthCallback || isDemoDashboard) {
+      if (isLoginPage || isSignupPage || isAuthCallback || isDemoDashboard) {
         setLoading(false);
         return;
       }
@@ -145,7 +146,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage || isAuthCallback || isSelectProgramPage || isDemoDashboard) {
+  if (isLoginPage || isSignupPage || isAuthCallback || isSelectProgramPage || isDemoDashboard) {
     return <>{children}</>;
   }
 
