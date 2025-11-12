@@ -25,6 +25,9 @@ export default function WelcomeOnboarding() {
 
   useEffect(() => {
     async function checkIfNewUser() {
+      // First check if we have a flag to show welcome (from signup)
+      const showWelcomeFlag = sessionStorage.getItem("show_welcome");
+      
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
       
@@ -37,17 +40,41 @@ export default function WelcomeOnboarding() {
         
         const business = businessData as { name: string | null } | null;
         
-        // Show welcome if business name is empty or null
-        if (!business || !business.name || business.name.trim() === "") {
+        // Show welcome if:
+        // 1. We have the show_welcome flag (just signed up)
+        // 2. OR business name is empty or null
+        if (showWelcomeFlag === "true" || !business || !business.name || business.name.trim() === "") {
           setShowWelcome(true);
           setBusinessName(null);
+          // Clear the flag after showing
+          if (showWelcomeFlag === "true") {
+            sessionStorage.removeItem("show_welcome");
+          }
         } else {
           setBusinessName(business.name);
         }
+      } else if (showWelcomeFlag === "true") {
+        // No business ID yet but we have the flag - show welcome anyway
+        setShowWelcome(true);
+        sessionStorage.removeItem("show_welcome");
       }
     }
 
     checkIfNewUser();
+    
+    // Also check when business_id changes (after signup redirect)
+    const handleStorageChange = () => {
+      checkIfNewUser();
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    // Check periodically in case business_id is set after component mounts
+    const interval = setInterval(checkIfNewUser, 500);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleGetStarted = () => {

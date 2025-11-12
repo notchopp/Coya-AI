@@ -286,6 +286,9 @@ function SignupPageContent() {
             sessionStorage.setItem("program_id", user.program_id);
           }
 
+          // Mark as new user to show welcome page
+          sessionStorage.setItem("show_welcome", "true");
+
           // Go to dashboard
           router.push("/");
           router.refresh();
@@ -340,6 +343,10 @@ function SignupPageContent() {
               } else if (user.program_id) {
                 sessionStorage.setItem("program_id", user.program_id);
               }
+              
+              // Mark as new user to show welcome page
+              sessionStorage.setItem("show_welcome", "true");
+              
               router.push("/");
               router.refresh();
             } else {
@@ -382,6 +389,9 @@ function SignupPageContent() {
         if (user.program_id) {
           sessionStorage.setItem("program_id", user.program_id);
         }
+
+        // Mark as new user to show welcome page
+        sessionStorage.setItem("show_welcome", "true");
 
         // For beta: Skip email confirmation and go directly to dashboard
         router.push("/");
