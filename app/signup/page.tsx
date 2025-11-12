@@ -134,57 +134,39 @@ function SignupPageContent() {
     setError("");
 
     try {
-      const supabase = getSupabaseClient();
-      // Check if email exists in users table
-      // Try with program_id first, fallback if column doesn't exist
-      let userData: any = null;
-      let userError: any = null;
-      
-      const result = await supabase
-        .from("users")
-        .select("id, email, auth_user_id, business_id, program_id")
-        .eq("email", emailToCheck.toLowerCase())
-        .maybeSingle();
-      
-      if (result.error && result.error.message?.includes("program_id")) {
-        // Retry without program_id
-        const retryResult = await supabase
-          .from("users")
-          .select("id, email, auth_user_id, business_id")
-          .eq("email", emailToCheck.toLowerCase())
-          .maybeSingle();
-        userData = retryResult.data;
-        userError = retryResult.error;
-      } else {
-        userData = result.data;
-        userError = result.error;
-      }
+      // Use API endpoint to check email (bypasses RLS)
+      const response = await fetch("/api/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToCheck.toLowerCase() }),
+      });
 
-      if (userError && userError.code !== "PGRST116") {
-        setError("Failed to check email. Please try again.");
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || result.message || "Failed to check email. Please try again.");
         setCheckingEmail(false);
         return;
       }
 
-      if (userData) {
-        const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null };
-        
-        if (user.auth_user_id) {
-          // User already has account - show option to sign in
-          setHasExistingAccount(true);
-          setEmailExists(false);
-          setCheckingEmail(false);
-          return;
-        }
-
-        // Email exists but no auth account - show password creation form immediately
-        setEmailExists(true);
-        setCheckingEmail(false);
-      } else {
+      if (!result.exists) {
         // Email doesn't exist in users table
-        setError("This email is not registered. Please contact your administrator to be added to the system.");
+        setError(result.message || "This email is not registered. Please contact your administrator to be added to the system.");
         setCheckingEmail(false);
+        return;
       }
+
+      if (result.hasAuth) {
+        // User already has account - show option to sign in
+        setHasExistingAccount(true);
+        setEmailExists(false);
+        setCheckingEmail(false);
+        return;
+      }
+
+      // Email exists but no auth account - show password creation form immediately
+      setEmailExists(true);
+      setCheckingEmail(false);
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setCheckingEmail(false);
