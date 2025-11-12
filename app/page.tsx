@@ -26,6 +26,7 @@ import { format, startOfWeek, startOfMonth, subMonths, subWeeks } from "date-fns
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { useProgram } from "@/components/ProgramProvider";
 import { useUserRole } from "@/lib/useUserRole";
+import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 
 type DashboardCall = {
   id: string;
@@ -927,6 +928,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      {/* Welcome Onboarding Modal */}
+      <WelcomeOnboarding />
+      
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
