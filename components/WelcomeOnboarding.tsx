@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -23,8 +23,12 @@ export default function WelcomeOnboarding() {
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [showBusinessNamePrompt, setShowBusinessNamePrompt] = useState(false);
   const router = useRouter();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
+    // Only run initialization once
+    if (hasInitialized.current) return;
+    
     async function checkIfNewUser() {
       // First check if we have a flag to show welcome (from signup/login)
       const showWelcomeFlag = sessionStorage.getItem("show_welcome");
@@ -37,8 +41,8 @@ export default function WelcomeOnboarding() {
       if (showWelcomeFlag === "true") {
         setShowWelcome(true);
         setBusinessName(null);
-        // Start at tutorial step 0 (welcome screen)
         setCurrentStep(0);
+        hasInitialized.current = true;
         // Don't clear flag yet - wait until user dismisses
         return;
       }
@@ -67,7 +71,12 @@ export default function WelcomeOnboarding() {
     checkIfNewUser();
     
     // Check periodically in case business_id or flag is set after component mounts
-    const interval = setInterval(checkIfNewUser, 300);
+    // But stop checking once we've initialized
+    const interval = setInterval(() => {
+      if (!hasInitialized.current) {
+        checkIfNewUser();
+      }
+    }, 300);
     
     return () => {
       clearInterval(interval);
