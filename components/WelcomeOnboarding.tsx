@@ -17,6 +17,15 @@ import {
   Sparkles
 } from "lucide-react";
 
+// Global function to show tutorial from anywhere
+let showTutorialGlobal: (() => void) | null = null;
+
+export function showTutorial() {
+  if (showTutorialGlobal) {
+    showTutorialGlobal();
+  }
+}
+
 export default function WelcomeOnboarding() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -24,6 +33,17 @@ export default function WelcomeOnboarding() {
   const [showBusinessNamePrompt, setShowBusinessNamePrompt] = useState(false);
   const router = useRouter();
   const hasInitialized = useRef(false);
+
+  // Expose function to show tutorial
+  useEffect(() => {
+    showTutorialGlobal = () => {
+      setShowWelcome(true);
+      setCurrentStep(0);
+    };
+    return () => {
+      showTutorialGlobal = null;
+    };
+  }, []);
 
   useEffect(() => {
     // Only run initialization once

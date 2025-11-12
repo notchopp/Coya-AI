@@ -27,6 +27,7 @@ import { useAccentColor } from "@/components/AccentColorProvider";
 import { useProgram } from "@/components/ProgramProvider";
 import { useUserRole } from "@/lib/useUserRole";
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
+import ProgramSelector from "@/components/ProgramSelector";
 
 type DashboardCall = {
   id: string;
@@ -946,9 +947,12 @@ export default function Dashboard() {
               )}
               <span className="beta-badge">Beta</span>
             </div>
-            {program?.name && (
-              <span className="text-sm sm:text-base font-medium text-white/40 ml-0 sm:ml-0">{program.name}</span>
-            )}
+            <div className="flex items-center gap-3 flex-wrap">
+              {program?.name && !isAdmin && (
+                <span className="text-sm sm:text-base font-medium text-white/40">{program.name}</span>
+              )}
+              {isAdmin && <ProgramSelector />}
+            </div>
           </div>
           <motion.span
             initial={{ opacity: 0 }}

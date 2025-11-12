@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { 
+import {
   Building2,
   Phone,
   TrendingUp,
@@ -22,7 +22,9 @@ import {
   User,
   ChevronDown,
   Link2,
+  LayoutDashboard,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { useUserRole } from "@/lib/useUserRole";
@@ -74,7 +76,8 @@ export default function ProgramsPage() {
   const { accentColor } = useAccentColor();
   const { role: userRole } = useUserRole();
   const isAdmin = userRole === "admin";
-  const { businessId } = useProgram();
+  const { businessId, setProgramId } = useProgram();
+  const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
@@ -746,6 +749,17 @@ export default function ProgramsPage() {
                                 </>
                               ) : (
                                 <>
+                                  <button
+                                    onClick={() => {
+                                      setProgramId(program.id);
+                                      router.push("/");
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors flex items-center gap-1.5 text-sm"
+                                    style={{ borderColor: accentColor }}
+                                  >
+                                    <LayoutDashboard className="h-3.5 w-3.5" />
+                                    View Dashboard
+                                  </button>
                                   <button
                                     onClick={() => {
                                       // Ensure hours is properly initialized as an object

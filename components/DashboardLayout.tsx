@@ -28,7 +28,9 @@ import {
   Brain,
   BarChart3,
   Building2,
+  GraduationCap,
 } from "lucide-react";
+import { showTutorial } from "@/components/WelcomeOnboarding";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -618,6 +620,34 @@ function SidebarContent({
         className="p-4 border-t space-y-3"
         style={{ borderColor: `${accentColor}33` }}
       >
+        {/* Tutorial Button */}
+        <motion.button
+          whileHover={isPremium ? { scale: 1.02, x: 4 } : {}}
+          whileTap={isPremium ? { scale: 0.98 } : {}}
+          onClick={() => showTutorial()}
+          className="w-full px-3 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
+        >
+          {isPremium && (
+            <motion.div
+              className="absolute inset-0"
+              initial={{ x: "-100%" }}
+              whileHover={{ x: "100%" }}
+              transition={{ duration: 0.5 }}
+              style={{
+                background: `linear-gradient(to right, ${accentColor}1A, transparent, ${accentColor}1A)`,
+              }}
+            />
+          )}
+          <motion.div
+            animate={isPremium ? { rotate: [0, 5, -5, 5, 0] } : {}}
+            transition={isPremium ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
+            className="relative z-10"
+          >
+            <GraduationCap className="h-4 w-4" style={{ color: accentColor }} />
+            <span className="ml-2">View Tutorial</span>
+          </motion.div>
+        </motion.button>
+
         {/* AI Insights Toggle - Admin Only */}
         {isAdmin && (
         <motion.button
