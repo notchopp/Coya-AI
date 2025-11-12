@@ -210,3 +210,4 @@ CREATE INDEX IF NOT EXISTS idx_call_turns_program_id ON public.call_turns USING 
 -- 4. Multiple permissive policies on audit_logs are consolidated where possible
 -- 5. Duplicate index on calls table is removed
 
+

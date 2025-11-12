@@ -259,3 +259,4 @@
 
 **Bottom Line**: You can afford Vapi enterprise pricing, and building your voice layer in parallel over 2-3 months with Cursor is a smart, low-risk strategy. You'll be profitable the entire time and can migrate when ready.
 
+

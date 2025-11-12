@@ -73,3 +73,4 @@ CREATE TRIGGER update_calendar_connections_updated_at_trigger
   FOR EACH ROW
   EXECUTE FUNCTION update_calendar_connections_updated_at();
 
+

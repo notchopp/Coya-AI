@@ -200,3 +200,4 @@
 
 **Bottom Line**: Clarify your pricing model. If it's monthly, you're in great shape. If it's one-time, switch to monthly to sustain the business.
 
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -13,6 +13,24 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  // Check for OTP expiration error in URL hash and redirect to signup
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.substring(1); // Remove the '#'
+      if (hash) {
+        const params = new URLSearchParams(hash);
+        const errorCode = params.get("error_code");
+        const error = params.get("error");
+        
+        if (error === "access_denied" && errorCode === "otp_expired") {
+          // Redirect to signup page so user can set their password
+          router.push("/signup");
+          return;
+        }
+      }
+    }
+  }, [router]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
