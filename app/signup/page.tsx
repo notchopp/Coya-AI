@@ -126,6 +126,7 @@ function SignupPageContent() {
 
   async function checkEmailForSignup(emailToCheck: string) {
     if (!emailToCheck) {
+      setError("Please enter your email address.");
       return;
     }
 
@@ -160,6 +161,7 @@ function SignupPageContent() {
       }
 
       if (userError && userError.code !== "PGRST116") {
+        setError("Failed to check email. Please try again.");
         setCheckingEmail(false);
         return;
       }
@@ -180,9 +182,11 @@ function SignupPageContent() {
         setCheckingEmail(false);
       } else {
         // Email doesn't exist in users table
+        setError("This email is not registered. Please contact your administrator to be added to the system.");
         setCheckingEmail(false);
       }
     } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
       setCheckingEmail(false);
     }
   }
