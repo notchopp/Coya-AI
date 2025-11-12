@@ -215,10 +215,12 @@ function SignupPageContent() {
       }
 
       // Regular signup flow (not from invite)
+      // For beta: Skip email confirmation
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.toLowerCase(),
         password: password,
         options: {
+          emailRedirectTo: undefined, // Skip email confirmation for beta
           data: {
             business_id: user.business_id,
           },
@@ -291,15 +293,9 @@ function SignupPageContent() {
         // Store in sessionStorage
         sessionStorage.setItem("business_id", user.business_id);
 
-        // Check if email confirmation is required
-        if (authData.user.email_confirmed_at) {
-          // Email already confirmed, go to dashboard
-          router.push("/");
-          router.refresh();
-        } else {
-          // Email confirmation required
-          setError("Please check your email to confirm your account before signing in.");
-        }
+        // For beta: Skip email confirmation and go directly to dashboard
+        router.push("/");
+        router.refresh();
       }
     } catch (err) {
       setError("An unexpected error occurred.");
