@@ -200,48 +200,28 @@ function SignupPageContent() {
     }
 
     try {
-      const supabase = getSupabaseClient();
-      
-      // First, check if user exists in users table
-      // Try with program_id first, fallback if column doesn't exist
-      let userData: any = null;
-      let userError: any = null;
-      
-      const result = await supabase
-        .from("users")
-        .select("id, email, auth_user_id, business_id, program_id")
-        .eq("email", email.toLowerCase())
-        .maybeSingle();
-      
-      if (result.error && result.error.message?.includes("program_id")) {
-        // Retry without program_id
-        const retryResult = await supabase
-          .from("users")
-          .select("id, email, auth_user_id, business_id")
-          .eq("email", email.toLowerCase())
-          .maybeSingle();
-        userData = retryResult.data;
-        userError = retryResult.error;
-      } else {
-        userData = result.data;
-        userError = result.error;
-      }
+      // Use API endpoint to check email (bypasses RLS)
+      const checkResponse = await fetch("/api/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.toLowerCase() }),
+      });
 
-      if (userError && userError.code !== "PGRST116") {
-        setError("Failed to verify email. Please try again.");
+      const checkResult = await checkResponse.json();
+
+      if (!checkResponse.ok) {
+        setError(checkResult.error || checkResult.message || "Failed to verify email. Please try again.");
         setLoading(false);
         return;
       }
 
-      if (!userData) {
-        setError("This email is not registered. Please contact your administrator.");
+      if (!checkResult.exists) {
+        setError(checkResult.message || "This email is not registered. Please contact your administrator.");
         setLoading(false);
         return;
       }
 
-      const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null };
-
-      if (user.auth_user_id) {
+      if (checkResult.hasAuth) {
         setError("This email already has an account. Please sign in instead.");
         setTimeout(() => {
           router.push("/login");
@@ -249,6 +229,11 @@ function SignupPageContent() {
         setLoading(false);
         return;
       }
+
+      // Email exists but no auth_user_id - proceed with signup
+      const user = checkResult.user as { id: string; email: string; auth_user_id: string | null; business_id: string; program_id?: string | null };
+      
+      const supabase = getSupabaseClient();
 
       // If we came from an invite and token was verified, we already have a session
       // Just update the password using updateUser
