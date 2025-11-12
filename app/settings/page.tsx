@@ -113,9 +113,9 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
+    // Load user data immediately - don't wait for mounted
     async function loadUserData() {
+      if (typeof window === "undefined") return;
       const supabase = getSupabaseClient();
       const authUserId = (await supabase.auth.getUser()).data.user?.id;
       
@@ -140,12 +140,12 @@ export default function SettingsPage() {
     }
 
     loadUserData();
-  }, [mounted]);
+  }, []); // Remove mounted dependency - load immediately
 
   useEffect(() => {
-    if (!mounted) return;
-
+    // Load business data immediately - don't wait for mounted
     async function loadBusiness() {
+      if (typeof window === "undefined") return;
       const supabase = getSupabaseClient();
       
       // Get business_id from sessionStorage
@@ -233,7 +233,7 @@ export default function SettingsPage() {
     }
 
     loadBusiness();
-  }, [mounted]);
+  }, []); // Remove mounted dependency - load immediately
 
   // Load available programs and calendar connection when team tab is active
   useEffect(() => {

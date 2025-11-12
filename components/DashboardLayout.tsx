@@ -251,9 +251,9 @@ function SidebarContent({
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
+    // Load stats immediately - don't wait for mounted
     async function loadStats() {
+      if (typeof window === "undefined") return;
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
 
@@ -299,7 +299,7 @@ function SidebarContent({
     loadStats();
     const interval = setInterval(loadStats, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, [mounted, period]);
+  }, [period]); // Remove mounted dependency - load immediately
 
   function togglePeriod() {
     if (period === "daily") {
