@@ -72,24 +72,7 @@ function LoginPageContent() {
         
         if (isAdminUser) {
           // Admin user - skip users table check, go directly to ops
-          // But still check if they have a business and show welcome if needed
-          const businessId = sessionStorage.getItem("business_id");
-          if (businessId) {
-            const { data: businessData } = await supabase
-              .from("businesses")
-              .select("name")
-              .eq("id", businessId)
-              .maybeSingle();
-            
-            if (!businessData || !businessData.name || businessData.name.trim() === "") {
-              sessionStorage.setItem("show_welcome", "true");
-              router.push("/");
-              router.refresh();
-              setLoading(false);
-              return;
-            }
-          }
-          
+          // Don't set welcome flag on login - only signup should trigger welcome
           console.log("✅ Admin user signed in:", userEmail || userId);
           router.push("/ops");
           router.refresh();
@@ -156,11 +139,8 @@ function LoginPageContent() {
           console.log("✅ Auto-selected program from business on login");
         }
 
-        // Check if business name is empty - show welcome page
-        if (!businessData || !(businessData as any).name || (businessData as any).name.trim() === "") {
-          sessionStorage.setItem("show_welcome", "true");
-        }
-
+        // Don't set welcome flag on login - only signup should trigger welcome
+        // Login is for existing users, signup is for new accounts (even if email was re-added)
         router.push("/");
         router.refresh();
       }

@@ -33,6 +33,7 @@ export default function WelcomeOnboarding() {
       const businessId = sessionStorage.getItem("business_id");
       
       // If we have the flag, show welcome immediately (don't wait for business check)
+      // This ensures welcome shows for EVERY signup, even if user was deleted and re-added
       if (showWelcomeFlag === "true") {
         setShowWelcome(true);
         setBusinessName(null);
@@ -42,6 +43,8 @@ export default function WelcomeOnboarding() {
         return;
       }
       
+      // Only check business name if we don't have the flag
+      // This prevents showing welcome for existing users who just logged in
       if (businessId) {
         const { data: businessData } = await supabase
           .from("businesses")
@@ -51,12 +54,11 @@ export default function WelcomeOnboarding() {
         
         const business = businessData as { name: string | null } | null;
         
-        // Show welcome if business name is empty or null (for both users and admins)
-        if (!business || !business.name || business.name.trim() === "") {
-          setShowWelcome(true);
-          setBusinessName(null);
-        } else {
+        // Store business name for display, but don't show welcome unless flag is set
+        if (business && business.name) {
           setBusinessName(business.name);
+        } else {
+          setBusinessName(null);
         }
       }
     }
