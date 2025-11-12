@@ -15,6 +15,8 @@ function SignupPageContent() {
   const [error, setError] = useState("");
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [hasExistingAccount, setHasExistingAccount] = useState(false);
+  const [isFromInvite, setIsFromInvite] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -23,6 +25,7 @@ function SignupPageContent() {
   useEffect(() => {
     if (token) {
       // User came from invite link, check if they need to set password
+      setIsFromInvite(true);
       checkInviteToken(token);
     }
   }, [token]);
@@ -41,8 +44,24 @@ function SignupPageContent() {
       }
 
       if (data.user?.email) {
-        setEmail(data.user.email);
-        setEmailExists(true);
+        const userEmail = data.user.email.toLowerCase();
+        setEmail(userEmail);
+        
+        // Check if user already has an account
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id, email, auth_user_id, business_id")
+          .eq("email", userEmail)
+          .maybeSingle();
+        
+        if (userData && userData.auth_user_id) {
+          // User already has account - show option to sign in
+          setHasExistingAccount(true);
+          setEmailExists(false); // Don't show password form
+        } else {
+          // User needs to set up account
+          setEmailExists(true);
+        }
       }
     } catch (err) {
       setError("Failed to verify invitation.");
@@ -77,11 +96,9 @@ function SignupPageContent() {
         const user = userData as { id: string; email: string; auth_user_id: string | null; business_id: string };
         
         if (user.auth_user_id) {
-          // User already has account, redirect to login
-          setError("This email already has an account. Please sign in instead.");
-          setTimeout(() => {
-            router.push("/login");
-          }, 2000);
+          // User already has account - show option to sign in
+          setHasExistingAccount(true);
+          setEmailExists(false);
           setCheckingEmail(false);
           return;
         }
@@ -264,11 +281,46 @@ function SignupPageContent() {
                 Beta
               </motion.span>
             </div>
-            <p className="text-white/60 text-sm">Set Up Your Account</p>
+            <p className="text-white/60 text-sm">
+              {isFromInvite ? "Welcome! Set Up Your Account" : "Set Up Your Account"}
+            </p>
           </motion.div>
 
+          {/* Show existing account message */}
+          {hasExistingAccount && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-sm text-center mb-6"
+            >
+              <p className="mb-3">You already have an account with this email.</p>
+              <div className="flex gap-3">
+                <motion.button
+                  onClick={() => router.push(`/login?email=${encodeURIComponent(email)}`)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 px-4 py-2 rounded-lg bg-yellow-500/30 border border-yellow-500/40 text-white font-semibold hover:bg-yellow-500/40 transition-all"
+                >
+                  Sign In
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    setHasExistingAccount(false);
+                    setEmail("");
+                    setEmailExists(null);
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-all"
+                >
+                  Use Different Email
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Signup Form */}
-          {emailExists === null ? (
+          {!hasExistingAccount && emailExists === null ? (
             <form onSubmit={(e) => { e.preventDefault(); checkEmail(); }} className="space-y-6">
               {error && (
                 <motion.div
@@ -317,7 +369,7 @@ function SignupPageContent() {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => router.push("/login")}
+                  onClick={() => router.push(`/login${email ? `?email=${encodeURIComponent(email)}` : ""}`)}
                   className="text-sm text-white/60 hover:text-white/80 transition-colors"
                 >
                   Already have an account? Sign in
@@ -404,7 +456,7 @@ function SignupPageContent() {
                 )}
               </motion.button>
 
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -412,10 +464,18 @@ function SignupPageContent() {
                     setPassword("");
                     setConfirmPassword("");
                     setError("");
+                    setHasExistingAccount(false);
                   }}
-                  className="text-sm text-white/60 hover:text-white/80 transition-colors"
+                  className="text-sm text-white/60 hover:text-white/80 transition-colors block w-full"
                 >
                   Use different email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/login?email=${encodeURIComponent(email)}`)}
+                  className="text-sm text-white/60 hover:text-white/80 transition-colors block w-full"
+                >
+                  Already have an account? Sign in instead
                 </button>
               </div>
             </form>

@@ -1,18 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
 import Coyalogo from "@/components/Coyalogo";
 import { Loader2 } from "lucide-react";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Pre-fill email from URL parameter
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
 
   // Check for OTP expiration error in URL hash and redirect to signup
   useEffect(() => {
@@ -270,10 +279,32 @@ export default function LoginPage() {
                 "Sign In"
               )}
             </motion.button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push("/signup")}
+                className="text-sm text-white/60 hover:text-white/80 transition-colors"
+              >
+                Don't have an account? Sign up
+              </button>
+            </div>
           </form>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }
 
