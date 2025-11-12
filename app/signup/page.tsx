@@ -17,6 +17,8 @@ function SignupPageContent() {
   const [emailExists, setEmailExists] = useState<boolean | null>(null);
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
   const [isFromInvite, setIsFromInvite] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [tokenVerified, setTokenVerified] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -26,6 +28,7 @@ function SignupPageContent() {
     if (token) {
       // User came from invite link, check if they need to set password
       setIsFromInvite(true);
+      setInviteToken(token);
       checkInviteToken(token);
     }
   }, [token]);
@@ -33,6 +36,7 @@ function SignupPageContent() {
   async function checkInviteToken(token: string) {
     try {
       const supabase = getSupabaseClient();
+      // Verify the token - this creates a session if valid
       const { data, error: tokenError } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: "invite",
@@ -46,8 +50,9 @@ function SignupPageContent() {
       if (data.user?.email) {
         const userEmail = data.user.email.toLowerCase();
         setEmail(userEmail);
+        setTokenVerified(true); // Mark that we've verified the token and have a session
         
-        // Check if user already has an account
+        // Check if user exists in users table and if they have auth_user_id
         const { data: userData } = await supabase
           .from("users")
           .select("id, email, auth_user_id, business_id")
@@ -55,12 +60,14 @@ function SignupPageContent() {
           .maybeSingle();
         
         if (userData && userData.auth_user_id) {
-          // User already has account - show option to sign in
+          // User already has a complete account - show option to sign in
           setHasExistingAccount(true);
           setEmailExists(false); // Don't show password form
         } else {
-          // User needs to set up account
+          // User exists in users table but no auth_user_id, or invite created auth user
+          // Go directly to password creation screen (we already have session from token verification)
           setEmailExists(true);
+          setLoading(false);
         }
       }
     } catch (err) {
@@ -167,7 +174,46 @@ function SignupPageContent() {
         return;
       }
 
-      // Sign up with Supabase Auth
+      // If we came from an invite and token was verified, we already have a session
+      // Just update the password using updateUser
+      if (isFromInvite && tokenVerified) {
+        // We already have a session from token verification, just update password
+        const { error: updatePasswordError } = await supabase.auth.updateUser({
+          password: password
+        });
+        
+        if (updatePasswordError) {
+          setError(updatePasswordError.message || "Failed to set password. Please try again.");
+          setLoading(false);
+          return;
+        }
+        
+        // Get the auth user ID
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        if (authUser) {
+          // Update users table with auth_user_id
+          const { error: updateError } = await supabase
+            .from("users")
+            .update({ auth_user_id: authUser.id })
+            .eq("id", user.id);
+
+          if (updateError) {
+            console.error("Error updating user auth_user_id:", updateError);
+          }
+
+          // Store in sessionStorage
+          sessionStorage.setItem("business_id", user.business_id);
+
+          // Go to dashboard
+          router.push("/");
+          router.refresh();
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Regular signup flow (not from invite)
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.toLowerCase(),
         password: password,
@@ -179,7 +225,14 @@ function SignupPageContent() {
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        // Check if error is because user already exists (from invite)
+        if (signUpError.message.includes("already registered") || 
+            signUpError.message.includes("User already registered") ||
+            signUpError.message.includes("email address is already registered")) {
+          setError("This email is already registered. Please sign in or use a valid invitation link.");
+        } else {
+          setError(signUpError.message);
+        }
         setLoading(false);
         return;
       }
