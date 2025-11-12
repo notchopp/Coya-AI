@@ -367,15 +367,26 @@ function SignupPageContent() {
       }
 
       if (authData.user) {
-        // Update users table with auth_user_id
-        const { error: updateError } = await supabase
-          .from("users")
-          .update({ auth_user_id: authData.user.id })
-          .eq("id", user.id);
+        // Link auth_user_id to users table using API endpoint (bypasses RLS)
+        try {
+          const linkResponse = await fetch("/api/link-auth-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              user_id: user.id, 
+              auth_user_id: authData.user.id 
+            }),
+          });
 
-        if (updateError) {
-          console.error("Error updating user auth_user_id:", updateError);
-          // Continue anyway - callback will handle it
+          const linkResult = await linkResponse.json();
+
+          if (!linkResponse.ok) {
+            console.error("Error linking auth_user_id:", linkResult);
+            // Continue anyway - we'll try to sign in
+          }
+        } catch (linkError) {
+          console.error("Error calling link-auth-user API:", linkError);
+          // Continue anyway
         }
 
         // Check if we have a session - if not, sign in to create one
@@ -388,10 +399,21 @@ function SignupPageContent() {
 
           if (signInError) {
             console.error("Error signing in after account creation:", signInError);
-            setError("Account created but failed to sign in. Please try signing in manually.");
-            setTimeout(() => {
-              router.push(`/login?email=${encodeURIComponent(email)}`);
-            }, 2000);
+            
+            // If email not confirmed, try to confirm it via admin API
+            if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
+              // The link-auth-user API should have confirmed it, but if it didn't work, try again
+              // For now, just show error and redirect to login
+              setError("Account created. Please check your email to confirm your account, or contact support.");
+              setTimeout(() => {
+                router.push(`/login?email=${encodeURIComponent(email)}`);
+              }, 3000);
+            } else {
+              setError("Account created but failed to sign in. Please try signing in manually.");
+              setTimeout(() => {
+                router.push(`/login?email=${encodeURIComponent(email)}`);
+              }, 2000);
+            }
             setLoading(false);
             return;
           }
