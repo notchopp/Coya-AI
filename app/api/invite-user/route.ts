@@ -156,24 +156,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 4: If user was created, update it with auth_user_id
-    if (inviteData?.user && userId) {
-      const user = existingUser as { id: string; auth_user_id: string | null } | null;
-      const needsAuthLink = !user || !user.auth_user_id;
-      
-      if (needsAuthLink) {
-        const { error: updateError } = await (supabaseAdmin
-          .from("users") as any)
-          .update({ auth_user_id: inviteData.user.id })
-          .eq("id", userId);
-
-        if (updateError) {
-          console.error("Error updating user auth_user_id:", updateError);
-          // Don't fail the request, but log the error
-          // The callback page will handle linking by email
-        }
-      }
-    }
+    // Step 4: Don't link auth_user_id yet - wait until user sets password
+    // The signup page will link auth_user_id after password is created
+    // This allows users to sign up even if they were invited (email exists in users table)
 
     // Log audit event for user invitation
     // Get inviter user ID from auth header or request

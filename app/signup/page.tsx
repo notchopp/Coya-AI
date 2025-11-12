@@ -111,6 +111,7 @@ function SignupPageContent() {
         }
 
         // Email exists but no auth account - allow password setup
+        // Note: If they were invited, they should use the invite link, but we'll still allow signup
         setEmailExists(true);
       } else {
         // Email doesn't exist in users table
@@ -225,11 +226,49 @@ function SignupPageContent() {
       });
 
       if (signUpError) {
-        // Check if error is because user already exists (from invite)
+        // Check if error is because user already exists in auth (from invite)
         if (signUpError.message.includes("already registered") || 
             signUpError.message.includes("User already registered") ||
             signUpError.message.includes("email address is already registered")) {
-          setError("This email is already registered. Please sign in or use a valid invitation link.");
+          
+          // Auth user exists from invite, but users table doesn't have auth_user_id yet
+          // The invite created an auth user, so signUp fails
+          // Use the API endpoint to set password for invited users
+          try {
+            const response = await fetch("/api/set-password-invited", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: email.toLowerCase(), password: password }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              setError(result.error || "Failed to set password. Please use the invitation link from your email.");
+              setLoading(false);
+              return;
+            }
+
+            // Password set successfully
+            if (result.session) {
+              // Session created, store business_id and redirect
+              sessionStorage.setItem("business_id", user.business_id);
+              router.push("/");
+              router.refresh();
+            } else {
+              // Password set but need to sign in
+              setError("Password set successfully. Please sign in.");
+              setTimeout(() => {
+                router.push(`/login?email=${encodeURIComponent(email)}`);
+              }, 2000);
+            }
+            setLoading(false);
+            return;
+          } catch (apiError) {
+            setError("Failed to set password. Please use the invitation link from your email or contact your administrator.");
+            setLoading(false);
+            return;
+          }
         } else {
           setError(signUpError.message);
         }
