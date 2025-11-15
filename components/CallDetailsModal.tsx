@@ -360,8 +360,8 @@ export default function CallDetailsModal({ call, isOpen, onClose, readOnly = fal
                               >
                                 {call.status || "unknown"}
                               </span>
-                              {call.success !== null && (
-                                call.success ? (
+                              {(call.success !== null || call.schedule) && (
+                                (call.success === true || call.schedule) ? (
                                   <CheckCircle className="h-4 w-4 text-emerald-400" />
                                 ) : (
                                   <XCircle className="h-4 w-4 text-red-400" />

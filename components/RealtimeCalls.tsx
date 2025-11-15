@@ -532,9 +532,9 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
                             <div className="flex items-center justify-between text-xs text-white/50">
                               <span>{format(new Date(c.started_at), "MMM d, h:mm a")}</span>
                               <div className="flex items-center gap-2">
-                                {c.success !== null && (
-                                  <span className={c.success ? "text-emerald-400" : "text-red-400"}>
-                                    {c.success ? "✓" : "✗"}
+                                {(c.success !== null || c.schedule) && (
+                                  <span className={(c.success === true || c.schedule) ? "text-emerald-400" : "text-red-400"}>
+                                    {(c.success === true || c.schedule) ? "✓" : "✗"}
                                   </span>
                                 )}
                                 {c.escalate && (
@@ -658,9 +658,9 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
                     <div className="flex items-center justify-between text-xs text-white/50">
                       <span>{format(new Date(c.started_at), "MMM d, h:mm a")}</span>
                       <div className="flex items-center gap-2">
-                        {c.success !== null && (
-                          <span className={c.success ? "text-emerald-400" : "text-red-400"}>
-                            {c.success ? "✓" : "✗"}
+                        {(c.success !== null || c.schedule) && (
+                          <span className={(c.success === true || c.schedule) ? "text-emerald-400" : "text-red-400"}>
+                            {(c.success === true || c.schedule) ? "✓" : "✗"}
                           </span>
                         )}
                         {c.escalate && (

@@ -175,16 +175,16 @@ export default function CallsTab({
                       <Clock className="h-4 w-4" />
                       {format(new Date(call.started_at), "MMM d, h:mm a")}
                     </span>
-                    {call.success !== null && (
+                    {(call.success !== null || call.schedule) && (
                       <span className={`flex items-center gap-1 ${
-                        call.success ? "text-green-400" : "text-red-400"
+                        (call.success === true || call.schedule) ? "text-green-400" : "text-red-400"
                       }`}>
-                        {call.success ? (
+                        {(call.success === true || call.schedule) ? (
                           <CheckCircle className="h-4 w-4" />
                         ) : (
                           <XCircle className="h-4 w-4" />
                         )}
-                        {call.success ? "Successful" : "Failed"}
+                        {(call.success === true || call.schedule) ? "Successful" : "Failed"}
                       </span>
                     )}
                     {call.escalate && (
@@ -223,6 +223,8 @@ export default function CallsTab({
     </div>
   );
 }
+
+
 
 
 

@@ -132,3 +132,5 @@ The `realtime.list_changes` query taking 95% of time is **normal** - it's Supaba
 **Realtime connections not showing in inspector is normal** - they're private, ephemeral, and client-side. If your dashboard updates in real-time, it's working correctly.
 
 
+
+
