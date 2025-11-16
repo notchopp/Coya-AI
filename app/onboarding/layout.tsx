@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import OnboardingProgress from "@/components/onboarding/OnboardingProgress";
 import { checkOnboardingStatus, getStepRoute } from "@/lib/onboarding";
@@ -13,6 +13,7 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [currentStep, setCurrentStep] = useState(2);
   const [loading, setLoading] = useState(true);
 
@@ -33,24 +34,23 @@ export default function OnboardingLayout({
         return;
       }
 
-      // Get current step from URL or status
-      const path = window.location.pathname;
-      let step = status.currentStep;
+      // Get current step from URL pathname
+      let step = 2; // Default to step 2 (Business Setup)
       
       // Map URL to step number
-      if (path.includes("business-setup")) step = 2;
-      else if (path.includes("mode-selection")) step = 3;
-      else if (path.includes("business-config") || path.includes("program-config")) step = 4;
-      else if (path.includes("test-call")) step = 5;
-      else if (path.includes("tutorial")) step = 6;
-      else if (path.includes("go-live")) step = 7;
+      if (pathname.includes("business-setup")) step = 2;
+      else if (pathname.includes("mode-selection")) step = 3;
+      else if (pathname.includes("business-config") || pathname.includes("program-config")) step = 4;
+      else if (pathname.includes("test-call")) step = 5;
+      else if (pathname.includes("tutorial")) step = 6;
+      else if (pathname.includes("go-live")) step = 7;
 
       setCurrentStep(step);
       setLoading(false);
     }
 
     loadOnboardingStatus();
-  }, [router]);
+  }, [router, pathname]);
 
   if (loading) {
     return (
