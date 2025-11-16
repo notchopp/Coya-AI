@@ -103,21 +103,45 @@ export default function WelcomeOnboarding() {
     };
   }, []);
 
-  const handleGetStarted = () => {
+  const handleGetStarted = async () => {
     setShowWelcome(false);
     // Clear the flags
     sessionStorage.removeItem("show_welcome");
     sessionStorage.removeItem("show_tutorial");
     
+    // If we're in onboarding flow, navigate to go-live
+    const pathname = window.location.pathname;
+    if (pathname.includes("/onboarding/tutorial")) {
+      const businessId = sessionStorage.getItem("business_id");
+      if (businessId) {
+        const { updateOnboardingStep } = await import("@/lib/onboarding");
+        await updateOnboardingStep(businessId, 6);
+        router.push("/onboarding/go-live");
+        return;
+      }
+    }
+    
     // Check if business name is empty and show prompt
     checkBusinessNameAndPrompt();
   };
 
-  const handleSkipTutorial = () => {
+  const handleSkipTutorial = async () => {
     setShowWelcome(false);
     // Clear the flags
     sessionStorage.removeItem("show_welcome");
     sessionStorage.removeItem("show_tutorial");
+    
+    // If we're in onboarding flow, navigate to go-live
+    const pathname = window.location.pathname;
+    if (pathname.includes("/onboarding/tutorial")) {
+      const businessId = sessionStorage.getItem("business_id");
+      if (businessId) {
+        const { updateOnboardingStep } = await import("@/lib/onboarding");
+        await updateOnboardingStep(businessId, 6);
+        router.push("/onboarding/go-live");
+        return;
+      }
+    }
     
     // Check if business name is empty and show prompt
     checkBusinessNameAndPrompt();
