@@ -154,19 +154,21 @@ export default function OperationsOverview({
     <div>
       {/* Time Range Selector */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex rounded-lg border border-white/10 overflow-hidden">
+        <div className="flex gap-2">
           {(["today", "week", "month"] as TimeRange[]).map((range) => (
-            <button
+            <motion.button
               key={range}
               onClick={() => onTimeRangeChange(range)}
-              className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 timeRange === range
-                  ? "bg-white/10 text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  ? "bg-white/10 text-white border border-white/20"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
               }`}
             >
               {range.charAt(0).toUpperCase() + range.slice(1)}
-            </button>
+            </motion.button>
           ))}
         </div>
         <div className="flex items-center gap-2">
@@ -184,11 +186,11 @@ export default function OperationsOverview({
       </div>
 
       {/* System Health Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl glass border border-white/10 p-3 sm:p-4"
+          className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors"
         >
           <div className="text-white/60 text-xs sm:text-sm mb-1">Total Calls</div>
           <div className="text-xl sm:text-2xl font-bold text-white">{totalStats.total_calls}</div>
@@ -197,7 +199,7 @@ export default function OperationsOverview({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-xl glass border border-white/10 p-3 sm:p-4"
+          className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors"
         >
           <div className="text-white/60 text-xs sm:text-sm mb-1">Success Rate</div>
           <div className="text-xl sm:text-2xl font-bold text-green-400">
@@ -208,7 +210,7 @@ export default function OperationsOverview({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-xl glass border border-white/10 p-3 sm:p-4"
+          className="rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors"
         >
           <div className="text-white/60 text-xs sm:text-sm mb-1">Bookings</div>
           <div className="text-xl sm:text-2xl font-bold text-blue-400">{totalStats.bookings}</div>
@@ -255,7 +257,7 @@ export default function OperationsOverview({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`rounded-xl glass border p-4 sm:p-6 ${getStatusBg(business.status)}`}
+              className={`rounded-xl bg-white/5 border border-white/10 p-6 hover:border-white/20 transition-all ${getStatusBg(business.status)}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 {/* Left: Business Info */}

@@ -167,33 +167,36 @@ export default function BusinessesTab({
             placeholder="Search businesses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg glass border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/30"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all"
           />
         </div>
-        <div className="flex rounded-lg border border-white/10 overflow-hidden">
+        <div className="flex gap-2">
           {(["today", "week", "month"] as TimeRange[]).map((range) => (
-            <button
+            <motion.button
               key={range}
               onClick={() => onTimeRangeChange(range)}
-              className={`px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 timeRange === range
-                  ? "bg-white/10 text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  ? "bg-white/10 text-white border border-white/20"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
               }`}
             >
               {range.charAt(0).toUpperCase() + range.slice(1)}
-            </button>
+            </motion.button>
           ))}
         </div>
         <motion.button
           onClick={() => setShowCreateModal(true)}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border font-medium transition-colors"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl border font-semibold transition-all shadow-lg"
           style={{
             backgroundColor: `${accentColor}33`,
-            borderColor: `${accentColor}4D`,
+            borderColor: `${accentColor}66`,
             color: accentColor,
+            boxShadow: `0 4px 12px ${accentColor}33`,
           }}
         >
           <Plus className="h-4 w-4" />
@@ -212,7 +215,7 @@ export default function BusinessesTab({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => setSelectedBusiness(business)}
-              className="rounded-xl glass border border-white/10 p-4 sm:p-6 cursor-pointer hover:border-white/20 transition-colors"
+              className="rounded-xl bg-white/5 border border-white/10 p-6 cursor-pointer hover:border-white/20 hover:bg-white/10 transition-all"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -341,7 +344,7 @@ function BusinessDetailsModal({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-auto rounded-2xl glass-strong border border-white/10 p-6"
+        className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-auto rounded-2xl bg-black border border-white/20 p-6 shadow-2xl"
       >
         <button
           onClick={onClose}
@@ -386,11 +389,11 @@ function BusinessDetailsModal({
           <div className="mb-6">
             <h3 className="text-lg font-bold text-white mb-4">Performance Stats</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="rounded-lg glass border border-white/10 p-4">
+              <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
                 <div className="text-white/60 text-xs mb-1">Total Calls</div>
                 <div className="text-xl font-bold text-white">{stats.total_calls}</div>
               </div>
-              <div className="rounded-lg glass border border-white/10 p-4">
+              <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
                 <div className="text-white/60 text-xs mb-1">Success Rate</div>
                 <div className={`text-xl font-bold ${
                   stats.success_rate >= 70 ? "text-green-400" :
@@ -399,11 +402,11 @@ function BusinessDetailsModal({
                   {stats.success_rate.toFixed(1)}%
                 </div>
               </div>
-              <div className="rounded-lg glass border border-white/10 p-4">
+              <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
                 <div className="text-white/60 text-xs mb-1">Bookings</div>
                 <div className="text-xl font-bold text-blue-400">{stats.bookings}</div>
               </div>
-              <div className="rounded-lg glass border border-white/10 p-4">
+              <div className="rounded-lg bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition-colors">
                 <div className="text-white/60 text-xs mb-1">Avg Duration</div>
                 <div className="text-xl font-bold text-white">
                   {Math.floor(stats.avg_duration / 60)}m {stats.avg_duration % 60}s
@@ -447,7 +450,7 @@ function BusinessDetailsModal({
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-3 rounded-lg glass border border-white/10 hover:bg-white/10 text-white/80 transition-colors"
+            className="px-4 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 transition-colors"
           >
             Close
           </button>
@@ -527,7 +530,7 @@ function CreateBusinessModal({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 w-full max-w-lg rounded-2xl glass-strong border border-white/10 p-6"
+        className="relative z-10 w-full max-w-lg rounded-2xl bg-black border border-white/20 p-6 shadow-2xl"
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">Create New Business</h2>
@@ -549,7 +552,7 @@ function CreateBusinessModal({
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all"
               placeholder="Allure Clinic"
             />
           </div>
@@ -563,7 +566,7 @@ function CreateBusinessModal({
               required
               value={formData.to_number}
               onChange={(e) => setFormData({ ...formData, to_number: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all"
               placeholder="+1234567890"
             />
             <p className="text-xs text-white/40 mt-1">
@@ -578,7 +581,7 @@ function CreateBusinessModal({
             <select
               value={formData.vertical}
               onChange={(e) => setFormData({ ...formData, vertical: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all"
             >
               <option value="" className="bg-gray-900">Select type...</option>
               <option value="therapy" className="bg-gray-900">Therapy</option>
@@ -602,7 +605,7 @@ function CreateBusinessModal({
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all"
               placeholder="owner@clinic.com"
             />
             <p className="text-xs text-white/40 mt-1">
@@ -618,7 +621,7 @@ function CreateBusinessModal({
               type="text"
               value={formData.owner_name}
               onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all"
               placeholder="John Doe"
             />
           </div>
@@ -627,7 +630,7 @@ function CreateBusinessModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors text-white"
+              className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white"
             >
               Cancel
             </button>
@@ -636,7 +639,7 @@ function CreateBusinessModal({
               disabled={loading}
               whileHover={{ scale: loading ? 1 : 1.02 }}
               whileTap={{ scale: loading ? 1 : 0.98 }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border font-medium transition-all disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border font-semibold transition-all disabled:opacity-50 shadow-lg"
               style={{
                 backgroundColor: `${accentColor}33`,
                 borderColor: `${accentColor}4D`,
