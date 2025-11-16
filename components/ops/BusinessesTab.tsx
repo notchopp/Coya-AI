@@ -14,7 +14,9 @@ import {
   TrendingDown,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
@@ -63,6 +65,7 @@ export default function BusinessesTab({
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     loadBusinesses();
@@ -182,6 +185,20 @@ export default function BusinessesTab({
             </button>
           ))}
         </div>
+        <motion.button
+          onClick={() => setShowCreateModal(true)}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border font-medium transition-colors"
+          style={{
+            backgroundColor: `${accentColor}33`,
+            borderColor: `${accentColor}4D`,
+            color: accentColor,
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          Create Business
+        </motion.button>
       </div>
 
       {/* Business Grid */}
@@ -272,6 +289,20 @@ export default function BusinessesTab({
               if (selectedBusiness) {
                 goToBusinessDashboard(selectedBusiness.id);
               }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create Business Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <CreateBusinessModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              loadBusinesses();
             }}
           />
         )}
@@ -425,6 +456,210 @@ function BusinessDetailsModal({
     </div>
   );
 }
+
+function CreateBusinessModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const { accentColor } = useAccentColor();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    to_number: "",
+    vertical: "",
+    email: "",
+    owner_name: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/ops-create-business", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create business");
+      }
+
+      // Reset form
+      setFormData({
+        name: "",
+        to_number: "",
+        vertical: "",
+        email: "",
+        owner_name: "",
+      });
+
+      onSuccess();
+    } catch (error) {
+      console.error("Error creating business:", error);
+      alert(error instanceof Error ? error.message : "Failed to create business");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-lg rounded-2xl glass-strong border border-white/10 p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Create New Business</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <X className="h-5 w-5 text-white/60" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Business Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              placeholder="Allure Clinic"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Phone Number (to_number) *
+            </label>
+            <input
+              type="tel"
+              required
+              value={formData.to_number}
+              onChange={(e) => setFormData({ ...formData, to_number: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              placeholder="+1234567890"
+            />
+            <p className="text-xs text-white/40 mt-1">
+              This is the phone number that will route to this business's AI receptionist
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Business Type (Vertical)
+            </label>
+            <select
+              value={formData.vertical}
+              onChange={(e) => setFormData({ ...formData, vertical: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all"
+            >
+              <option value="" className="bg-gray-900">Select type...</option>
+              <option value="therapy" className="bg-gray-900">Therapy</option>
+              <option value="psychiatry" className="bg-gray-900">Psychiatry</option>
+              <option value="dental" className="bg-gray-900">Dental</option>
+              <option value="medical" className="bg-gray-900">Medical</option>
+              <option value="legal" className="bg-gray-900">Legal</option>
+              <option value="veterinary" className="bg-gray-900">Veterinary</option>
+              <option value="fitness" className="bg-gray-900">Fitness</option>
+              <option value="beauty" className="bg-gray-900">Beauty</option>
+              <option value="other" className="bg-gray-900">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Owner Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              placeholder="owner@clinic.com"
+            />
+            <p className="text-xs text-white/40 mt-1">
+              An account will be created for this email address
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Owner Name
+            </label>
+            <input
+              type="text"
+              value={formData.owner_name}
+              onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+              placeholder="John Doe"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors text-white"
+            >
+              Cancel
+            </button>
+            <motion.button
+              type="submit"
+              disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border font-medium transition-all disabled:opacity-50"
+              style={{
+                backgroundColor: `${accentColor}33`,
+                borderColor: `${accentColor}4D`,
+                color: accentColor,
+              }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Business"
+              )}
+            </motion.button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+
 
 
 

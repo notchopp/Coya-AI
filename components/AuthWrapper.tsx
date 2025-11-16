@@ -20,10 +20,11 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   const isAuthCallback = pathname === "/auth/callback";
   const isSelectProgramPage = pathname === "/select-program";
   const isDemoDashboard = pathname === "/demo-dashboard";
+  const isOnboardingPage = pathname.startsWith("/onboarding");
 
   useEffect(() => {
     async function checkAuth() {
-      if (isLoginPage || isSignupPage || isAuthCallback || isDemoDashboard) {
+      if (isLoginPage || isSignupPage || isAuthCallback || isDemoDashboard || isOnboardingPage) {
         setLoading(false);
         return;
       }
@@ -91,6 +92,34 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
         console.log("✅ Using stored business_id:", storedBusinessId);
       }
 
+      // Check onboarding status (only for regular users, not super admin)
+      if (!isAdmin && storedBusinessId) {
+        const result = await supabase
+          .from("businesses")
+          .select("onboarding_completed_at, onboarding_step")
+          .eq("id", storedBusinessId)
+          .maybeSingle();
+
+        const businessData = result.data as {
+          onboarding_completed_at: string | null;
+          onboarding_step: number | null;
+        } | null;
+
+        // If onboarding not completed and not already on onboarding page, redirect
+        if (businessData && !businessData.onboarding_completed_at) {
+          const isOnboardingPage = pathname.startsWith("/onboarding");
+          if (!isOnboardingPage) {
+            const { getStepRoute } = await import("@/lib/onboarding");
+            const step = (businessData.onboarding_step || 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+            const onboardingRoute = getStepRoute(step);
+            console.log("🔄 Redirecting to onboarding:", onboardingRoute);
+            router.push(onboardingRoute);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       // Check if business has programs and user needs to select one
       if (!isSelectProgramPage && !isAdmin) {
         const storedProgramId = sessionStorage.getItem("program_id");
@@ -136,7 +165,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     }
 
     checkAuth();
-  }, [pathname, isLoginPage, isSelectProgramPage, router]);
+  }, [pathname, isLoginPage, isSelectProgramPage, isOnboardingPage, router]);
 
   if (loading) {
     return (
@@ -146,7 +175,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage || isSignupPage || isAuthCallback || isSelectProgramPage || isDemoDashboard) {
+  if (isLoginPage || isSignupPage || isAuthCallback || isSelectProgramPage || isDemoDashboard || isOnboardingPage) {
     return <>{children}</>;
   }
 

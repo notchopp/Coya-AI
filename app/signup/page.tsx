@@ -271,12 +271,31 @@ function SignupPageContent() {
             sessionStorage.setItem("program_id", user.program_id);
           }
 
-          // Mark as new user to show welcome/tutorial page
-          sessionStorage.setItem("show_welcome", "true");
-          sessionStorage.setItem("show_tutorial", "true");
+          // Check onboarding status
+          const result = await supabase
+            .from("businesses")
+            .select("onboarding_completed_at, onboarding_step")
+            .eq("id", user.business_id)
+            .maybeSingle();
 
-          // Go to dashboard (welcome page will show as modal)
-          router.push("/");
+          const businessData = result.data as {
+            onboarding_completed_at: string | null;
+            onboarding_step: number | null;
+          } | null;
+
+          // If onboarding not completed, redirect to onboarding
+          if (businessData && !businessData.onboarding_completed_at) {
+            const { getStepRoute } = await import("@/lib/onboarding");
+            const step = (businessData.onboarding_step || 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+            const onboardingRoute = getStepRoute(step);
+            router.push(onboardingRoute);
+          } else {
+            // Mark as new user to show welcome/tutorial page
+            sessionStorage.setItem("show_welcome", "true");
+            sessionStorage.setItem("show_tutorial", "true");
+            // Go to dashboard (welcome page will show as modal)
+            router.push("/");
+          }
           router.refresh();
           setLoading(false);
           return;

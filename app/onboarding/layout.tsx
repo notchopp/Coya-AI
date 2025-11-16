@@ -1,0 +1,85 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase";
+import OnboardingProgress from "@/components/onboarding/OnboardingProgress";
+import { checkOnboardingStatus, getStepRoute } from "@/lib/onboarding";
+import { motion } from "framer-motion";
+
+export default function OnboardingLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(2);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadOnboardingStatus() {
+      const businessId = sessionStorage.getItem("business_id");
+      
+      if (!businessId) {
+        router.push("/login");
+        return;
+      }
+
+      const status = await checkOnboardingStatus(businessId);
+      
+      // If onboarding is completed, redirect to dashboard
+      if (status.completed) {
+        router.push("/");
+        return;
+      }
+
+      // Get current step from URL or status
+      const path = window.location.pathname;
+      let step = status.currentStep;
+      
+      // Map URL to step number
+      if (path.includes("business-setup")) step = 2;
+      else if (path.includes("mode-selection")) step = 3;
+      else if (path.includes("business-config") || path.includes("program-config")) step = 4;
+      else if (path.includes("test-call")) step = 5;
+      else if (path.includes("tutorial")) step = 6;
+      else if (path.includes("go-live")) step = 7;
+
+      setCurrentStep(step);
+      setLoading(false);
+    }
+
+    loadOnboardingStatus();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black">
+        <div className="text-white/60">Loading onboarding...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <OnboardingProgress currentStep={currentStep} />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          {children}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+

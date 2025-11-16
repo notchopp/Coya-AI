@@ -317,6 +317,30 @@ export async function POST(request: NextRequest) {
       console.log("ℹ️ Program already found by phone number, skipping extension/program_id lookup");
     }
 
+    // Check for calendar connection (for dynamic calendar booking per business)
+    let calendarConnection: any = null;
+    if (business) {
+      let calendarQuery = (supabaseAdmin as any)
+        .from("calendar_connections")
+        .select("id,calendar_id,email")
+        .eq("business_id", business.id);
+      
+      if (program) {
+        calendarQuery = calendarQuery.eq("program_id", program.id);
+      } else {
+        calendarQuery = calendarQuery.is("program_id", null);
+      }
+      
+      const { data: calendarData } = await calendarQuery.maybeSingle();
+      if (calendarData) {
+        calendarConnection = {
+          connected: true,
+          calendar_id: calendarData.calendar_id,
+          email: calendarData.email,
+        };
+      }
+    }
+
     // Build structured context with separate business and program sections
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
@@ -334,6 +358,7 @@ export async function POST(request: NextRequest) {
         staff: businessData.staff || null,
         faqs: businessData.faqs || null,
         promos: businessData.promos || null,
+        calendar: calendarConnection, // Add calendar connection info
       },
       // Program-level information (if program exists)
       program: program ? {
