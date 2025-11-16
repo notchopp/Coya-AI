@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
 import { completeOnboarding } from "@/lib/onboarding";
-import { CheckCircle2, Loader2, Rocket, ArrowRight } from "lucide-react";
+import { CheckCircle2, Loader2, Rocket, ArrowRight, ArrowLeft, Clock, Users, Tag, Phone } from "lucide-react";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
 export default function GoLivePage() {
@@ -89,82 +89,104 @@ export default function GoLivePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: accentColor }} />
+        <Loader2 className="h-8 w-8 animate-spin text-yellow-400" />
       </div>
     );
   }
 
   const allComplete = Object.values(checklist).every((item) => item);
 
+  const handleNavigateToStep = (step: string) => {
+    if (step === "hours" || step === "staff" || step === "services") {
+      router.push("/onboarding/business-config");
+    } else if (step === "testCall") {
+      router.push("/onboarding/test-call");
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-strong rounded-3xl p-6 sm:p-8 border border-white/10"
+      className="bg-black rounded-3xl p-6 sm:p-8 border border-yellow-400/20"
     >
+      {/* Back Button */}
+      <div className="mb-6">
+        <motion.button
+          onClick={() => router.push("/onboarding/tutorial")}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-yellow-400/20 hover:bg-yellow-400/10 hover:border-yellow-400/40 transition-all text-yellow-400 font-semibold"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </motion.button>
+      </div>
+
       <div className="mb-8 text-center">
         <motion.div
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 200 }}
-          className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
-          style={{
-            backgroundColor: `${accentColor}33`,
-            border: `2px solid ${accentColor}66`,
-          }}
+          className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 bg-yellow-400/20 border-2 border-yellow-400/40"
         >
-          <Rocket className="h-10 w-10" style={{ color: accentColor }} />
+          <Rocket className="h-10 w-10 text-yellow-400" />
         </motion.div>
         <h1 className="text-3xl font-bold text-white mb-2">Ready to Activate Your AI Receptionist?</h1>
-        <p className="text-white/60">
+        <p className="text-white/50">
           Once activated, your AI receptionist will start handling real calls.
         </p>
       </div>
 
       {/* Checklist */}
-      <div className="mb-8 space-y-4">
+      <div className="mb-8 space-y-3">
         <h2 className="text-xl font-bold text-white mb-4">Setup Checklist</h2>
         {[
-          { key: "hours", label: "Hours configured", icon: CheckCircle2 },
-          { key: "staff", label: "At least one staff member added", icon: CheckCircle2 },
-          { key: "services", label: "At least one service configured", icon: CheckCircle2 },
-          { key: "testCall", label: "Test call completed (recommended)", icon: CheckCircle2 },
+          { key: "hours", label: "Hours configured", icon: Clock, route: "business-config" },
+          { key: "staff", label: "At least one staff member added", icon: Users, route: "business-config" },
+          { key: "services", label: "At least one service configured", icon: Tag, route: "business-config" },
+          { key: "testCall", label: "Test call completed (recommended)", icon: Phone, route: "test-call" },
         ].map((item) => {
           const Icon = item.icon;
           const isComplete = checklist[item.key as keyof typeof checklist];
 
           return (
-            <div
+            <motion.div
               key={item.key}
+              onClick={() => !isComplete && handleNavigateToStep(item.key)}
+              whileHover={!isComplete ? { scale: 1.02, x: 4 } : {}}
               className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                 isComplete
-                  ? "border-white/20 bg-white/5"
-                  : "border-white/10 bg-white/2"
+                  ? "border-yellow-400/30 bg-yellow-400/10 cursor-default"
+                  : "border-yellow-400/20 bg-white/5 cursor-pointer hover:border-yellow-400/40 hover:bg-yellow-400/10"
               }`}
-              style={
-                isComplete
-                  ? {
-                      borderColor: `${accentColor}4D`,
-                      backgroundColor: `${accentColor}1A`,
-                    }
-                  : {}
-              }
             >
-              <Icon
-                className={`h-5 w-5 ${isComplete ? "" : "text-white/30"}`}
-                style={isComplete ? { color: accentColor } : {}}
-              />
+              {isComplete ? (
+                <CheckCircle2 className="h-5 w-5 text-yellow-400" />
+              ) : (
+                <Icon className="h-5 w-5 text-yellow-400/60" />
+              )}
               <span
-                className={`flex-1 ${isComplete ? "text-white" : "text-white/40"}`}
+                className={`flex-1 font-semibold ${
+                  isComplete ? "text-white" : "text-yellow-400/80"
+                }`}
               >
                 {item.label}
               </span>
-              {isComplete && (
-                <span className="text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              {isComplete ? (
+                <span className="text-xs px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 font-bold">
                   Complete
                 </span>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className="flex items-center gap-1 text-xs px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 font-bold"
+                >
+                  <span>Complete</span>
+                  <ArrowRight className="h-3 w-3" />
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           );
         })}
       </div>
@@ -174,14 +196,13 @@ export default function GoLivePage() {
         <motion.button
           onClick={handleActivate}
           disabled={activating || !allComplete}
-          whileHover={{ scale: activating || !allComplete ? 1 : 1.05 }}
-          whileTap={{ scale: activating || !allComplete ? 1 : 0.95 }}
-          className="inline-flex items-center gap-3 px-8 py-4 rounded-xl border font-semibold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            backgroundColor: `${accentColor}33`,
-            borderColor: `${accentColor}4D`,
-            color: accentColor,
-          }}
+          whileHover={activating || !allComplete ? {} : { scale: 1.05 }}
+          whileTap={activating || !allComplete ? {} : { scale: 0.95 }}
+          className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl border-2 font-bold text-lg transition-all shadow-lg ${
+            allComplete && !activating
+              ? "bg-yellow-400 border-yellow-400 text-black hover:bg-yellow-300 hover:border-yellow-300 cursor-pointer"
+              : "bg-yellow-400/20 border-yellow-400/30 text-yellow-400/50 cursor-not-allowed"
+          }`}
         >
           {activating ? (
             <>
@@ -196,8 +217,8 @@ export default function GoLivePage() {
           )}
         </motion.button>
         {!allComplete && (
-          <p className="text-sm text-white/40 mt-3">
-            Please complete all setup steps before activating
+          <p className="text-sm text-yellow-400/60 mt-4 font-semibold">
+            Click incomplete items above to finish setup
           </p>
         )}
       </div>
