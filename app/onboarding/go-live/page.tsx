@@ -62,6 +62,8 @@ export default function GoLivePage() {
   const handleActivate = async () => {
     setActivating(true);
     const businessId = sessionStorage.getItem("business_id");
+    const supabase = getSupabaseClient();
+    const authUserId = (await supabase.auth.getUser()).data.user?.id;
 
     if (!businessId) {
       router.push("/login");
@@ -69,10 +71,43 @@ export default function GoLivePage() {
     }
 
     try {
-      // Complete onboarding
+      // Complete onboarding (this also sets owner_onboarding_completed if user is owner)
       const success = await completeOnboarding(businessId);
 
       if (success) {
+        // Also explicitly set owner_onboarding_completed to true for owners
+        if (authUserId) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role")
+            .eq("auth_user_id", authUserId)
+            .maybeSingle();
+          
+          if (userData && (userData as any).role === "owner") {
+            // Use admin client to update owner_onboarding_completed
+            try {
+              const { getSupabaseAdminClient } = await import("@/lib/supabase-admin");
+              const supabaseAdmin = getSupabaseAdminClient();
+              
+              const { error: ownerError } = await (supabaseAdmin
+                .from("users") as any)
+                .update({ owner_onboarding_completed: true })
+                .eq("auth_user_id", authUserId)
+                .eq("role", "owner");
+
+              if (ownerError) {
+                console.error("Error setting owner_onboarding_completed:", ownerError);
+                // Don't fail the whole operation, but log the error
+              } else {
+                console.log("✅ Owner onboarding marked as completed");
+              }
+            } catch (adminError) {
+              console.error("Error getting admin client:", adminError);
+              // Don't fail the whole operation
+            }
+          }
+        }
+        
         // Redirect to dashboard
         router.push("/");
       } else {

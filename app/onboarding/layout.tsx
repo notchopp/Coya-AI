@@ -20,16 +20,55 @@ export default function OnboardingLayout({
   useEffect(() => {
     async function loadOnboardingStatus() {
       const businessId = sessionStorage.getItem("business_id");
+      const supabase = getSupabaseClient();
+      const authUserId = (await supabase.auth.getUser()).data.user?.id;
       
       if (!businessId) {
         router.push("/login");
         return;
       }
 
+      // Check if owner needs to complete onboarding
+      if (authUserId) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role, owner_onboarding_completed")
+          .eq("auth_user_id", authUserId)
+          .maybeSingle();
+        
+        // If owner hasn't completed onboarding, ensure they stay in onboarding flow
+        if (userData && (userData as any).role === "owner" && !(userData as any).owner_onboarding_completed) {
+          // Force them to stay in onboarding - don't redirect away
+          // Continue with onboarding flow
+        } else if (userData && (userData as any).role === "owner" && (userData as any).owner_onboarding_completed) {
+          // Owner has completed onboarding, check business onboarding status
+          const status = await checkOnboardingStatus(businessId);
+          if (status.completed) {
+            router.push("/");
+            return;
+          }
+        }
+      }
+
       const status = await checkOnboardingStatus(businessId);
       
-      // If onboarding is completed, redirect to dashboard
+      // If onboarding is completed and user is not an owner who needs onboarding, redirect to dashboard
       if (status.completed) {
+        // Double-check owner status before redirecting
+        if (authUserId) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role, owner_onboarding_completed")
+            .eq("auth_user_id", authUserId)
+            .maybeSingle();
+          
+          // If owner hasn't completed their personal onboarding, keep them in flow
+          if (userData && (userData as any).role === "owner" && !(userData as any).owner_onboarding_completed) {
+            // Stay in onboarding
+            setLoading(false);
+            return;
+          }
+        }
         router.push("/");
         return;
       }

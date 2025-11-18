@@ -97,6 +97,27 @@ export default function WelcomeOnboarding() {
         return;
       }
       
+      // Check if owner needs to complete onboarding (force redirect if false)
+      if (userRole === "owner" && authUserId) {
+        const { data: ownerData } = await supabase
+          .from("users")
+          .select("owner_onboarding_completed")
+          .eq("auth_user_id", authUserId)
+          .eq("role", "owner")
+          .maybeSingle();
+        
+        // If owner hasn't completed onboarding, force redirect to onboarding
+        if (ownerData && !(ownerData as any).owner_onboarding_completed) {
+          const currentPath = window.location.pathname;
+          // Only redirect if not already in onboarding flow
+          if (!currentPath.startsWith("/onboarding")) {
+            router.push("/onboarding/business-setup");
+            hasInitialized.current = true;
+            return;
+          }
+        }
+      }
+      
       // Only check business name if we don't have the flag
       // This prevents showing welcome for existing users who just logged in
       if (businessId) {
