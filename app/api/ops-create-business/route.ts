@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 /**
  * Create Business API Endpoint (Super Admin Only)
@@ -68,6 +69,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get admin client for invitation
+    const supabaseAdmin = getSupabaseAdminClient();
+
     // Create business
     const businessResult = await supabase
       .from("businesses")
@@ -95,44 +99,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Auth user
-    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email: email.toLowerCase(),
-      email_confirm: true,
-      user_metadata: {
-        full_name: owner_name || name,
-      },
-    });
-
-    if (authError || !authUser) {
-      console.error("Error creating auth user:", authError);
-      // Rollback business creation
-      await supabase.from("businesses").delete().eq("id", business.id);
-      return NextResponse.json(
-        { error: "Failed to create user account", details: authError?.message },
-        { status: 500 }
-      );
-    }
-
-    // Create user record
-    const { error: userError } = await supabase
-      .from("users")
+    // Create user record first (without auth_user_id - will be linked when they accept invite)
+    const { data: newUser, error: userError } = await (supabaseAdmin
+      .from("users") as any)
       .insert({
-        auth_user_id: authUser.user.id,
         business_id: business.id,
         email: email.toLowerCase(),
         full_name: owner_name || name || "Business Owner",
         role: "owner",
+        owner_onboarding_completed: false,
         is_active: true,
-      });
+      })
+      .select("id")
+      .single();
 
-    if (userError) {
+    if (userError || !newUser) {
       console.error("Error creating user record:", userError);
-      // Rollback: delete auth user and business
-      await supabase.auth.admin.deleteUser(authUser.user.id);
+      // Rollback business creation
       await supabase.from("businesses").delete().eq("id", business.id);
       return NextResponse.json(
-        { error: "Failed to create user record", details: userError.message },
+        { error: "Failed to create user record", details: userError?.message },
+        { status: 500 }
+      );
+    }
+
+    // Send invitation email to the owner
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email.toLowerCase(),
+      {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/auth/callback`,
+        data: {
+          business_id: business.id,
+          role: "owner",
+          program_id: null,
+          full_name: owner_name || name || "Business Owner",
+        }
+      }
+    );
+
+    if (inviteError) {
+      console.error("Error sending invitation:", inviteError);
+      // Rollback: delete user record and business
+      await supabaseAdmin.from("users").delete().eq("id", (newUser as { id: string }).id);
+      await supabase.from("businesses").delete().eq("id", business.id);
+      return NextResponse.json(
+        { error: "Failed to send invitation email", details: inviteError.message },
         { status: 500 }
       );
     }
@@ -145,10 +156,9 @@ export async function POST(request: NextRequest) {
         to_number: business.to_number,
       },
       user: {
-        id: authUser.user.id,
-        email: authUser.user.email,
+        email: email.toLowerCase(),
       },
-      message: "Business and owner account created successfully. Owner will need to set their password via email invite.",
+      message: "Business created successfully. Invitation email sent to owner. They will need to set their password and complete onboarding.",
     });
 
   } catch (error) {
