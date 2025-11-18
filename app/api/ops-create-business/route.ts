@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { cookies } from "next/headers";
 
 /**
  * Create Business API Endpoint (Super Admin Only)
@@ -7,30 +8,46 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify super admin - get user from auth header
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
+    // Verify super admin - get session from cookies or auth header
     const supabaseAdmin = getSupabaseAdminClient();
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    let isSuperAdmin = false;
     
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    // Try to get token from cookies first
+    const cookieStore = await cookies();
+    let token: string | null = null;
+    
+    for (const cookie of cookieStore.getAll()) {
+      if (cookie.name.includes("access-token") || cookie.name.includes("auth-token") || cookie.name.includes("supabase")) {
+        try {
+          const parsed = JSON.parse(cookie.value);
+          token = parsed?.access_token || parsed?.token || cookie.value;
+          break;
+        } catch {
+          token = cookie.value;
+          break;
+        }
+      }
     }
-
-    const userEmail = user.email?.toLowerCase();
-    const userId = user.id;
-    const isSuperAdmin = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
-
+    
+    // If no token from cookies, check auth header
+    if (!token) {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader) {
+        token = authHeader.replace("Bearer ", "");
+      }
+    }
+    
+    // Verify user if we have a token
+    if (token) {
+      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (!authError && user) {
+        const userEmail = user.email?.toLowerCase();
+        const userId = user.id;
+        isSuperAdmin = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
+      }
+    }
+    
     if (!isSuperAdmin) {
       return NextResponse.json(
         { error: "Forbidden - Super admin access required" },
