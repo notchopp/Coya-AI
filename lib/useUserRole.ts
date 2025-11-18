@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 
-export type UserRole = "admin" | "user" | null;
+export type UserRole = "owner" | "admin" | "user" | null;
 
 /**
  * Hook to get the current user's role

@@ -55,10 +55,40 @@ export default function WelcomeOnboarding() {
       
       const supabase = getSupabaseClient();
       const businessId = sessionStorage.getItem("business_id");
+      const authUserId = (await supabase.auth.getUser()).data.user?.id;
+      
+      // Get user role to determine if they should see full onboarding or just tutorial
+      let userRole: "owner" | "admin" | "user" | null = null;
+      if (authUserId) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role, owner_onboarding_completed")
+          .eq("auth_user_id", authUserId)
+          .maybeSingle();
+        
+        if (userData) {
+          userRole = (userData as any).role as "owner" | "admin" | "user" | null;
+          
+          // For owners, check if they've completed onboarding
+          // If owner has completed onboarding, they should only see tutorial (like admins/users)
+          if (userRole === "owner" && (userData as any).owner_onboarding_completed) {
+            userRole = "admin"; // Treat as admin for onboarding purposes
+          }
+        }
+      }
       
       // If we have the flag, show welcome immediately (don't wait for business check)
       // This ensures welcome shows for EVERY signup, even if user was deleted and re-added
       if (showWelcomeFlag === "true") {
+        // For owners who haven't completed onboarding, redirect to full onboarding flow
+        if (userRole === "owner") {
+          // Don't show welcome modal, redirect to onboarding instead
+          router.push("/onboarding/business-setup");
+          hasInitialized.current = true;
+          return;
+        }
+        
+        // For admins and users, show tutorial (current behavior)
         setShowWelcome(true);
         setBusinessName(null);
         setCurrentStep(0);
@@ -101,7 +131,7 @@ export default function WelcomeOnboarding() {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [router]);
 
   const handleGetStarted = async () => {
     setShowWelcome(false);

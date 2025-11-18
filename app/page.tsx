@@ -84,7 +84,8 @@ export default function Dashboard() {
   const { accentColor } = useAccentColor();
   const { program, programId } = useProgram();
   const { role: userRole } = useUserRole();
-  const isAdmin = userRole === "admin";
+  // Owners and admins have the same permissions for dashboard purposes
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const [mounted, setMounted] = useState(false);
   const [performance, setPerformance] = useState<PerformanceMetrics>({
     totalCallsHandled: 0,

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Step 1: Check if user already exists in users table
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from("users")
-      .select("id, email, auth_user_id, business_id")
+      .select("id, email, auth_user_id, business_id, role, owner_onboarding_completed")
       .eq("email", email)
       .maybeSingle();
 
@@ -79,6 +79,49 @@ export async function POST(request: NextRequest) {
     }
 
     let userId: string | null = null;
+
+    // Step 1.5: If inviting as owner, check if business already has an owner
+    if (role === "owner") {
+      const { data: existingOwner, error: ownerCheckError } = await supabaseAdmin
+        .from("users")
+        .select("id, email, auth_user_id, owner_onboarding_completed")
+        .eq("business_id", business_id)
+        .eq("role", "owner")
+        .maybeSingle();
+
+      if (ownerCheckError && ownerCheckError.code !== "PGRST116") {
+        console.error("Error checking existing owner:", ownerCheckError);
+        return NextResponse.json(
+          { error: "Failed to check existing owner", details: ownerCheckError.message },
+          { status: 500 }
+        );
+      }
+
+      // Type assertion for existingOwner
+      const owner = existingOwner as { id: string; email: string; auth_user_id: string | null; owner_onboarding_completed: boolean } | null;
+
+      // If owner exists and has completed onboarding, prevent duplicate owner invitation
+      if (owner && owner.owner_onboarding_completed) {
+        return NextResponse.json(
+          { error: "This business already has an owner who has completed onboarding. Only one owner per business is allowed." },
+          { status: 400 }
+        );
+      }
+
+      // If owner exists but hasn't completed onboarding, allow re-invitation
+      if (owner && !owner.owner_onboarding_completed) {
+        // Update existing owner record if email matches
+        if (owner.email === email) {
+          userId = owner.id;
+          // Continue with invitation process below
+        } else {
+          return NextResponse.json(
+            { error: "This business already has an owner. Please use the existing owner's email or wait for them to complete onboarding." },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     if (existingUser) {
       // User exists in users table
@@ -116,6 +159,11 @@ export async function POST(request: NextRequest) {
         is_active: true,
         role: role || "user",
       };
+      
+      // For owner role, set owner_onboarding_completed to false initially
+      if (role === "owner") {
+        userData.owner_onboarding_completed = false;
+      }
       
       // Add program_id if provided
       if (program_id) {

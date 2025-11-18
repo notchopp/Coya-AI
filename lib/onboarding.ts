@@ -63,11 +63,29 @@ export async function updateOnboardingStep(
 
 /**
  * Mark onboarding as completed
+ * For owners, this also marks their owner_onboarding_completed flag as true
  */
 export async function completeOnboarding(businessId: string): Promise<boolean> {
   const supabase = getSupabaseClient();
   
-  const { error } = await supabase
+  // Get current user to check if they're an owner
+  const authUser = (await supabase.auth.getUser()).data.user;
+  let isOwner = false;
+  
+  if (authUser) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_user_id", authUser.id)
+      .maybeSingle();
+    
+    if (userData && (userData as any).role === "owner") {
+      isOwner = true;
+    }
+  }
+  
+  // Update business onboarding status
+  const { error: businessError } = await supabase
     .from("businesses")
     .update({
       onboarding_completed_at: new Date().toISOString(),
@@ -76,7 +94,38 @@ export async function completeOnboarding(businessId: string): Promise<boolean> {
     } as any)
     .eq("id", businessId);
 
-  return !error;
+  if (businessError) {
+    console.error("Error completing business onboarding:", businessError);
+    return false;
+  }
+
+  // If user is an owner, mark their owner_onboarding_completed flag
+  if (isOwner && authUser) {
+    // Use admin client to update owner_onboarding_completed
+    // This requires admin privileges since it's updating a user record
+    try {
+      const { getSupabaseAdminClient } = await import("@/lib/supabase-admin");
+      const supabaseAdmin = getSupabaseAdminClient();
+      
+      const { error: ownerError } = await (supabaseAdmin
+        .from("users") as any)
+        .update({ owner_onboarding_completed: true })
+        .eq("auth_user_id", authUser.id)
+        .eq("role", "owner");
+
+      if (ownerError) {
+        console.error("Error marking owner onboarding as completed:", ownerError);
+        // Don't fail the whole operation, but log the error
+      } else {
+        console.log("✅ Owner onboarding marked as completed for user:", authUser.id);
+      }
+    } catch (adminError) {
+      console.error("Error getting admin client to mark owner onboarding:", adminError);
+      // Don't fail the whole operation
+    }
+  }
+
+  return true;
 }
 
 /**

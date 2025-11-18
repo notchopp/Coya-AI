@@ -56,7 +56,8 @@ const DAYS_OF_WEEK = [
 export default function SettingsPage() {
   const { accentColor } = useAccentColor();
   const { role: userRole, loading: roleLoading } = useUserRole();
-  const isAdmin = userRole === "admin";
+  // Owners and admins have the same permissions for settings purposes
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const { logBusinessEdit } = useAuditLog();
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
