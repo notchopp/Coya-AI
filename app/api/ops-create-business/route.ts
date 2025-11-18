@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/lib/supabase";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 /**
@@ -8,19 +7,28 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify super admin
-    const supabase = getSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
+    // Verify super admin - get user from auth header
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const userEmail = session.user.email?.toLowerCase();
-    const userId = session.user.id;
+    const supabaseAdmin = getSupabaseAdminClient();
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const userEmail = user.email?.toLowerCase();
+    const userId = user.id;
     const isSuperAdmin = userEmail === "whochoppa@gmail.com" || userId === "9c0e8c58-8a36-47e9-aa68-909b22b4443f";
 
     if (!isSuperAdmin) {
@@ -42,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if phone number already exists
-    const { data: existingBusiness } = await supabase
+    const { data: existingBusiness } = await supabaseAdmin
       .from("businesses")
       .select("id")
       .eq("to_number", to_number)
@@ -56,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists in users table
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await supabaseAdmin
       .from("users")
       .select("id")
       .eq("email", email.toLowerCase())
@@ -69,12 +77,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get admin client for invitation
-    const supabaseAdmin = getSupabaseAdminClient();
-
     // Create business
-    const businessResult = await supabase
-      .from("businesses")
+    const businessResult = await (supabaseAdmin
+      .from("businesses") as any)
       .insert({
         name: name.trim(),
         to_number: to_number.trim(),
@@ -116,7 +121,7 @@ export async function POST(request: NextRequest) {
     if (userError || !newUser) {
       console.error("Error creating user record:", userError);
       // Rollback business creation
-      await supabase.from("businesses").delete().eq("id", business.id);
+      await supabaseAdmin.from("businesses").delete().eq("id", business.id);
       return NextResponse.json(
         { error: "Failed to create user record", details: userError?.message },
         { status: 500 }
@@ -141,7 +146,7 @@ export async function POST(request: NextRequest) {
       console.error("Error sending invitation:", inviteError);
       // Rollback: delete user record and business
       await supabaseAdmin.from("users").delete().eq("id", (newUser as { id: string }).id);
-      await supabase.from("businesses").delete().eq("id", business.id);
+      await supabaseAdmin.from("businesses").delete().eq("id", business.id);
       return NextResponse.json(
         { error: "Failed to send invitation email", details: inviteError.message },
         { status: 500 }
