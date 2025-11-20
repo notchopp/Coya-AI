@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       console.log(`🔍 Checking program with format: "${format}"`);
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
-        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking)`)
         .eq("to_number", format)
         .maybeSingle();
 
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       // Optimized: Only select needed columns for faster queries
       // Note: insurances column doesn't exist in programs or businesses tables
       // Include program_id to auto-select default program for this business
-      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
+      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking";
     
     // Try 1: Exact match with cleaned number
     let { data, error } = await supabaseAdmin
@@ -277,9 +277,9 @@ export async function POST(request: NextRequest) {
       const targetProgramId = programId || defaultProgramId;
       
       if (targetProgramId || extension) {
-        // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, to_number, services, staff, hours, faqs, promos
+        // Note: Based on actual schema - programs table has: id, business_id, name, description, extension, to_number, services, staff, hours, faqs, promos, categories, mobile_services, packages, same_day_booking
         // insurances, settings, vertical, and address do NOT exist in programs table
-        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
+        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description,categories,mobile_services,packages,same_day_booking";
         let programQuery = (supabaseAdmin
           .from("programs") as any)
           .select(programColumns)
@@ -345,6 +345,19 @@ export async function POST(request: NextRequest) {
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
     const businessData = business as any;
+    
+    // Extract categories structure (could be nested in JSONB or direct)
+    const businessCategories = businessData.categories?.categories || businessData.categories || null;
+    const programCategories = program?.categories?.categories || program?.categories || null;
+    
+    // Extract mobile_services, packages, same_day_booking
+    const businessMobileServices = businessData.mobile_services || null;
+    const programMobileServices = program?.mobile_services || null;
+    const businessPackages = businessData.packages || null;
+    const programPackages = program?.packages || null;
+    const businessSameDayBooking = businessData.same_day_booking ?? true; // Default to true
+    const programSameDayBooking = program?.same_day_booking ?? true;
+    
     const context: any = {
       // Business-level information (always present)
       business: {
@@ -354,10 +367,17 @@ export async function POST(request: NextRequest) {
         vertical: businessData.vertical || null,
         address: businessData.address || null,
         hours: businessData.hours || null,
+        // NEW: Categories with nested services (for medspa/wellness)
+        categories: businessCategories,
+        // Legacy: Keep services array for backward compatibility
         services: businessData.services || null,
         staff: businessData.staff || null,
         faqs: businessData.faqs || null,
         promos: businessData.promos || null,
+        // NEW: Medspa/wellness-specific fields
+        mobile_services: businessMobileServices,
+        packages: businessPackages,
+        same_day_booking: businessSameDayBooking,
         calendar: calendarConnection, // Add calendar connection info
       },
       // Program-level information (if program exists)
@@ -368,10 +388,17 @@ export async function POST(request: NextRequest) {
         phone_number: program.to_number || null,
         description: program.description || null,
         hours: program.hours || null,
+        // NEW: Categories with nested services
+        categories: programCategories,
+        // Legacy: Keep services array for backward compatibility
         services: program.services || null,
         staff: program.staff || null,
         faqs: program.faqs || null,
         promos: program.promos || null,
+        // NEW: Medspa/wellness-specific fields
+        mobile_services: programMobileServices,
+        packages: programPackages,
+        same_day_booking: programSameDayBooking,
       } : null,
       // Merged fields (program takes priority, business as fallback) - for backward compatibility
       business_id: businessData.id,
@@ -382,10 +409,17 @@ export async function POST(request: NextRequest) {
       address: businessData.address || null,
       hours: program?.hours || businessData.hours || null, // Program hours take priority
       business_hours: businessData.hours || null, // Always include business hours for AI reference
+      // NEW: Categories (program takes priority)
+      categories: programCategories || businessCategories || null,
+      // Legacy services (for backward compatibility)
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
+      // NEW: Merged medspa/wellness fields (program takes priority)
+      mobile_services: programMobileServices || businessMobileServices || null,
+      packages: programPackages || businessPackages || null,
+      same_day_booking: programSameDayBooking ?? businessSameDayBooking ?? true,
       insurances: null, // Note: insurances column doesn't exist in programs or businesses tables
       // Legacy fields for backward compatibility
       id: businessData.id,
@@ -413,7 +447,11 @@ export async function POST(request: NextRequest) {
       name: context.business_name,
       hasProgram: !!program,
       hasHours: !!context.hours,
+      hasCategories: !!context.categories,
       hasServices: !!context.services,
+      hasMobileServices: !!context.mobile_services,
+      hasPackages: !!context.packages,
+      sameDayBooking: context.same_day_booking,
       hasFAQs: !!context.faqs,
       responseTime: `${duration}ms`,
     });
@@ -484,14 +522,14 @@ export async function GET(request: NextRequest) {
     let program: any = null;
     let business: any = null;
 
-    const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
+    const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description,categories,mobile_services,packages,same_day_booking";
     const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
 
     // Try to find program by phone number first (highest priority for direct routing)
     for (const format of phoneFormats) {
       const { data: programData, error: programError } = await (supabaseAdmin
         .from("programs") as any)
-        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id)`)
+        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking)`)
         .eq("to_number", format)
         .maybeSingle();
 
@@ -505,7 +543,7 @@ export async function GET(request: NextRequest) {
         if (program && !business && program.business_id) {
           const { data: businessData } = await supabaseAdmin
             .from("businesses")
-            .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id")
+            .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking")
             .eq("id", program.business_id)
             .maybeSingle();
           
@@ -526,7 +564,7 @@ export async function GET(request: NextRequest) {
 
     // PRIORITY 2: If no program found by phone, check businesses table
     if (!business && !program) {
-      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id";
+      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking";
       
       // Try multiple formats
       for (const format of phoneFormats) {
@@ -565,7 +603,7 @@ export async function GET(request: NextRequest) {
       const targetProgramId = programId || defaultProgramId;
       
       if (targetProgramId || extension) {
-        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
+        const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description,categories,mobile_services,packages,same_day_booking";
         let programQuery = (supabaseAdmin
           .from("programs") as any)
           .select(programColumns)
@@ -605,6 +643,19 @@ export async function GET(request: NextRequest) {
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
     const businessData = business as any;
+    
+    // Extract categories structure (could be nested in JSONB or direct)
+    const businessCategories = businessData.categories?.categories || businessData.categories || null;
+    const programCategories = program?.categories?.categories || program?.categories || null;
+    
+    // Extract mobile_services, packages, same_day_booking
+    const businessMobileServices = businessData.mobile_services || null;
+    const programMobileServices = program?.mobile_services || null;
+    const businessPackages = businessData.packages || null;
+    const programPackages = program?.packages || null;
+    const businessSameDayBooking = businessData.same_day_booking ?? true; // Default to true
+    const programSameDayBooking = program?.same_day_booking ?? true;
+    
     const context: any = {
       // Business-level information (always present)
       business: {
@@ -614,10 +665,17 @@ export async function GET(request: NextRequest) {
         vertical: businessData.vertical || null,
         address: businessData.address || null,
         hours: businessData.hours || null,
+        // NEW: Categories with nested services (for medspa/wellness)
+        categories: businessCategories,
+        // Legacy: Keep services array for backward compatibility
         services: businessData.services || null,
         staff: businessData.staff || null,
         faqs: businessData.faqs || null,
         promos: businessData.promos || null,
+        // NEW: Medspa/wellness-specific fields
+        mobile_services: businessMobileServices,
+        packages: businessPackages,
+        same_day_booking: businessSameDayBooking,
       },
       // Program-level information (if program exists)
       program: program ? {
@@ -627,10 +685,17 @@ export async function GET(request: NextRequest) {
         phone_number: program.to_number || null,
         description: program.description || null,
         hours: program.hours || null,
+        // NEW: Categories with nested services
+        categories: programCategories,
+        // Legacy: Keep services array for backward compatibility
         services: program.services || null,
         staff: program.staff || null,
         faqs: program.faqs || null,
         promos: program.promos || null,
+        // NEW: Medspa/wellness-specific fields
+        mobile_services: programMobileServices,
+        packages: programPackages,
+        same_day_booking: programSameDayBooking,
       } : null,
       // Merged fields (program takes priority, business as fallback) - for backward compatibility
       business_id: businessData.id,
@@ -641,10 +706,17 @@ export async function GET(request: NextRequest) {
       address: businessData.address || null,
       hours: program?.hours || businessData.hours || null, // Program hours take priority
       business_hours: businessData.hours || null, // Always include business hours for AI reference
+      // NEW: Categories (program takes priority)
+      categories: programCategories || businessCategories || null,
+      // Legacy services (for backward compatibility)
       services: program?.services || businessData.services || null,
       staff: program?.staff || businessData.staff || null,
       faqs: program?.faqs || businessData.faqs || null,
       promos: program?.promos || businessData.promos || null,
+      // NEW: Merged medspa/wellness fields (program takes priority)
+      mobile_services: programMobileServices || businessMobileServices || null,
+      packages: programPackages || businessPackages || null,
+      same_day_booking: programSameDayBooking ?? businessSameDayBooking ?? true,
       insurances: null, // Note: insurances column doesn't exist in programs or businesses tables
       // Legacy fields for backward compatibility
       id: businessData.id,
