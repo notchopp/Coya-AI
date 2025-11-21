@@ -54,9 +54,20 @@ export default function DemoLanding() {
     return () => clearInterval(interval);
   }, [sessionToken, router]);
 
-  // Countdown timer
+  // Countdown timer and cleanup on expiration
   useEffect(() => {
     if (remainingSeconds <= 0) {
+      // Trigger cleanup when session expires
+      async function cleanupDemo() {
+        try {
+          await fetch(`/api/demo/${sessionToken}/cleanup`, {
+            method: "POST",
+          });
+        } catch (error) {
+          console.error("Error cleaning up demo:", error);
+        }
+      }
+      cleanupDemo();
       router.push("/demo/expired");
       return;
     }
@@ -64,6 +75,17 @@ export default function DemoLanding() {
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
+          // Trigger cleanup when session expires
+          async function cleanupDemo() {
+            try {
+              await fetch(`/api/demo/${sessionToken}/cleanup`, {
+                method: "POST",
+              });
+            } catch (error) {
+              console.error("Error cleaning up demo:", error);
+            }
+          }
+          cleanupDemo();
           router.push("/demo/expired");
           return 0;
         }
@@ -72,7 +94,7 @@ export default function DemoLanding() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [remainingSeconds, router]);
+  }, [remainingSeconds, router, sessionToken]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

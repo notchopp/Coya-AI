@@ -87,9 +87,20 @@ export default function DemoLive() {
     return () => clearInterval(interval);
   }, [sessionToken, router]);
 
-  // Countdown timer
+  // Countdown timer and cleanup on expiration
   useEffect(() => {
     if (remainingSeconds <= 0) {
+      // Trigger cleanup when session expires
+      async function cleanupDemo() {
+        try {
+          await fetch(`/api/demo/${sessionToken}/cleanup`, {
+            method: "POST",
+          });
+        } catch (error) {
+          console.error("Error cleaning up demo:", error);
+        }
+      }
+      cleanupDemo();
       router.push("/demo/expired");
       return;
     }
@@ -97,6 +108,17 @@ export default function DemoLive() {
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
+          // Trigger cleanup when session expires
+          async function cleanupDemo() {
+            try {
+              await fetch(`/api/demo/${sessionToken}/cleanup`, {
+                method: "POST",
+              });
+            } catch (error) {
+              console.error("Error cleaning up demo:", error);
+            }
+          }
+          cleanupDemo();
           router.push("/demo/expired");
           return 0;
         }
@@ -105,7 +127,7 @@ export default function DemoLive() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [remainingSeconds, router]);
+  }, [remainingSeconds, router, sessionToken]);
 
   // Load patients - use API endpoint to bypass RLS
   useEffect(() => {

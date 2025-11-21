@@ -206,6 +206,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Clean up any existing demo data before creating new session
+    // This ensures a fresh start for each demo
+    try {
+      // Get all call IDs for cleanup
+      const { data: existingCalls } = await (supabaseAdmin as any)
+        .from("calls")
+        .select("call_id")
+        .eq("business_id", DEMO_BUSINESS_ID);
+
+      const callCallIds = existingCalls?.map((c: any) => c.call_id).filter(Boolean) || [];
+
+      // Delete call_turns
+      if (callCallIds.length > 0) {
+        await (supabaseAdmin as any)
+          .from("call_turns")
+          .delete()
+          .in("call_id", callCallIds);
+      }
+
+      // Delete calls
+      await (supabaseAdmin as any)
+        .from("calls")
+        .delete()
+        .eq("business_id", DEMO_BUSINESS_ID);
+
+      // Delete patients
+      await (supabaseAdmin as any)
+        .from("patients")
+        .delete()
+        .eq("business_id", DEMO_BUSINESS_ID);
+
+      console.log("🧹 Cleaned up previous demo data");
+    } catch (cleanupError) {
+      console.warn("Warning: Could not cleanup previous demo data:", cleanupError);
+      // Continue anyway - don't fail session creation if cleanup fails
+    }
+
     // Generate new session token
     const sessionToken = randomUUID();
     const expiresAt = new Date();
