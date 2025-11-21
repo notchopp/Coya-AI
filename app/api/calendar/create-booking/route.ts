@@ -211,17 +211,86 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse date and time with proper timezone handling
+    // Use the business timezone (defaulting to America/New_York)
+    const timeZone = "America/New_York"; // TODO: Make timezone configurable per business
+    
+    let startDateTimeISO: string;
+    let endDateTimeISO: string;
     let startDateTime: Date;
     let endDateTime: Date;
     try {
-      // Parse as local time first (add seconds for proper parsing)
+      // Parse date and time components
+      const [year, month, day] = normalizedDate.split('-').map(Number);
+      const [hours, minutes] = time.split(':').map(Number);
+      
+      // Get timezone offset for the target timezone on this specific date
+      // Create a date object at the specified time, treating it as if it's in the target timezone
+      // We'll use a helper to get the UTC offset for that timezone on this date
       const dateTimeString = `${normalizedDate}T${time}:00`;
-      startDateTime = new Date(dateTimeString);
+      
+      // Method: Create a date in UTC that represents the same "wall clock time" in the target timezone
+      // Then get the offset by comparing
+      const testDateStr = `${normalizedDate}T12:00:00`;
+      
+      // Get the offset by creating a date and formatting it in both UTC and target timezone
+      const utcDate = new Date(testDateStr + 'Z'); // Noon UTC
+      const tzDateStr = utcDate.toLocaleString('en-US', {
+        timeZone: timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
+      // Parse the timezone-formatted string to get the actual time in that timezone
+      const tzParts = tzDateStr.match(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+)/);
+      if (!tzParts) {
+        throw new Error(`Failed to parse timezone date: ${tzDateStr}`);
+      }
+      const [, tzMonth, tzDay, tzYear, tzHour, tzMinute] = tzParts;
+      const tzDate = new Date(`${tzYear}-${tzMonth.padStart(2, '0')}-${tzDay.padStart(2, '0')}T${tzHour.padStart(2, '0')}:${tzMinute.padStart(2, '0')}:00`);
+      
+      // Calculate offset: difference between UTC and timezone time
+      const offsetMs = utcDate.getTime() - tzDate.getTime();
+      const offsetHours = Math.floor(offsetMs / (1000 * 60 * 60));
+      const offsetMinutes = Math.floor((Math.abs(offsetMs) % (1000 * 60 * 60)) / (1000 * 60));
+      const offsetSign = offsetHours >= 0 ? '+' : '-';
+      const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+      
+      // Construct ISO string with timezone offset
+      // This represents the time in the target timezone
+      startDateTimeISO = `${normalizedDate}T${time}:00${offsetStr}`;
+      startDateTime = new Date(startDateTimeISO);
       
       // Validate the date is valid
       if (isNaN(startDateTime.getTime())) {
         throw new Error(`Invalid date/time: ${dateTimeString}`);
       }
+      
+      // Calculate end time (add duration in milliseconds)
+      endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+      
+      // Format end time in the same timezone
+      // Get the end time components in the target timezone
+      const endDateInTz = endDateTime.toLocaleString('en-US', {
+        timeZone: timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      const endParts = endDateInTz.match(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/);
+      if (!endParts) {
+        throw new Error(`Failed to parse end time: ${endDateInTz}`);
+      }
+      const [, endMonth, endDay, endYear, endHour, endMinute, endSecond] = endParts;
+      endDateTimeISO = `${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}T${endHour.padStart(2, '0')}:${endMinute.padStart(2, '0')}:${endSecond.padStart(2, '0')}${offsetStr}`;
       
       // Validate date is not in the past (with time consideration)
       const now = new Date();
@@ -231,8 +300,6 @@ export async function POST(request: NextRequest) {
       if (requestDateTime < now) {
         throw new Error(`Cannot create booking for past date/time: ${normalizedDate} ${time}`);
       }
-      
-      endDateTime = new Date(startDateTime.getTime() + duration * 60000);
     } catch (error) {
       console.error("Date parsing error:", error, { originalDate: date, normalizedDate, time, duration_minutes });
       return NextResponse.json(
@@ -250,17 +317,18 @@ export async function POST(request: NextRequest) {
     if (notes) description += `Notes: ${notes}\n`;
 
     // Create calendar event (provider-agnostic format)
+    // Use the ISO strings we constructed with the correct timezone offset
     const eventData: CalendarEvent = {
       id: "", // Will be set by provider
       summary: patient_name ? `Appointment: ${patient_name}` : "Appointment",
       description: description || "Appointment scheduled via AI Receptionist",
       start: {
-        dateTime: startDateTime.toISOString(),
-        timeZone: "America/New_York", // TODO: Make timezone configurable per business
+        dateTime: startDateTimeISO,
+        timeZone: timeZone,
       },
       end: {
-        dateTime: endDateTime.toISOString(),
-        timeZone: "America/New_York",
+        dateTime: endDateTimeISO,
+        timeZone: timeZone,
       },
     };
 
