@@ -116,54 +116,52 @@ export async function POST(request: NextRequest) {
     );
 
     if (isDemoCall) {
-      console.log("🎯 DEMO CALL DETECTED: Finding active demo session");
+      console.log("🎯 DEMO CALL DETECTED: Using shared demo business");
       
-      // Find the most recent active demo session
-      const { data: activeSession, error: sessionError } = await supabaseAdmin
+      // Demo business ID - all demo sessions use this same business
+      const DEMO_BUSINESS_ID = "eea1f8b5-f4ed-4141-85c7-c381643ce9df";
+      
+      // Check if there's at least one active demo session
+      const { data: activeSessions, error: sessionError } = await supabaseAdmin
         .from("demo_sessions")
-        .select(`
-          *,
-          demo_business:businesses!demo_sessions_demo_business_id_fkey(*)
-        `)
+        .select("id, expires_at")
         .eq("is_active", true)
         .gt("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq("demo_business_id", DEMO_BUSINESS_ID)
+        .limit(1);
 
       if (sessionError) {
-        console.error("Error finding active demo session:", sessionError);
-      } else if (activeSession) {
-        const session = activeSession as any;
-        const expiresAt = new Date(session.expires_at);
-        if (expiresAt < new Date()) {
-          console.log("⚠️ Demo session expired:", session.id);
-          return NextResponse.json({
-            error: "Demo session has expired",
-            expired: true,
-            message: "This demo session has ended. Please start a new demo.",
-          }, { status: 410 });
-        }
+        console.error("Error checking demo sessions:", sessionError);
+      }
 
-        if (session.demo_business) {
-          // Use demo business
-          console.log("🎯 DEMO MODE: Using demo business:", session.demo_business.name);
-          business = session.demo_business;
-          // Demo businesses don't have programs, so skip program lookup
-        } else {
-          console.log("⚠️ Demo session found but no business associated");
-          return NextResponse.json({
-            error: "Demo business not configured",
-            message: "Please configure your demo business first.",
-          }, { status: 404 });
-        }
-      } else {
+      // If no active sessions, reject the call
+      if (!activeSessions || activeSessions.length === 0) {
         console.log("⚠️ No active demo session found for demo number");
         return NextResponse.json({
           error: "No active demo session found",
           message: "Please start a new demo session.",
         }, { status: 404 });
       }
+
+      // Fetch the shared demo business
+      const { data: demoBusiness, error: businessError } = await supabaseAdmin
+        .from("businesses")
+        .select("*")
+        .eq("id", DEMO_BUSINESS_ID)
+        .single();
+
+      if (businessError || !demoBusiness) {
+        console.error("Error fetching demo business:", businessError);
+        return NextResponse.json({
+          error: "Demo business not found",
+          message: "Demo business is not configured.",
+        }, { status: 404 });
+      }
+
+      // Use demo business
+      console.log("🎯 DEMO MODE: Using demo business:", (demoBusiness as any).name);
+      business = demoBusiness as any;
+      // Demo businesses don't have programs, so skip program lookup
     }
 
     // PRIORITY 1: Check if to_number matches a program's direct number (direct program routing)

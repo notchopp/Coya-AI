@@ -13,6 +13,7 @@ export default function DemoLanding() {
   const [session, setSession] = useState<any>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(3600);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionToken) return;
@@ -22,6 +23,16 @@ export default function DemoLanding() {
         const response = await fetch(`/api/demo/${sessionToken}`);
         const data = await response.json();
         
+        if (!response.ok) {
+          if (data.message?.includes("migration")) {
+            setError("Demo system not initialized. Please run the database migration.");
+          } else {
+            setError(data.error || data.message || "Failed to load demo session");
+          }
+          setLoading(false);
+          return;
+        }
+        
         if (data.error || data.session?.isExpired) {
           router.push("/demo/expired");
           return;
@@ -30,8 +41,10 @@ export default function DemoLanding() {
         setSession(data.session);
         setRemainingSeconds(data.session.remainingSeconds);
         setLoading(false);
+        setError(null);
       } catch (error) {
         console.error("Error loading session:", error);
+        setError("Failed to connect to server. Please check your connection.");
         setLoading(false);
       }
     }
@@ -75,6 +88,31 @@ export default function DemoLanding() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full text-center"
+        >
+          <h1 className="text-2xl font-bold mb-4 text-red-400">Error</h1>
+          <p className="text-white/60 mb-4">{error}</p>
+          {error.includes("migration") && (
+            <div className="mt-4 p-4 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-left">
+              <p className="text-sm text-white/80 mb-2">To fix this:</p>
+              <ol className="text-sm text-white/60 list-decimal list-inside space-y-1">
+                <li>Open your Supabase dashboard</li>
+                <li>Go to SQL Editor</li>
+                <li>Run the migration file: <code className="text-yellow-400">supabase/migrations/add_demo_system.sql</code></li>
+              </ol>
+            </div>
+          )}
+        </motion.div>
       </div>
     );
   }

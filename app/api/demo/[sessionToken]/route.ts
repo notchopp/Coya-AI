@@ -19,7 +19,26 @@ export async function GET(
       .eq("session_token", sessionToken)
       .single();
 
-    if (error || !session) {
+    if (error) {
+      console.error("Error fetching demo session:", error);
+      // Check if table doesn't exist (migration not run)
+      if (error.message?.includes("relation") || error.message?.includes("does not exist")) {
+        return NextResponse.json(
+          { 
+            error: "Demo system not initialized", 
+            message: "Please run the database migration first. See supabase/migrations/add_demo_system.sql",
+            details: error.message 
+          },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Demo session not found", details: error.message },
+        { status: 404 }
+      );
+    }
+
+    if (!session) {
       return NextResponse.json(
         { error: "Demo session not found" },
         { status: 404 }

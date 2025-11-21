@@ -11,6 +11,10 @@ export async function POST(
     const body = await request.json();
     const supabaseAdmin = getSupabaseAdminClient();
 
+    // Demo business ID - all demo sessions use this same business
+    const DEMO_BUSINESS_ID = "eea1f8b5-f4ed-4141-85c7-c381643ce9df";
+    const DEMO_PHONE_NUMBER = "+12159862752"; // +1 (215) 986 2752
+
     // Get session
     const { data: session, error: sessionError } = await supabaseAdmin
       .from("demo_sessions")
@@ -25,67 +29,39 @@ export async function POST(
       );
     }
 
-    // Use the single demo phone number for all demo sessions
-    const demoPhoneNumber = "+12159862752"; // +1 (215) 986 2752
-
     const sessionData = session as any;
-    let businessId = sessionData.demo_business_id;
 
-    if (businessId) {
-      // Update existing demo business
-      const { data: business, error: updateError } = await (supabaseAdmin
-        .from("businesses") as any)
-        .update({
-          ...body,
-          is_demo: true,
-          demo_session_id: sessionData.id,
-          demo_phone_number: demoPhoneNumber,
-        })
-        .eq("id", businessId)
-        .select()
-        .single();
+    // Always update the shared demo business (don't create new ones)
+    const { data: business, error: updateError } = await (supabaseAdmin
+      .from("businesses") as any)
+      .update({
+        ...body,
+        is_demo: true,
+        demo_phone_number: DEMO_PHONE_NUMBER,
+        to_number: DEMO_PHONE_NUMBER,
+        is_active: true,
+      })
+      .eq("id", DEMO_BUSINESS_ID)
+      .select()
+      .single();
 
-      if (updateError) {
-        console.error("Error updating demo business:", updateError);
-        return NextResponse.json(
-          { error: "Failed to update demo business", details: updateError.message },
-          { status: 500 }
-        );
-      }
+    if (updateError) {
+      console.error("Error updating demo business:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update demo business", details: updateError.message },
+        { status: 500 }
+      );
+    }
 
-      return NextResponse.json({ success: true, business });
-    } else {
-      // Create new demo business
-      const { data: business, error: createError } = await (supabaseAdmin
-        .from("businesses") as any)
-        .insert({
-          ...body,
-          is_demo: true,
-          demo_session_id: sessionData.id,
-          demo_phone_number: demoPhoneNumber,
-          to_number: demoPhoneNumber,
-          is_active: true,
-          vertical: body.vertical || "medspa",
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("Error creating demo business:", createError);
-        return NextResponse.json(
-          { error: "Failed to create demo business", details: createError.message },
-          { status: 500 }
-        );
-      }
-
-      // Update session with business ID
+    // Ensure session is linked to demo business
+    if (sessionData.demo_business_id !== DEMO_BUSINESS_ID) {
       await (supabaseAdmin
         .from("demo_sessions") as any)
-        .update({ demo_business_id: business.id })
+        .update({ demo_business_id: DEMO_BUSINESS_ID })
         .eq("id", sessionData.id);
-
-      return NextResponse.json({ success: true, business });
     }
+
+    return NextResponse.json({ success: true, business });
   } catch (error) {
     console.error("Demo business error:", error);
     return NextResponse.json(
