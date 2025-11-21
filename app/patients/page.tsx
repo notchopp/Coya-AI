@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2 } from "lucide-react";
+import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
@@ -338,6 +338,7 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const effectiveBusinessId = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -370,16 +371,22 @@ export default function PatientsPage() {
 
       if (patientsError) {
         console.error("❌ Error loading patients:", patientsError);
+        console.error("Error details:", JSON.stringify(patientsError, null, 2));
         setPatients([]);
       } else {
         console.log("✅ Loaded patients:", patientsData?.length || 0);
+        console.log("📋 Sample patient data:", patientsData?.slice(0, 3));
+        if (patientsData && patientsData.length > 0) {
+          console.log("🔍 First patient business_id:", patientsData[0]?.business_id);
+          console.log("🔍 Expected business_id:", effectiveBusinessId);
+        }
         setPatients((patientsData as unknown as Patient[]) || []);
       }
       setLoading(false);
     }
     
     loadPatients();
-  }, [effectiveBusinessId, supabase]);
+  }, [effectiveBusinessId, supabase, refreshKey]);
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery.trim()) return patients;
@@ -398,11 +405,26 @@ export default function PatientsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: accentColor }}>
-            Patients
-          </h1>
-          <p className="text-white/60">Manage and view your patient database</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2" style={{ color: accentColor }}>
+              Patients
+            </h1>
+            <p className="text-white/60">Manage and view your patient database</p>
+            {effectiveBusinessId && (
+              <p className="text-xs text-white/40 mt-1">
+                Business ID: {effectiveBusinessId.substring(0, 8)}...
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => setRefreshKey(prev => prev + 1)}
+            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2"
+            style={{ borderColor: `${accentColor}33` }}
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="text-sm">Refresh</span>
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -439,9 +461,21 @@ export default function PatientsPage() {
             <p className="text-white/60 text-lg mb-2">
               {searchQuery ? "No patients found matching your search" : "No patients yet"}
             </p>
-            <p className="text-white/40 text-sm">
+            <p className="text-white/40 text-sm mb-4">
               {searchQuery ? "Try a different search term" : "Patients will appear here after they call"}
             </p>
+            {!searchQuery && patients.length === 0 && (
+              <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 max-w-md mx-auto">
+                <p className="text-yellow-400 text-sm">
+                  💡 If you expect to see patients, check:
+                </p>
+                <ul className="text-yellow-300/80 text-xs mt-2 text-left list-disc list-inside space-y-1">
+                  <li>Business ID matches: {effectiveBusinessId?.substring(0, 8)}...</li>
+                  <li>RLS policies allow access to patients table</li>
+                  <li>Patients have the correct business_id in database</li>
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid gap-4">
@@ -530,6 +564,11 @@ export default function PatientsPage() {
             <p className="text-sm text-white/60">
               Showing {filteredPatients.length} of {patients.length} patients
             </p>
+            {effectiveBusinessId && (
+              <p className="text-xs text-white/40 mt-1">
+                Filtered by business_id: {effectiveBusinessId}
+              </p>
+            )}
           </div>
         )}
       </div>
