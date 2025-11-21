@@ -105,12 +105,19 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionData = session as any;
+    
+    // Use the request origin to build the correct URL
+    const origin = request.headers.get("origin") || 
+                   request.headers.get("referer")?.split("/").slice(0, 3).join("/") ||
+                   process.env.NEXT_PUBLIC_SITE_URL || 
+                   "https://app.getcoya.ai";
+    
     return NextResponse.json({
       success: true,
       sessionId: sessionData.id,
       sessionToken: sessionToken,
       expiresAt: expiresAt.toISOString(),
-      demoLink: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/demo/${sessionToken}`,
+      demoLink: `${origin}/demo/${sessionToken}`,
     });
   } catch (error) {
     console.error("Create demo error:", error);

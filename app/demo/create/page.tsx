@@ -31,8 +31,18 @@ export default function CreateDemo() {
         return;
       }
 
-      if (data.demoLink) {
-        router.push(data.demoLink.replace(window.location.origin, ""));
+      if (data.sessionToken) {
+        // Use current origin to navigate (works in both dev and production)
+        router.push(`/demo/${data.sessionToken}`);
+      } else if (data.demoLink) {
+        // Fallback: try to extract path from demoLink
+        try {
+          const url = new URL(data.demoLink);
+          router.push(url.pathname);
+        } catch {
+          // If demoLink is already a path, use it directly
+          router.push(data.demoLink.replace(window.location.origin, ""));
+        }
       }
     } catch (error) {
       console.error("Error creating demo:", error);
