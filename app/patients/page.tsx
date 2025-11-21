@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2, RefreshCw, Phone, Mail, Calendar, Clock, DollarSign, Users, Star, FileText, MessageSquare } from "lucide-react";
+import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2, RefreshCw, Phone, Mail, Calendar, Clock, DollarSign, Users, Star, FileText, MessageSquare, Edit, Trash2, Save } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
@@ -345,6 +345,9 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const effectiveBusinessId = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -664,6 +667,281 @@ export default function PatientsPage() {
             )}
           </div>
         )}
+
+        {/* Edit Patient Modal */}
+        <AnimatePresence>
+          {editingPatient && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+              onClick={() => setEditingPatient(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-black border rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                style={{ borderColor: `${accentColor}33` }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Edit Patient</h2>
+                  <button
+                    onClick={() => setEditingPatient(null)}
+                    className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <X className="h-5 w-5 text-white/60" />
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!editingPatient) return;
+
+                    setSaving(true);
+                    const formData = new FormData(e.currentTarget);
+                    const updates: Partial<Patient> = {};
+
+                    // Admins can edit all fields, users can only edit limited fields
+                    if (isAdmin) {
+                      updates.patient_name = formData.get("patient_name") as string || null;
+                      updates.phone = formData.get("phone") as string || null;
+                      updates.email = formData.get("email") as string || null;
+                      updates.last_treatment = formData.get("last_treatment") as string || null;
+                      updates.preferred_provider = formData.get("preferred_provider") as string || null;
+                      updates.preferred_times = formData.get("preferred_times") as string || null;
+                      updates.is_member = formData.get("is_member") === "true";
+                      updates.total_visits = formData.get("total_visits") ? parseInt(formData.get("total_visits") as string) : null;
+                      updates.lifetime_spend = formData.get("lifetime_spend") ? parseFloat(formData.get("lifetime_spend") as string) : null;
+                    } else {
+                      // Users can only edit: notes, preferred_provider, preferred_times
+                      updates.preferred_provider = formData.get("preferred_provider") as string || null;
+                      updates.preferred_times = formData.get("preferred_times") as string || null;
+                    }
+                    updates.notes = formData.get("notes") as string || null;
+
+                    const { error } = await (supabase as any)
+                      .from("patients")
+                      .update(updates)
+                      .eq("patient_id", editingPatient.patient_id);
+
+                    if (error) {
+                      console.error("Error updating patient:", error);
+                      alert("Failed to update patient: " + error.message);
+                    } else {
+                      setRefreshKey(prev => prev + 1);
+                      setEditingPatient(null);
+                    }
+                    setSaving(false);
+                  }}
+                  className="space-y-4"
+                >
+                  {isAdmin && (
+                    <>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-2">Patient Name</label>
+                        <input
+                          type="text"
+                          name="patient_name"
+                          defaultValue={editingPatient.patient_name || ""}
+                          className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                          style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = accentColor;
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-white/60 mb-2">Phone</label>
+                          <input
+                            type="tel"
+                            name="phone"
+                            defaultValue={editingPatient.phone || ""}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-white/60 mb-2">Email</label>
+                          <input
+                            type="email"
+                            name="email"
+                            defaultValue={editingPatient.email || ""}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/60 mb-2">Last Treatment</label>
+                        <input
+                          type="text"
+                          name="last_treatment"
+                          defaultValue={editingPatient.last_treatment || ""}
+                          className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm text-white/60 mb-2">Total Visits</label>
+                          <input
+                            type="number"
+                            name="total_visits"
+                            defaultValue={editingPatient.total_visits || 0}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-white/60 mb-2">Lifetime Spend</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            name="lifetime_spend"
+                            defaultValue={editingPatient.lifetime_spend || 0}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-sm text-white/60">
+                          <input
+                            type="checkbox"
+                            name="is_member"
+                            defaultChecked={editingPatient.is_member || false}
+                            className="rounded"
+                          />
+                          Is Member
+                        </label>
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="block text-sm text-white/60 mb-2">Preferred Provider</label>
+                    <input
+                      type="text"
+                      name="preferred_provider"
+                      defaultValue={editingPatient.preferred_provider || ""}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-white/60 mb-2">Preferred Times</label>
+                    <input
+                      type="text"
+                      name="preferred_times"
+                      defaultValue={editingPatient.preferred_times || ""}
+                      placeholder="e.g., Morning, Afternoon, Evening"
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-white/60 mb-2">Notes</label>
+                    <textarea
+                      name="notes"
+                      defaultValue={editingPatient.notes || ""}
+                      rows={4}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-opacity-50 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPatient(null)}
+                      className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-4 py-2 rounded-lg flex items-center gap-2 text-white transition-colors"
+                      style={{
+                        backgroundColor: accentColor,
+                        opacity: saving ? 0.6 : 1,
+                      }}
+                    >
+                      {saving ? (
+                        <>
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {deleteConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-black border rounded-xl p-6 max-w-md w-full"
+                style={{ borderColor: `${accentColor}33` }}
+              >
+                <h2 className="text-xl font-bold text-white mb-2">Delete Patient</h2>
+                <p className="text-white/60 mb-6">
+                  Are you sure you want to delete this patient? This action cannot be undone.
+                </p>
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!deleteConfirm) return;
+                      const { error } = await (supabase as any)
+                        .from("patients")
+                        .delete()
+                        .eq("patient_id", deleteConfirm);
+
+                      if (error) {
+                        console.error("Error deleting patient:", error);
+                        alert("Failed to delete patient: " + error.message);
+                      } else {
+                        setRefreshKey(prev => prev + 1);
+                        setDeleteConfirm(null);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

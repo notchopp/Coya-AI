@@ -39,7 +39,7 @@ const navItems = [
   { href: "/logs", label: "Call Logs", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/patients", label: "Patients", icon: Users },
-  { href: "/programs", label: "Programs", icon: Building2 },
+  { href: "/programs", label: "Programs", icon: Building2, adminOnly: true },
   { href: "/flowchart", label: "Flowchart", icon: GitBranch, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
