@@ -427,10 +427,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Look up patient context if caller's number is provided
+    // CRITICAL: Match by both phone (from_number) AND business_id
+    // This ensures same caller calling different businesses gets the right patient record per business
     let patientContext: any = null;
     if (fromNumber && business) {
       try {
-        // Normalize phone number for lookup
+        // Normalize phone number for lookup (try multiple formats)
         const normalizedPhone = fromNumber.replace(/[^\d+]/g, '');
         const phoneFormats = [
           fromNumber,
@@ -439,9 +441,16 @@ export async function POST(request: NextRequest) {
           normalizedPhone.startsWith('1') ? normalizedPhone.substring(1) : normalizedPhone,
         ];
 
-        // Try to find patient by phone number
+        console.log("🔍 Looking up patient:", {
+          from_number: fromNumber,
+          business_id: business.id,
+          business_name: business.name,
+          phone_formats: phoneFormats
+        });
+
+        // Try to find patient by phone number AND business_id (critical for multi-tenant)
         for (const format of phoneFormats) {
-          const { data: patient } = await supabaseAdmin
+          const { data: patient, error: patientError } = await supabaseAdmin
             .from('patients')
             .select(`
               patient_id,
@@ -453,9 +462,14 @@ export async function POST(request: NextRequest) {
               notes,
               last_call_date
             `)
-            .eq('business_id', business.id)
-            .eq('phone', format)
+            .eq('business_id', business.id) // Match to the business they're calling
+            .eq('phone', format) // Match to caller's phone number
             .maybeSingle();
+          
+          if (patientError && patientError.code !== "PGRST116") {
+            console.warn("⚠️ Patient lookup error:", patientError);
+            continue;
+          }
           
           if (patient) {
             const patientData = patient as {
@@ -469,19 +483,32 @@ export async function POST(request: NextRequest) {
               last_call_date: string | null;
             };
             
-            if (patientData.patient_name) {
-              patientContext = {
-                name: patientData.patient_name,
-                last_visit: patientData.last_visit, // date of last booked appointment
-                last_treatment: patientData.last_treatment, // service from last booking
-                last_intent: patientData.last_intent, // what they asked about last time (if no booking)
-                notes: patientData.notes,
-                last_call_date: patientData.last_call_date,
-              };
-              console.log("✅ Found patient context for caller:", fromNumber);
-              break;
-            }
+            // Return patient context even if name is null (might have other useful data)
+            patientContext = {
+              name: patientData.patient_name,
+              last_visit: patientData.last_visit, // date of last booked appointment
+              last_treatment: patientData.last_treatment, // service from last booking
+              last_intent: patientData.last_intent, // what they asked about last time (if no booking)
+              notes: patientData.notes,
+              last_call_date: patientData.last_call_date,
+            };
+            console.log("✅ Found patient context:", {
+              caller: fromNumber,
+              business: business.name,
+              patient_name: patientData.patient_name,
+              last_visit: patientData.last_visit,
+              last_treatment: patientData.last_treatment,
+              last_intent: patientData.last_intent
+            });
+            break;
           }
+        }
+        
+        if (!patientContext) {
+          console.log("ℹ️ No patient record found for caller:", {
+            from_number: fromNumber,
+            business: business.name
+          });
         }
       } catch (patientError) {
         // Don't fail context lookup if patient lookup fails
