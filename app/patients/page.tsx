@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2, RefreshCw } from "lucide-react";
+import { BadgeCheck, PhoneIncoming, Bot, UserCircle, X, ExternalLink, Building2, RefreshCw, Phone, Mail, Calendar, Clock, DollarSign, Users, Star, FileText, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { AnonymizationToggle, applyAnonymization } from "@/components/AnonymizationToggle";
@@ -326,6 +326,12 @@ type Patient = {
   notes: string | null;
   created_at: string;
   updated_at: string | null;
+  lifetime_spend?: string | number | null;
+  total_visits?: number | null;
+  preferred_provider?: string | null;
+  preferred_times?: string | null;
+  is_member?: boolean | null;
+  transcript?: string | null;
 };
 
 export default function PatientsPage() {
@@ -478,79 +484,166 @@ export default function PatientsPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredPatients.map((patient) => (
               <motion.div
                 key={patient.patient_id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-6 rounded-xl bg-white/5 border border-white/10 hover:border-opacity-30 transition-all"
+                className="p-6 rounded-xl bg-white/5 border border-white/10 hover:border-opacity-30 transition-all hover:bg-white/10"
                 style={{ borderColor: `${accentColor}33` }}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div
-                        className="h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold"
-                        style={{
-                          backgroundColor: `${accentColor}33`,
-                          color: accentColor,
-                        }}
-                      >
-                        {patient.patient_name?.[0]?.toUpperCase() || "?"}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {patient.patient_name || "Unknown Patient"}
-                        </h3>
-                        {patient.phone && (
-                          <p className="text-sm text-white/60">{patient.phone}</p>
-                        )}
-                      </div>
+                {/* Header with Avatar and Name */}
+                <div className="flex items-start gap-4 mb-4">
+                  <div
+                    className="h-16 w-16 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0"
+                    style={{
+                      backgroundColor: `${accentColor}33`,
+                      color: accentColor,
+                    }}
+                  >
+                    {patient.patient_name?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-xl font-bold text-white truncate">
+                        {patient.patient_name || "Unknown Patient"}
+                      </h3>
+                      {patient.is_member && (
+                        <span
+                          className="px-2 py-0.5 rounded text-xs font-medium"
+                          style={{
+                            backgroundColor: `${accentColor}33`,
+                            color: accentColor,
+                          }}
+                        >
+                          Member
+                        </span>
+                      )}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex flex-wrap gap-2 text-xs text-white/60">
+                      {patient.phone && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          <span>{patient.phone}</span>
+                        </div>
+                      )}
                       {patient.email && (
-                        <div>
-                          <span className="text-white/40">Email:</span>{" "}
-                          <span className="text-white/80">{patient.email}</span>
-                        </div>
-                      )}
-                      {patient.last_visit && (
-                        <div>
-                          <span className="text-white/40">Last Visit:</span>{" "}
-                          <span className="text-white/80">
-                            {format(new Date(patient.last_visit), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                      )}
-                      {patient.last_treatment && (
-                        <div>
-                          <span className="text-white/40">Last Treatment:</span>{" "}
-                          <span className="text-white/80">{patient.last_treatment}</span>
-                        </div>
-                      )}
-                      {patient.last_call_date && (
-                        <div>
-                          <span className="text-white/40">Last Call:</span>{" "}
-                          <span className="text-white/80">
-                            {format(new Date(patient.last_call_date), "MMM d, yyyy 'at' h:mm a")}
-                          </span>
-                        </div>
-                      )}
-                      {patient.last_intent && (
-                        <div className="md:col-span-2">
-                          <span className="text-white/40">Last Intent:</span>{" "}
-                          <span className="text-white/80">{patient.last_intent}</span>
-                        </div>
-                      )}
-                      {patient.notes && (
-                        <div className="md:col-span-2">
-                          <span className="text-white/40">Notes:</span>{" "}
-                          <span className="text-white/80">{patient.notes}</span>
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate max-w-[150px]">{patient.email}</span>
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {patient.total_visits !== null && patient.total_visits !== undefined && (
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Users className="h-4 w-4" style={{ color: accentColor }} />
+                        <span className="text-xs text-white/60">Visits</span>
+                      </div>
+                      <p className="text-lg font-bold text-white">{patient.total_visits}</p>
+                    </div>
+                  )}
+                  {patient.lifetime_spend !== null && patient.lifetime_spend !== undefined && (
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="h-4 w-4" style={{ color: accentColor }} />
+                        <span className="text-xs text-white/60">Lifetime Spend</span>
+                      </div>
+                      <p className="text-lg font-bold text-white">
+                        ${typeof patient.lifetime_spend === 'string' ? parseFloat(patient.lifetime_spend).toFixed(2) : (patient.lifetime_spend || 0).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Details Section */}
+                <div className="space-y-3 text-sm">
+                  {patient.last_visit && (
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Last Visit</span>
+                        <span className="text-white/90">
+                          {format(new Date(patient.last_visit), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.last_call_date && (
+                    <div className="flex items-start gap-2">
+                      <PhoneIncoming className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Last Call</span>
+                        <span className="text-white/90">
+                          {format(new Date(patient.last_call_date), "MMM d, yyyy 'at' h:mm a")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.last_treatment && (
+                    <div className="flex items-start gap-2">
+                      <Star className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Last Treatment</span>
+                        <span className="text-white/90">{patient.last_treatment}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.preferred_provider && (
+                    <div className="flex items-start gap-2">
+                      <UserCircle className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Preferred Provider</span>
+                        <span className="text-white/90">{patient.preferred_provider}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.preferred_times && (
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Preferred Times</span>
+                        <span className="text-white/90">{patient.preferred_times}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.last_intent && (
+                    <div className="flex items-start gap-2">
+                      <MessageSquare className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-0.5">Last Intent</span>
+                        <span className="text-white/90">{patient.last_intent}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {patient.notes && (
+                    <div className="flex items-start gap-2 pt-2 border-t border-white/10">
+                      <FileText className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/40 block text-xs mb-1">Notes</span>
+                        <p className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">{patient.notes}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Metadata */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-white/30">
+                    <span>Created {format(new Date(patient.created_at), "MMM d, yyyy")}</span>
+                    {patient.updated_at && patient.updated_at !== patient.created_at && (
+                      <span>Updated {format(new Date(patient.updated_at), "MMM d, yyyy")}</span>
+                    )}
                   </div>
                 </div>
               </motion.div>
