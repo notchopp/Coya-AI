@@ -317,7 +317,7 @@ export default function LiveCallsPage() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
   const { role: userRole } = useUserRole();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);

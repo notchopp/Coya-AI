@@ -126,7 +126,7 @@ function LogsPageContent() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
   const { role: userRole } = useUserRole();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const searchParams = useSearchParams();
   const callIdParam = searchParams.get("callId");
   const callCardRef = useRef<HTMLDivElement>(null);

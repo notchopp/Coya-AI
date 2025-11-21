@@ -43,7 +43,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
   const { role: userRole } = useUserRole();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [calls, setCalls] = useState<Call[]>([]);
   const [callsByProgram, setCallsByProgram] = useState<Record<string, Call[]>>({});

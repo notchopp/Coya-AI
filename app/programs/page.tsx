@@ -75,7 +75,7 @@ type ProgramStats = {
 export default function ProgramsPage() {
   const { accentColor } = useAccentColor();
   const { role: userRole } = useUserRole();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "owner";
   const { businessId, setProgramId } = useProgram();
   const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);

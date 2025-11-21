@@ -45,10 +45,10 @@ export function useUserRole(): { role: UserRole; loading: boolean } {
 }
 
 /**
- * Check if user is admin
+ * Check if user is admin or owner (owner has all admin permissions)
  */
 export function useIsAdmin(): boolean {
   const { role } = useUserRole();
-  return role === "admin";
+  return role === "admin" || role === "owner";
 }
 
