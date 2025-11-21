@@ -31,22 +31,42 @@ export async function POST(
 
     const sessionData = session as any;
 
+    // Prepare update data - only include fields that exist in the businesses table
+    const updateData: any = {
+      name: body.name,
+      vertical: body.vertical || "medspa",
+      is_demo: true,
+      demo_phone_number: DEMO_PHONE_NUMBER,
+      to_number: DEMO_PHONE_NUMBER,
+      is_active: true,
+    };
+
+    // Handle categories - store as JSON
+    if (body.categories) {
+      updateData.categories = typeof body.categories === 'string' ? body.categories : JSON.stringify(body.categories);
+    }
+
+    // Handle hours - store as JSON
+    if (body.hours) {
+      updateData.hours = typeof body.hours === 'string' ? body.hours : JSON.stringify(body.hours);
+    }
+
+    // Handle FAQs - store as JSON
+    if (body.faqs) {
+      updateData.faqs = typeof body.faqs === 'string' ? body.faqs : JSON.stringify(body.faqs);
+    }
+
     // Always update the shared demo business (don't create new ones)
     const { data: business, error: updateError } = await (supabaseAdmin
       .from("businesses") as any)
-      .update({
-        ...body,
-        is_demo: true,
-        demo_phone_number: DEMO_PHONE_NUMBER,
-        to_number: DEMO_PHONE_NUMBER,
-        is_active: true,
-      })
+      .update(updateData)
       .eq("id", DEMO_BUSINESS_ID)
       .select()
       .single();
 
     if (updateError) {
       console.error("Error updating demo business:", updateError);
+      console.error("Update data:", JSON.stringify(updateData, null, 2));
       return NextResponse.json(
         { error: "Failed to update demo business", details: updateError.message },
         { status: 500 }

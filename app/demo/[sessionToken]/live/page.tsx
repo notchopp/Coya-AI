@@ -424,9 +424,17 @@ export default function DemoLive() {
               <p className="text-white/60">Live Demo Experience</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30">
-            <Clock className="h-5 w-5 text-red-400" />
-            <span className="text-xl font-bold">{formatTime(remainingSeconds)}</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/signup?founder=true")}
+              className="px-4 py-2 rounded-lg bg-black border border-white/10 hover:border-white/20 transition-colors text-sm font-medium"
+            >
+              Leave Demo
+            </button>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30">
+              <Clock className="h-5 w-5 text-red-400" />
+              <span className="text-xl font-bold">{formatTime(remainingSeconds)}</span>
+            </div>
           </div>
         </div>
 

@@ -16,6 +16,8 @@ type Service = {
   id: string;
   name: string;
   price: number | null;
+  preCareInstructions: string;
+  afterCareInstructions: string;
 };
 
 const DAYS_OF_WEEK = [
@@ -38,8 +40,6 @@ export default function DemoConfigure() {
     name: "",
     categories: [] as Category[],
     hours: DAYS_OF_WEEK.map(day => ({ day, hours: "9:00 AM - 5:00 PM", closed: false })),
-    preCareInstructions: "",
-    afterCareInstructions: "",
     faqs: [] as { id: string; question: string; answer: string }[],
   });
 
@@ -73,6 +73,8 @@ export default function DemoConfigure() {
       id: `svc_${Date.now()}`,
       name: "",
       price: null,
+      preCareInstructions: "",
+      afterCareInstructions: "",
     };
     const updated = [...formData.categories];
     updated[categoryIndex].services = [...updated[categoryIndex].services, newService];
@@ -85,7 +87,7 @@ export default function DemoConfigure() {
     setFormData({ ...formData, categories: updated });
   };
 
-  const updateService = (categoryIndex: number, serviceIndex: number, field: "name" | "price", value: string | number | null) => {
+  const updateService = (categoryIndex: number, serviceIndex: number, field: "name" | "price" | "preCareInstructions" | "afterCareInstructions", value: string | number | null) => {
     const updated = [...formData.categories];
     updated[categoryIndex].services[serviceIndex] = {
       ...updated[categoryIndex].services[serviceIndex],
@@ -138,8 +140,6 @@ export default function DemoConfigure() {
             acc[day.day] = day.closed ? "Closed" : day.hours;
             return acc;
           }, {} as Record<string, string>),
-          pre_care_instructions: formData.preCareInstructions,
-          after_care_instructions: formData.afterCareInstructions,
           faqs: formData.faqs,
         }),
       });
@@ -216,29 +216,53 @@ export default function DemoConfigure() {
                     </button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {category.services.map((service, svcIndex) => (
-                      <div key={service.id} className="flex items-center gap-2 p-2 rounded bg-black/50">
-                        <input
-                          type="text"
-                          value={service.name}
-                          onChange={(e) => updateService(catIndex, svcIndex, "name", e.target.value)}
-                          className="flex-1 px-2 py-1 rounded bg-black border border-white/10 text-white text-sm focus:outline-none"
-                          placeholder="Service Name"
-                        />
-                        <input
-                          type="number"
-                          value={service.price || ""}
-                          onChange={(e) => updateService(catIndex, svcIndex, "price", e.target.value ? parseFloat(e.target.value) : null)}
-                          className="w-24 px-2 py-1 rounded bg-black border border-white/10 text-white text-sm focus:outline-none"
-                          placeholder="Price"
-                        />
-                        <button
-                          onClick={() => removeService(catIndex, svcIndex)}
-                          className="p-1 rounded bg-red-500/20 border border-red-500/30 hover:bg-red-500/30"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                      <div key={service.id} className="p-3 rounded-lg bg-black/50 border border-white/10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <input
+                            type="text"
+                            value={service.name}
+                            onChange={(e) => updateService(catIndex, svcIndex, "name", e.target.value)}
+                            className="flex-1 px-3 py-2 rounded bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-yellow-500/50"
+                            placeholder="Service Name"
+                          />
+                          <input
+                            type="number"
+                            value={service.price || ""}
+                            onChange={(e) => updateService(catIndex, svcIndex, "price", e.target.value ? parseFloat(e.target.value) : null)}
+                            className="w-24 px-3 py-2 rounded bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-yellow-500/50"
+                            placeholder="Price"
+                          />
+                          <button
+                            onClick={() => removeService(catIndex, svcIndex)}
+                            className="p-2 rounded bg-red-500/20 border border-red-500/30 hover:bg-red-500/30"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-white/60 mb-1">Pre-Care Instructions</label>
+                            <textarea
+                              value={service.preCareInstructions}
+                              onChange={(e) => updateService(catIndex, svcIndex, "preCareInstructions", e.target.value)}
+                              rows={2}
+                              className="w-full px-2 py-1 rounded bg-black border border-white/10 text-white text-xs focus:outline-none focus:border-yellow-500/50 resize-none"
+                              placeholder="Instructions before appointment..."
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-white/60 mb-1">After-Care Instructions</label>
+                            <textarea
+                              value={service.afterCareInstructions}
+                              onChange={(e) => updateService(catIndex, svcIndex, "afterCareInstructions", e.target.value)}
+                              rows={2}
+                              className="w-full px-2 py-1 rounded bg-black border border-white/10 text-white text-xs focus:outline-none focus:border-yellow-500/50 resize-none"
+                              placeholder="Instructions after appointment..."
+                            />
+                          </div>
+                        </div>
                       </div>
                     ))}
                     <button
@@ -291,32 +315,6 @@ export default function DemoConfigure() {
             </div>
           </div>
 
-          {/* Pre-Care Instructions */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Pre-Care Instructions</label>
-            <p className="text-xs text-white/60 mb-2">Instructions patients should follow before their appointment</p>
-            <textarea
-              value={formData.preCareInstructions}
-              onChange={(e) => setFormData({ ...formData, preCareInstructions: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 resize-none"
-              placeholder="e.g., Avoid sun exposure 24 hours before treatment, arrive with clean skin..."
-            />
-          </div>
-
-          {/* After-Care Instructions */}
-          <div>
-            <label className="block text-sm font-medium mb-2">After-Care Instructions</label>
-            <p className="text-xs text-white/60 mb-2">Instructions patients should follow after their appointment</p>
-            <textarea
-              value={formData.afterCareInstructions}
-              onChange={(e) => setFormData({ ...formData, afterCareInstructions: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 resize-none"
-              placeholder="e.g., Avoid touching the treated area, apply ice if needed, avoid makeup for 24 hours..."
-            />
-          </div>
-
           {/* FAQs */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -364,14 +362,22 @@ export default function DemoConfigure() {
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={loading || !formData.name.trim()}
-          className="mt-8 w-full px-6 py-4 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
-        >
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-          Save & Continue
-        </button>
+        <div className="mt-8 flex items-center gap-4">
+          <button
+            onClick={() => router.push("/signup?founder=true")}
+            className="px-6 py-4 rounded-lg bg-black border border-white/10 hover:border-white/20 transition-colors flex items-center justify-center gap-2 text-lg font-semibold"
+          >
+            Leave Demo
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading || !formData.name.trim()}
+            className="flex-1 px-6 py-4 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
+          >
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            Save & Continue
+          </button>
+        </div>
       </div>
     </div>
   );
