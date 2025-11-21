@@ -5,12 +5,52 @@ import { getCalendarProvider, ensureFreshToken, type CalendarConnection } from "
 /**
  * Normalizes date input to YYYY-MM-DD format
  * Handles: day names (Monday, Tuesday, etc.), relative dates, and various date formats
+ * Also validates that dates are not in the past
  */
 function normalizeDate(dateInput: string): string {
   const dateStr = dateInput.trim();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
-  // If already in YYYY-MM-DD format, return as-is
+  // If already in YYYY-MM-DD format, validate it's not in the past
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const parsedDate = new Date(dateStr);
+    parsedDate.setHours(0, 0, 0, 0);
+    
+    // If the date is in the past, check if it's more than 30 days old
+    // If so, it's likely a mistake (AI extracted wrong date from context)
+    if (parsedDate < today) {
+      const daysDiff = Math.floor((today.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff > 30) {
+        // Date is more than 30 days in the past - likely a mistake
+        // Check what day of the week it was and suggest the next occurrence
+        const dayOfWeek = parsedDate.getDay();
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[dayOfWeek];
+        
+        // Calculate next occurrence of that day
+        const currentDay = today.getDay();
+        let daysUntilTarget = dayOfWeek - currentDay;
+        if (daysUntilTarget <= 0) {
+          daysUntilTarget += 7;
+        }
+        
+        const nextOccurrence = new Date(today);
+        nextOccurrence.setDate(today.getDate() + daysUntilTarget);
+        const year = nextOccurrence.getFullYear();
+        const month = String(nextOccurrence.getMonth() + 1).padStart(2, '0');
+        const day = String(nextOccurrence.getDate()).padStart(2, '0');
+        const correctedDate = `${year}-${month}-${day}`;
+        
+        console.warn(`Date ${dateStr} is ${daysDiff} days in the past. Corrected to next ${dayName}: ${correctedDate}`);
+        return correctedDate;
+      } else {
+        // Date is in the past but recent (within 30 days) - still reject but with better message
+        throw new Error(`Date ${dateStr} is in the past. Please provide a future date.`);
+      }
+    }
+    
     return dateStr;
   }
   
@@ -182,14 +222,13 @@ export async function POST(request: NextRequest) {
         throw new Error(`Invalid date/time: ${dateTimeString}`);
       }
       
-      // Validate date is not in the past
+      // Validate date is not in the past (with time consideration)
       const now = new Date();
-      now.setHours(0, 0, 0, 0); // Reset to start of day for comparison
-      const requestDate = new Date(startDateTime);
-      requestDate.setHours(0, 0, 0, 0);
+      const requestDateTime = new Date(startDateTime);
       
-      if (requestDate < now) {
-        throw new Error(`Cannot check availability for past date: ${normalizedDate}`);
+      // If the date/time is in the past (even by a minute), reject it
+      if (requestDateTime < now) {
+        throw new Error(`Cannot check availability for past date/time: ${normalizedDate} ${time}`);
       }
     } catch (error) {
       console.error("Date parsing error:", error, { originalDate: date, normalizedDate, time });
