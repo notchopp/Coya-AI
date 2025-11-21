@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
 
     const userInfo = await userInfoResponse.json();
     const email = userInfo.email;
+    const providerAccountId = userInfo.id; // Google user ID
 
     // Get primary calendar ID
     const calendarResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList/primary", {
@@ -98,10 +99,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate token expiration
-    const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000));
+    const tokenExpiresAt = expires_in 
+      ? new Date(Date.now() + (expires_in * 1000))
+      : null;
 
     // Store connection in database
     const supabaseAdmin = getSupabaseAdminClient();
+
+    // Prepare provider_config with additional Google account info
+    const providerConfig = {
+      user_id: providerAccountId,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      verified_email: userInfo.verified_email,
+      locale: userInfo.locale,
+    };
 
     const connectionData: any = {
       business_id,
@@ -109,28 +121,43 @@ export async function GET(request: NextRequest) {
       calendar_id: calendarId,
       access_token, // In production, encrypt this
       refresh_token, // In production, encrypt this
-      token_expires_at: tokenExpiresAt.toISOString(),
+      token_expires_at: tokenExpiresAt?.toISOString() || null,
       scope,
       email,
       provider: "google", // Set provider to google
+      provider_account_id: providerAccountId,
+      provider_config: providerConfig,
       is_active: true,
       sync_status: "pending",
+      sync_error: null,
     };
 
     // Use the unique constraint: business_id, program_id, provider, calendar_id
-    const { error: dbError } = await (supabaseAdmin as any)
+    const { data: upsertedData, error: dbError } = await (supabaseAdmin as any)
       .from("calendar_connections")
       .upsert(connectionData, {
         onConflict: "business_id,program_id,provider,calendar_id",
         ignoreDuplicates: false,
-      });
+      })
+      .select()
+      .single();
 
     if (dbError) {
       console.error("Error storing calendar connection:", dbError);
+      console.error("Connection data attempted:", JSON.stringify(connectionData, null, 2));
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/settings?calendar_error=db_error`
+        `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/settings?calendar_error=db_error&details=${encodeURIComponent(dbError.message)}`
       );
     }
+
+    console.log("✅ Calendar connection saved successfully:", {
+      id: upsertedData?.id,
+      business_id,
+      program_id,
+      email,
+      provider: "google",
+      calendar_id: calendarId,
+    });
 
     // Redirect back to settings with success
     const redirectPath = program_id 

@@ -10,10 +10,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const business_id = searchParams.get("business_id");
     const program_id = searchParams.get("program_id");
+    const provider = searchParams.get("provider") || "google"; // Default to google
 
     if (!business_id) {
       return NextResponse.json(
         { error: "business_id is required" },
+        { status: 400 }
+      );
+    }
+
+    // For now, only Google is implemented
+    if (provider !== "google") {
+      return NextResponse.json(
+        { error: `Calendar provider "${provider}" is not yet implemented. Only Google Calendar is currently supported.` },
         { status: 400 }
       );
     }
