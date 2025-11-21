@@ -416,9 +416,12 @@ export default function PatientsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2" style={{ color: accentColor }}>
-              Patients
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-white">
+                Patients
+              </h1>
+              <span className="beta-badge" style={{ color: accentColor }}>Beta</span>
+            </div>
             <p className="text-white/60">Manage and view your patient database</p>
             {effectiveBusinessId && (
               <p className="text-xs text-white/40 mt-1">
