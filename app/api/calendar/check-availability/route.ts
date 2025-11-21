@@ -21,22 +21,45 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     // Get calendar connection
-    let connectionQuery = (supabaseAdmin as any)
-      .from("calendar_connections")
-      .select("*")
-      .eq("business_id", business_id)
-      .eq("is_active", true);
+    // Priority: 1) program-specific connection, 2) business-level connection (program_id = null)
+    let connection: CalendarConnection | null = null;
 
+    // First, try to find program-specific connection if program_id is provided
     if (program_id) {
-      connectionQuery = connectionQuery.eq("program_id", program_id);
-    } else {
-      connectionQuery = connectionQuery.is("program_id", null);
+      const { data: programConnection, error: programError } = await (supabaseAdmin as any)
+        .from("calendar_connections")
+        .select("*")
+        .eq("business_id", business_id)
+        .eq("program_id", program_id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!programError && programConnection) {
+        connection = programConnection as CalendarConnection;
+      }
     }
 
-    const { data: connectionData, error: connError } = await connectionQuery.maybeSingle();
-    const connection = connectionData as CalendarConnection;
+    // If no program connection found, try business-level connection (program_id = null)
+    if (!connection) {
+      const { data: businessConnection, error: businessError } = await (supabaseAdmin as any)
+        .from("calendar_connections")
+        .select("*")
+        .eq("business_id", business_id)
+        .is("program_id", null)
+        .eq("is_active", true)
+        .maybeSingle();
 
-    if (connError || !connectionData) {
+      if (!businessError && businessConnection) {
+        connection = businessConnection as CalendarConnection;
+      }
+    }
+
+    if (!connection) {
+      console.error("No calendar connection found:", {
+        business_id,
+        program_id,
+        error: "No active calendar connection found for this business/program",
+      });
       return NextResponse.json(
         { error: "No active calendar connection found for this business/program" },
         { status: 404 }
