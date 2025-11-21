@@ -682,59 +682,70 @@ export default function SettingsPage() {
       ? { categories: formData.categories } 
       : null;
     
-    const { error } = await supabase
-      .from("businesses")
-      .update({
-        name: formData.name.trim(),
-        vertical: formData.vertical.trim(),
-        services: formData.services.map(s => s.trim()).filter(Boolean), // Keep for backward compatibility
-        categories: categoriesJson, // NEW: Categories structure
-        mobile_services: formData.mobile_services || null,
-        packages: formData.packages || null,
-        same_day_booking: formData.same_day_booking,
-        address: formData.address.trim() || null,
-        hours: hoursJson,
-        staff: staffJson,
-        faqs: formData.faqs.length > 0 ? formData.faqs : null,
-        promos: formData.promos.length > 0 ? formData.promos : null,
-      })
-      .eq("id", businessId);
+    const updatePayload = {
+      name: formData.name.trim(),
+      vertical: formData.vertical.trim(),
+      services: formData.services.map(s => s.trim()).filter(Boolean), // Keep for backward compatibility
+      categories: categoriesJson, // NEW: Categories structure
+      mobile_services: formData.mobile_services || null,
+      packages: formData.packages || null,
+      same_day_booking: formData.same_day_booking,
+      address: formData.address.trim() || null,
+      hours: hoursJson,
+      staff: staffJson,
+      faqs: formData.faqs.length > 0 ? formData.faqs : null,
+      promos: formData.promos.length > 0 ? formData.promos : null,
+    };
 
-    if (error) {
-      console.error("❌ Error saving:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
+    console.log("🔄 Attempting to save business settings:", {
+      businessId,
+      updatePayload,
+    });
+
+    // Use API route to update business (bypasses RLS)
+    const response = await fetch("/api/business/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        business_id: businessId,
+        ...updatePayload,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ Error saving:", result);
+      console.error("Error details:", result.details);
+      console.error("Error code:", result.code);
       setSaveStatus("error");
-    } else {
-      console.log("✅ Settings saved successfully");
-      setSaveStatus("success");
+      setSaving(false);
+      setTimeout(() => setSaveStatus("idle"), 3000);
+      return;
+    }
+
+    if (!result.business) {
+      console.error("❌ Update returned no business data");
+      setSaveStatus("error");
+      setSaving(false);
+      setTimeout(() => setSaveStatus("idle"), 3000);
+      return;
+    }
+
+    const updatedData = result.business;
+    console.log("✅ Settings saved successfully:", updatedData);
+    setSaveStatus("success");
+    
+    // Log audit event for business edit
+    if (isAdmin) {
+      const resourceType = activeTab === "info" ? "business_info" 
+        : activeTab === "hours" ? "hours" 
+        : activeTab === "content" ? "content" 
+        : "business_info";
       
-      // Log audit event for business edit
-      if (isAdmin) {
-        const resourceType = activeTab === "info" ? "business_info" 
-          : activeTab === "hours" ? "hours" 
-          : activeTab === "content" ? "content" 
-          : "business_info";
-        
-        await logBusinessEdit(resourceType, {
-          name: formData.name.trim(),
-          vertical: formData.vertical.trim(),
-          services: formData.services.filter(Boolean),
-          categories: categoriesJson,
-          mobile_services: formData.mobile_services || null,
-          packages: formData.packages || null,
-          same_day_booking: formData.same_day_booking,
-          address: formData.address.trim() || null,
-          hours: hoursJson,
-          staff: staffJson,
-          faqs: formData.faqs.length > 0 ? formData.faqs : null,
-          promos: formData.promos.length > 0 ? formData.promos : null,
-        });
-      }
-      
-      // Update local state
-      setBusiness({
-        ...business,
+      await logBusinessEdit(resourceType, {
         name: formData.name.trim(),
         vertical: formData.vertical.trim(),
         services: formData.services.filter(Boolean),
@@ -749,6 +760,23 @@ export default function SettingsPage() {
         promos: formData.promos.length > 0 ? formData.promos : null,
       });
     }
+    
+    // Update local state
+    setBusiness({
+      ...business,
+      name: formData.name.trim(),
+      vertical: formData.vertical.trim(),
+      services: formData.services.filter(Boolean),
+      categories: categoriesJson,
+      mobile_services: formData.mobile_services || null,
+      packages: formData.packages || null,
+      same_day_booking: formData.same_day_booking,
+      address: formData.address.trim() || null,
+      hours: hoursJson,
+      staff: staffJson,
+      faqs: formData.faqs.length > 0 ? formData.faqs : null,
+      promos: formData.promos.length > 0 ? formData.promos : null,
+    });
     
     setSaving(false);
     

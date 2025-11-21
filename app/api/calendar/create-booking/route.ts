@@ -89,9 +89,38 @@ export async function POST(request: NextRequest) {
       connection.access_token = accessToken;
     }
 
-    // Parse date and time
-    const startDateTime = new Date(`${date}T${time}`);
-    const endDateTime = new Date(startDateTime.getTime() + duration_minutes * 60000);
+    // Parse and validate duration_minutes
+    const duration = typeof duration_minutes === 'string' && duration_minutes.trim() === '' 
+      ? 30 
+      : parseInt(String(duration_minutes), 10) || 30;
+
+    // Parse date and time with proper timezone handling
+    let startDateTime: Date;
+    let endDateTime: Date;
+    try {
+      // Parse as local time first (add seconds for proper parsing)
+      const dateTimeString = `${date}T${time}:00`;
+      startDateTime = new Date(dateTimeString);
+      
+      // Validate the date is valid
+      if (isNaN(startDateTime.getTime())) {
+        throw new Error(`Invalid date/time: ${dateTimeString}`);
+      }
+      
+      // Validate date is not in the past
+      const now = new Date();
+      if (startDateTime < now) {
+        throw new Error(`Cannot create booking for past date/time: ${date} ${time}`);
+      }
+      
+      endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+    } catch (error) {
+      console.error("Date parsing error:", error, { date, time, duration_minutes });
+      return NextResponse.json(
+        { error: "Invalid date or time format", details: error instanceof Error ? error.message : String(error) },
+        { status: 400 }
+      );
+    }
 
     // Build event description
     let description = "";

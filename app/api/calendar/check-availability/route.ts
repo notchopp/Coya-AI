@@ -88,9 +88,42 @@ export async function POST(request: NextRequest) {
       connection.access_token = accessToken;
     }
 
-    // Parse date and time
-    const startDateTime = new Date(`${date}T${time}`);
-    const endDateTime = new Date(startDateTime.getTime() + duration_minutes * 60000);
+    // Parse and validate duration_minutes
+    const duration = typeof duration_minutes === 'string' && duration_minutes.trim() === '' 
+      ? 30 
+      : parseInt(String(duration_minutes), 10) || 30;
+
+    // Parse date and time with proper timezone handling
+    // Date should be in format YYYY-MM-DD, time in HH:MM
+    let startDateTime: Date;
+    try {
+      // Parse as local time first (add seconds for proper parsing)
+      const dateTimeString = `${date}T${time}:00`;
+      startDateTime = new Date(dateTimeString);
+      
+      // Validate the date is valid
+      if (isNaN(startDateTime.getTime())) {
+        throw new Error(`Invalid date/time: ${dateTimeString}`);
+      }
+      
+      // Validate date is not in the past
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+      const requestDate = new Date(startDateTime);
+      requestDate.setHours(0, 0, 0, 0);
+      
+      if (requestDate < now) {
+        throw new Error(`Cannot check availability for past date: ${date}`);
+      }
+    } catch (error) {
+      console.error("Date parsing error:", error, { date, time });
+      return NextResponse.json(
+        { error: "Invalid date or time format", details: error instanceof Error ? error.message : String(error) },
+        { status: 400 }
+      );
+    }
+    
+    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
 
     // Check availability using provider adapter
     const availability = await adapter.checkAvailability(connection, startDateTime, endDateTime);
@@ -109,8 +142,8 @@ export async function POST(request: NextRequest) {
         const timeSlots = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"];
         
         for (const timeSlot of timeSlots) {
-          const slotStart = new Date(`${dateStr}T${timeSlot}`);
-          const slotEnd = new Date(slotStart.getTime() + duration_minutes * 60000);
+          const slotStart = new Date(`${dateStr}T${timeSlot}:00`);
+          const slotEnd = new Date(slotStart.getTime() + duration * 60000);
           
           const slotAvailability = await adapter.checkAvailability(connection, slotStart, slotEnd);
           if (slotAvailability.available) {
@@ -130,7 +163,7 @@ export async function POST(request: NextRequest) {
       requested_slot: {
         date,
         time,
-        duration_minutes,
+        duration_minutes: duration,
       },
       next_available_slots: nextAvailableSlots,
       provider: connection.provider,
