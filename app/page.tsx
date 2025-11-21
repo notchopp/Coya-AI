@@ -999,7 +999,7 @@ export default function Dashboard() {
             className="flex justify-center"
           >
             <h2 
-              className="text-xl sm:text-2xl lg:text-3xl font-bold"
+              className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold"
               style={{
                 color: accentColor,
                 textShadow: `0 0 20px ${accentColor}80, 0 0 40px ${accentColor}60, 0 0 60px ${accentColor}40`,
@@ -1010,15 +1010,20 @@ export default function Dashboard() {
           </motion.div>
         )}
         
-        <motion.span
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-xs font-medium text-center"
-          style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
+          className="flex items-center gap-2 justify-center"
         >
-          #Founders Program
-        </motion.span>
+          <Trophy className="h-4 w-4" style={{ color: accentColor }} />
+          <span
+            className="text-xs font-medium text-center"
+            style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
+          >
+            #Founders Program
+          </span>
+        </motion.div>
       </motion.div>
 
       {/* Error Message */}

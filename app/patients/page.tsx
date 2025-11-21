@@ -313,21 +313,31 @@ function parseTranscriptJson(transcriptJson: any): Message[] {
   return [];
 }
 
-export default function LiveCallsPage() {
+type Patient = {
+  patient_id: string;
+  business_id: string;
+  patient_name: string | null;
+  phone: string | null;
+  email: string | null;
+  last_visit: string | null;
+  last_treatment: string | null;
+  last_intent: string | null;
+  last_call_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export default function PatientsPage() {
   const { accentColor } = useAccentColor();
   const { programId } = useProgram();
   const { role: userRole } = useUserRole();
   const isAdmin = userRole === "admin";
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [callsByProgram, setCallsByProgram] = useState<Record<string, Call[]>>({});
-  const [programs, setPrograms] = useState<Array<{ id: string; name: string }>>([]);
-  const [callTurns, setCallTurns] = useState<Record<string, CallTurn>>({}); // Store one turn record per call_id
-  const [connected, setConnected] = useState<boolean>(false);
-  const [endedCallId, setEndedCallId] = useState<string | null>(null);
-  const [hasLoadedCalls, setHasLoadedCalls] = useState(false); // Track if we've loaded calls at least once
-  const [isAnonymized, setIsAnonymized] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const effectiveBusinessId = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -339,148 +349,188 @@ export default function LiveCallsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    async function loadActiveCalls() {
+    async function loadPatients() {
       if (!effectiveBusinessId) {
-        console.warn("⚠️ No business_id found, cannot load calls");
-        setCalls([]);
+        console.warn("⚠️ No business_id found, cannot load patients");
+        setPatients([]);
+        setLoading(false);
         return;
       }
 
-      console.log("🔍 Loading active calls for business_id:", effectiveBusinessId);
+      setLoading(true);
+      console.log("🔍 Loading patients for business_id:", effectiveBusinessId);
 
-      // Load programs if admin
-      if (isAdmin) {
-        const { data: programsData } = await (supabase as any)
-          .from("programs")
-          .select("id, name")
-          .eq("business_id", effectiveBusinessId);
-        setPrograms(programsData || []);
-      }
+      const { data: patientsData, error: patientsError } = await (supabase as any)
+        .from("patients")
+        .select("*")
+        .eq("business_id", effectiveBusinessId)
+        .order("last_call_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
 
-      // First, check all calls for this business to see what statuses exist
-      let allCallsQuery = (supabase as any)
-        .from("calls")
-        .select("id,business_id,call_id,status,patient_name,program_id")
-        .eq("business_id", effectiveBusinessId);
-      
-      // Filter by program_id if program is selected (non-admin) or show all (admin)
-      if (!isAdmin && programId) {
-        allCallsQuery = allCallsQuery.eq("program_id", programId);
-      }
-      
-      const { data: allCallsData } = await allCallsQuery
-        .order("started_at", { ascending: false })
-        .limit(20);
-      
-      console.log("🔍 All calls for this business:", allCallsData?.length || 0);
-      console.log("🔍 Sample calls:", allCallsData?.slice(0, 5));
-      console.log("🔍 Status values found:", allCallsData?.map((c: any) => ({ call_id: c.call_id, status: c.status, patient_name: c.patient_name })));
-
-      // Now query for active calls (try both exact match and case-insensitive)
-      let callsQuery = (supabase as any)
-        .from("calls")
-        .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,total_turns,program_id")
-        .eq("business_id", effectiveBusinessId);
-      
-      // Filter by program_id if program is selected (non-admin) or show all (admin)
-      if (!isAdmin && programId) {
-        callsQuery = callsQuery.eq("program_id", programId);
-      }
-      
-      const { data: callsData, error: callsError } = await callsQuery
-        .order("started_at", { ascending: false });
-      if (callsError) {
-        console.error("❌ Error loading calls:", callsError);
-        return;
-      }
-
-      console.log("📞 Raw calls data:", callsData);
-      console.log("📞 Total calls fetched:", callsData?.length || 0);
-
-      // Filter for active calls - only calls that have started and haven't ended
-      const activeCalls = (callsData || []).filter((c: any) => {
-        const hasStarted = !!c.started_at;
-        const hasNotEnded = !c.ended_at;
-        const statusLower = c.status?.toLowerCase()?.trim();
-        const isEndedStatus = statusLower === "ended";
-        
-        // Only include if: started, not ended (by timestamp), and not ended status
-        const isActive = hasStarted && hasNotEnded && !isEndedStatus;
-        console.log(`Call ${c.call_id}: status="${c.status}", started_at=${hasStarted}, ended_at=${!!c.ended_at}, isActive=${isActive}, patient="${c.patient_name || 'N/A'}"`);
-        return isActive;
-      });
-
-      console.log("✅ Active calls after filtering:", activeCalls.length);
-      if (activeCalls.length > 0) {
-        console.log("📋 Active call details:", activeCalls.map((c: any) => ({
-          call_id: c.call_id,
-          status: c.status,
-          patient_name: c.patient_name,
-          business_id: c.business_id
-        })));
+      if (patientsError) {
+        console.error("❌ Error loading patients:", patientsError);
+        setPatients([]);
       } else {
-        console.warn("⚠️ No active calls found. Check:");
-        console.warn("1. Is status exactly 'active'?");
-        console.warn("2. Does business_id match?", effectiveBusinessId);
-        console.warn("3. Are there any calls at all?", callsData?.length || 0);
+        console.log("✅ Loaded patients:", patientsData?.length || 0);
+        setPatients((patientsData as unknown as Patient[]) || []);
       }
-      
-      // Load call turns for all active calls
-      // Match by: call_id (call_turns doesn't have business_id)
-      if (activeCalls.length > 0) {
-        const callIds = activeCalls.map((c: any) => c.call_id).filter(Boolean);
-        
-        console.log("🔄 Loading call turns for call_ids:", callIds);
-        
-        // Query call_turns matching by call_id
-        let turnsData: CallTurn[] = [];
-        let turnsError: any = null;
-        
-        if (callIds.length > 0) {
-          // Query by call_id
-          const { data, error } = await supabase
-            .from("call_turns" as any)
-            .select("id,call_id,total_turns,duration_sec,transcript_json,created_at,updated_at,to_number")
-            .in("call_id", callIds);
-          
-          turnsData = (data as unknown as CallTurn[]) || [];
-          turnsError = error;
-          
-          console.log("📞 Queried by call_id, found:", turnsData.length);
-        }
-
-        if (turnsError) {
-          console.error("❌ Error loading call turns:", turnsError);
-          setCallTurns({});
-        } else {
-          console.log("✅ Loaded call turns:", turnsData?.length || 0, "turns");
-          
-          // Filter and match turns to active calls
-          // Match by call_id
-          const turnsByCallId: Record<string, CallTurn> = {};
-          
-          (turnsData || []).forEach((turn: CallTurn) => {
-            // Find matching call by call_id
-            const matchingCall = activeCalls.find((call: any) => {
-              return call.call_id && turn.call_id && call.call_id === turn.call_id;
-            });
-            if (matchingCall && turn.call_id) {
-              turnsByCallId[turn.call_id] = turn;
-            }
-          });
-          
-          setCallTurns(turnsByCallId);
-        }
-      }
+      setLoading(false);
     }
     
-    loadActiveCalls();
-  }, [effectiveBusinessId, isAdmin, programId, supabase]);
+    loadPatients();
+  }, [effectiveBusinessId, supabase]);
+
+  const filteredPatients = useMemo(() => {
+    if (!searchQuery.trim()) return patients;
+    const query = searchQuery.toLowerCase();
+    return patients.filter((patient) => {
+      return (
+        patient.patient_name?.toLowerCase().includes(query) ||
+        patient.phone?.toLowerCase().includes(query) ||
+        patient.email?.toLowerCase().includes(query) ||
+        patient.last_treatment?.toLowerCase().includes(query) ||
+        patient.last_intent?.toLowerCase().includes(query)
+      );
+    });
+  }, [patients, searchQuery]);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Live Calls</h1>
-        <p className="text-gray-600">Active calls will appear here.</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2" style={{ color: accentColor }}>
+            Patients
+          </h1>
+          <p className="text-white/60">Manage and view your patient database</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search patients by name, phone, email, or treatment..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-opacity-50"
+              style={{ 
+                borderColor: searchQuery ? `${accentColor}66` : 'rgba(255, 255, 255, 0.1)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = `${accentColor}66`;
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              }}
+            />
+            <UserCircle className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
+          </div>
+        </div>
+
+        {/* Patients List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-white/60">Loading patients...</div>
+          </div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="text-center py-12">
+            <UserCircle className="h-16 w-16 mx-auto mb-4 text-white/20" />
+            <p className="text-white/60 text-lg mb-2">
+              {searchQuery ? "No patients found matching your search" : "No patients yet"}
+            </p>
+            <p className="text-white/40 text-sm">
+              {searchQuery ? "Try a different search term" : "Patients will appear here after they call"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredPatients.map((patient) => (
+              <motion.div
+                key={patient.patient_id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-xl bg-white/5 border border-white/10 hover:border-opacity-30 transition-all"
+                style={{ borderColor: `${accentColor}33` }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className="h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold"
+                        style={{
+                          backgroundColor: `${accentColor}33`,
+                          color: accentColor,
+                        }}
+                      >
+                        {patient.patient_name?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">
+                          {patient.patient_name || "Unknown Patient"}
+                        </h3>
+                        {patient.phone && (
+                          <p className="text-sm text-white/60">{patient.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      {patient.email && (
+                        <div>
+                          <span className="text-white/40">Email:</span>{" "}
+                          <span className="text-white/80">{patient.email}</span>
+                        </div>
+                      )}
+                      {patient.last_visit && (
+                        <div>
+                          <span className="text-white/40">Last Visit:</span>{" "}
+                          <span className="text-white/80">
+                            {format(new Date(patient.last_visit), "MMM d, yyyy")}
+                          </span>
+                        </div>
+                      )}
+                      {patient.last_treatment && (
+                        <div>
+                          <span className="text-white/40">Last Treatment:</span>{" "}
+                          <span className="text-white/80">{patient.last_treatment}</span>
+                        </div>
+                      )}
+                      {patient.last_call_date && (
+                        <div>
+                          <span className="text-white/40">Last Call:</span>{" "}
+                          <span className="text-white/80">
+                            {format(new Date(patient.last_call_date), "MMM d, yyyy 'at' h:mm a")}
+                          </span>
+                        </div>
+                      )}
+                      {patient.last_intent && (
+                        <div className="md:col-span-2">
+                          <span className="text-white/40">Last Intent:</span>{" "}
+                          <span className="text-white/80">{patient.last_intent}</span>
+                        </div>
+                      )}
+                      {patient.notes && (
+                        <div className="md:col-span-2">
+                          <span className="text-white/40">Notes:</span>{" "}
+                          <span className="text-white/80">{patient.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Stats */}
+        {!loading && patients.length > 0 && (
+          <div className="mt-6 p-4 rounded-lg bg-white/5 border border-white/10">
+            <p className="text-sm text-white/60">
+              Showing {filteredPatients.length} of {patients.length} patients
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

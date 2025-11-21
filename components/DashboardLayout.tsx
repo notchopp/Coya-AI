@@ -121,7 +121,7 @@ export default function DashboardLayout({
               <div className="flex items-center gap-2 flex-wrap">
                 <span 
                   key={accentColor}
-                  className="font-bold text-xl sm:text-2xl bg-clip-text text-transparent leading-tight"
+                  className="font-bold text-base sm:text-lg bg-clip-text text-transparent leading-tight"
                   style={{
                     background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                     WebkitBackgroundClip: "text",
@@ -371,7 +371,7 @@ function SidebarContent({
               <div className="flex items-center gap-2 flex-wrap">
                 <span 
                   key={accentColor}
-                  className="font-bold text-2xl sm:text-3xl bg-clip-text text-transparent leading-tight"
+                  className="font-bold text-lg sm:text-xl bg-clip-text text-transparent leading-tight"
                   style={{
                     background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                     WebkitBackgroundClip: "text",
@@ -397,7 +397,7 @@ function SidebarContent({
                 initial={showPremium ? { opacity: 0 } : false}
                 animate={showPremium ? { opacity: 1 } : {}}
                 transition={showPremium ? { delay: 0.5 } : {}}
-                className="text-sm font-medium bg-clip-text text-transparent"
+                className="text-xs font-medium bg-clip-text text-transparent"
                 style={{
                   background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                   WebkitBackgroundClip: "text",
