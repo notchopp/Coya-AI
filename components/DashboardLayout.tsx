@@ -29,6 +29,7 @@ import {
   BarChart3,
   Building2,
   GraduationCap,
+  Users,
 } from "lucide-react";
 import { showTutorial } from "@/components/WelcomeOnboarding";
 
@@ -37,6 +38,7 @@ const navItems = [
   { href: "/calls", label: "Live Calls", icon: Phone },
   { href: "/logs", label: "Call Logs", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/patients", label: "Patients", icon: Users },
   { href: "/programs", label: "Programs", icon: Building2, adminOnly: true },
   { href: "/flowchart", label: "Flowchart", icon: GitBranch, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
