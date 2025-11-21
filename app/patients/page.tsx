@@ -358,8 +358,9 @@ export default function PatientsPage() {
       }
 
       setLoading(true);
-      console.log("🔍 Loading patients for business_id:", effectiveBusinessId);
+      console.log("🔍 Loading ALL patients for business_id:", effectiveBusinessId);
 
+      // Load ALL patients for this business (not filtered by program)
       const { data: patientsData, error: patientsError } = await (supabase as any)
         .from("patients")
         .select("*")

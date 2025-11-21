@@ -39,7 +39,7 @@ const navItems = [
   { href: "/logs", label: "Call Logs", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/patients", label: "Patients", icon: Users },
-  { href: "/programs", label: "Programs", icon: Building2, adminOnly: true },
+  { href: "/programs", label: "Programs", icon: Building2 },
   { href: "/flowchart", label: "Flowchart", icon: GitBranch, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -529,8 +529,8 @@ function SidebarContent({
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-          // Hide admin-only items from non-admins
-          if (item.adminOnly && !isAdmin) {
+          // Hide admin-only items from non-admins (if adminOnly property exists)
+          if ((item as any).adminOnly && !isAdmin) {
             return null;
           }
           return (
