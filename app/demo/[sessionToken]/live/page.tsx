@@ -4,8 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Phone, Clock, Calendar, MessageSquare, Loader2, ArrowLeft, FileText, CheckCircle, X, Bot, UserCircle } from "lucide-react";
+import { Phone, Clock, Calendar, MessageSquare, Loader2, ArrowLeft, FileText, CheckCircle, X, Bot, UserCircle, Users, Info } from "lucide-react";
 import CallDetailsModal from "@/components/CallDetailsModal";
+import { format } from "date-fns";
 
 type Call = {
   id: string;
@@ -46,6 +47,8 @@ export default function DemoLive() {
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<Message[]>([]);
   const [showCallDetails, setShowCallDetails] = useState(false);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"calls" | "patients">("calls");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   // Find active/live call
@@ -103,6 +106,50 @@ export default function DemoLive() {
 
     return () => clearInterval(timer);
   }, [remainingSeconds, router]);
+
+  // Load patients
+  useEffect(() => {
+    if (!business?.id) return;
+
+    const supabase = getSupabaseClient();
+    
+    async function loadPatients() {
+      const { data: patientsData } = await (supabase as any)
+        .from("patients")
+        .select("*")
+        .eq("business_id", business.id)
+        .order("last_call_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (patientsData) {
+        setPatients(patientsData || []);
+      }
+    }
+
+    loadPatients();
+    
+    // Subscribe to patient updates
+    const patientsChannel = supabase
+      .channel(`demo-patients-${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "patients",
+          filter: `business_id=eq.${business.id}`,
+        },
+        () => {
+          loadPatients();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(patientsChannel);
+    };
+  }, [business?.id]);
 
   // Load calls and bookings in real-time
   useEffect(() => {
@@ -389,38 +436,81 @@ export default function DemoLive() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 p-6 rounded-xl bg-black border border-yellow-500/30"
         >
-          <div className="flex items-center gap-4">
-            <Phone className="h-8 w-8 text-yellow-500" />
-            <div>
+          <div className="flex items-start gap-4">
+            <Phone className="h-8 w-8 text-yellow-500 flex-shrink-0 mt-1" />
+            <div className="flex-1">
               <p className="text-sm text-white/60 mb-1">Call This Number</p>
-              <p className="text-3xl font-bold">+1 (215) 986 2752</p>
-              <p className="text-sm text-white/60 mt-1">Experience your AI receptionist live</p>
+              <p className="text-3xl font-bold mb-2">+1 (215) 986 2752</p>
+              <p className="text-sm text-white/60 mb-3">Experience your AI receptionist live</p>
+              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <p className="text-sm text-yellow-400 font-medium mb-1">💡 Pro Tip: Call Multiple Times</p>
+                <p className="text-xs text-white/70">
+                  Call again with the same number to see how the AI remembers your patient context, 
+                  preferences, and history. This is what your customers will experience!
+                </p>
+              </div>
             </div>
           </div>
         </motion.div>
 
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 mb-6 border-b border-white/10">
+          <button
+            onClick={() => setActiveTab("calls")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "calls"
+                ? "text-yellow-500 border-b-2 border-yellow-500"
+                : "text-white/60 hover:text-white/80"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4 inline-block mr-2" />
+            Call Log
+          </button>
+          <button
+            onClick={() => setActiveTab("patients")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "patients"
+                ? "text-yellow-500 border-b-2 border-yellow-500"
+                : "text-white/60 hover:text-white/80"
+            }`}
+          >
+            <Users className="h-4 w-4 inline-block mr-2" />
+            Patients
+          </button>
+        </div>
+
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Call Log - Main Focus */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Call Log */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-yellow-500" />
-                  <h2 className="text-xl font-bold">Call Log</h2>
-                  {liveCall && (
-                    <motion.div
-                      animate={{ opacity: [0.6, 1, 0.6] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
-                    >
-                      <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                      <span className="text-xs font-medium text-yellow-500">Live</span>
-                    </motion.div>
-                  )}
+        {activeTab === "calls" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Call Log - Main Focus */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Call Log */}
+              <div>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="h-5 w-5 text-yellow-500" />
+                      <h2 className="text-xl font-bold">Call Log</h2>
+                      {liveCall && (
+                        <motion.div
+                          animate={{ opacity: [0.6, 1, 0.6] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                        >
+                          <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                          <span className="text-xs font-medium text-yellow-500">Live</span>
+                        </motion.div>
+                      )}
+                    </div>
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+                      <Info className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-white/60">
+                        This is your call log in the real dashboard. Every call is automatically logged with 
+                        patient information, intent detection, and AI-generated summaries. Click any call to see full details.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
               <div className="space-y-3">
                 {calls.length === 0 ? (
                   <div className="p-8 rounded-xl bg-black border border-white/10 text-center">
@@ -500,17 +590,28 @@ export default function DemoLive() {
                 animate={{ opacity: 1, y: 0 }}
                 className="p-6 rounded-xl bg-black border border-yellow-500/30"
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-yellow-500" />
-                  <h2 className="text-xl font-bold">Live Transcript</h2>
-                  <motion.div
-                    animate={{ opacity: [0.6, 1, 0.6] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
-                  >
-                    <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                    <span className="text-xs font-medium text-yellow-500">Live</span>
-                  </motion.div>
+                <div className="flex items-start gap-2 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-5 w-5 text-yellow-500" />
+                      <h2 className="text-xl font-bold">Live Transcript</h2>
+                      <motion.div
+                        animate={{ opacity: [0.6, 1, 0.6] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                      >
+                        <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                        <span className="text-xs font-medium text-yellow-500">Live</span>
+                      </motion.div>
+                    </div>
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+                      <Info className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-white/60">
+                        Watch conversations happen in real-time. Transcripts update automatically as the AI 
+                        and caller speak. This helps you monitor quality and review interactions.
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <div className="p-4 rounded-lg bg-black/50 border border-white/10 h-[400px] overflow-y-auto">
                   {transcriptMessages.length > 0 ? (
@@ -573,9 +674,20 @@ export default function DemoLive() {
 
             {/* Bookings */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-xl font-bold">Bookings</h2>
+              <div className="flex items-start gap-2 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-5 w-5 text-yellow-500" />
+                    <h2 className="text-xl font-bold">Bookings</h2>
+                  </div>
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Info className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-white/60">
+                      Appointments booked during calls appear here automatically. In your real dashboard, 
+                      these sync with your calendar system.
+                    </p>
+                  </div>
+                </div>
               </div>
               <div className="space-y-3 max-h-[300px] overflow-y-auto">
                 {bookings.length === 0 ? (
@@ -607,6 +719,95 @@ export default function DemoLive() {
             </div>
           </div>
         </div>
+        ) : (
+          /* Patients Tab */
+          <div className="space-y-6">
+            <div className="flex items-start gap-2 mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-5 w-5 text-yellow-500" />
+                  <h2 className="text-xl font-bold">Recent Patients</h2>
+                </div>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <Info className="h-4 w-4 text-white/40 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-white/60">
+                    Your patient database grows automatically with each call. The AI remembers patient history, 
+                    preferences, and past treatments. Call multiple times with the same number to see patient context build up!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {patients.length === 0 ? (
+                <div className="col-span-full p-8 rounded-xl bg-black border border-white/10 text-center">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-white/40" />
+                  <p className="text-white/60 mb-2">No patients yet</p>
+                  <p className="text-sm text-white/40">Call the demo number to create your first patient record!</p>
+                </div>
+              ) : (
+                patients.map((patient) => (
+                  <motion.div
+                    key={patient.patient_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 rounded-xl bg-white/5 border border-white/10 hover:border-opacity-30 transition-all hover:bg-white/10"
+                    style={{ borderColor: `rgba(234, 179, 8, 0.2)` }}
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div
+                        className="h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
+                        style={{
+                          backgroundColor: `rgba(234, 179, 8, 0.2)`,
+                          color: "#eab308",
+                        }}
+                      >
+                        {patient.patient_name?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-white truncate">
+                          {patient.patient_name || "Unknown Patient"}
+                        </h3>
+                        {patient.phone && (
+                          <p className="text-xs text-white/60 mt-1">{patient.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                      {patient.last_call_date && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-white/40" />
+                          <span className="text-white/60 text-xs">
+                            Last call: {format(new Date(patient.last_call_date), "MMM d, yyyy 'at' h:mm a")}
+                          </span>
+                        </div>
+                      )}
+                      {patient.last_treatment && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-white/40" />
+                          <span className="text-white/60 text-xs">Last: {patient.last_treatment}</span>
+                        </div>
+                      )}
+                      {patient.last_intent && (
+                        <div className="mt-2 p-2 rounded bg-white/5">
+                          <span className="text-xs text-white/50">Intent: </span>
+                          <span className="text-xs text-white/80">{patient.last_intent}</span>
+                        </div>
+                      )}
+                      {patient.total_visits !== null && patient.total_visits !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <span className="text-xs text-white/50">Total Visits: </span>
+                          <span className="text-xs text-white/80 font-semibold">{patient.total_visits}</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Call Details Modal */}

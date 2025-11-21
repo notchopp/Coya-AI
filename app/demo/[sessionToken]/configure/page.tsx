@@ -38,6 +38,9 @@ export default function DemoConfigure() {
     name: "",
     categories: [] as Category[],
     hours: DAYS_OF_WEEK.map(day => ({ day, hours: "9:00 AM - 5:00 PM", closed: false })),
+    preCareInstructions: "",
+    afterCareInstructions: "",
+    faqs: [] as { id: string; question: string; answer: string }[],
   });
 
   const addCategory = () => {
@@ -91,6 +94,31 @@ export default function DemoConfigure() {
     setFormData({ ...formData, categories: updated });
   };
 
+  const addFAQ = () => {
+    const newFAQ = {
+      id: `faq_${Date.now()}`,
+      question: "",
+      answer: "",
+    };
+    setFormData({
+      ...formData,
+      faqs: [...formData.faqs, newFAQ],
+    });
+  };
+
+  const removeFAQ = (index: number) => {
+    setFormData({
+      ...formData,
+      faqs: formData.faqs.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateFAQ = (index: number, field: "question" | "answer", value: string) => {
+    const updated = [...formData.faqs];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormData({ ...formData, faqs: updated });
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert("Please enter a business name");
@@ -110,6 +138,9 @@ export default function DemoConfigure() {
             acc[day.day] = day.closed ? "Closed" : day.hours;
             return acc;
           }, {} as Record<string, string>),
+          pre_care_instructions: formData.preCareInstructions,
+          after_care_instructions: formData.afterCareInstructions,
+          faqs: formData.faqs,
         }),
       });
 
@@ -255,6 +286,78 @@ export default function DemoConfigure() {
                     />
                     Closed
                   </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pre-Care Instructions */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Pre-Care Instructions</label>
+            <p className="text-xs text-white/60 mb-2">Instructions patients should follow before their appointment</p>
+            <textarea
+              value={formData.preCareInstructions}
+              onChange={(e) => setFormData({ ...formData, preCareInstructions: e.target.value })}
+              rows={4}
+              className="w-full px-4 py-3 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 resize-none"
+              placeholder="e.g., Avoid sun exposure 24 hours before treatment, arrive with clean skin..."
+            />
+          </div>
+
+          {/* After-Care Instructions */}
+          <div>
+            <label className="block text-sm font-medium mb-2">After-Care Instructions</label>
+            <p className="text-xs text-white/60 mb-2">Instructions patients should follow after their appointment</p>
+            <textarea
+              value={formData.afterCareInstructions}
+              onChange={(e) => setFormData({ ...formData, afterCareInstructions: e.target.value })}
+              rows={4}
+              className="w-full px-4 py-3 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 resize-none"
+              placeholder="e.g., Avoid touching the treated area, apply ice if needed, avoid makeup for 24 hours..."
+            />
+          </div>
+
+          {/* FAQs */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <label className="block text-sm font-medium">Frequently Asked Questions</label>
+                <p className="text-xs text-white/60 mt-1">Common questions your AI receptionist can answer</p>
+              </div>
+              <button
+                onClick={addFAQ}
+                className="px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center gap-2 text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add FAQ
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {formData.faqs.map((faq, index) => (
+                <div key={faq.id} className="p-4 rounded-lg bg-black border border-white/10">
+                  <div className="flex items-start gap-2 mb-3">
+                    <input
+                      type="text"
+                      value={faq.question}
+                      onChange={(e) => updateFAQ(index, "question", e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50"
+                      placeholder="Question"
+                    />
+                    <button
+                      onClick={() => removeFAQ(index)}
+                      className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <textarea
+                    value={faq.answer}
+                    onChange={(e) => updateFAQ(index, "answer", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white text-sm focus:outline-none focus:border-yellow-500/50 resize-none"
+                    placeholder="Answer"
+                  />
                 </div>
               ))}
             </div>
