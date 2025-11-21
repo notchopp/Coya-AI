@@ -112,12 +112,16 @@ export async function GET(request: NextRequest) {
       token_expires_at: tokenExpiresAt.toISOString(),
       scope,
       email,
+      provider: "google", // Set provider to google
+      is_active: true,
+      sync_status: "pending",
     };
 
+    // Use the unique constraint: business_id, program_id, provider, calendar_id
     const { error: dbError } = await (supabaseAdmin as any)
       .from("calendar_connections")
       .upsert(connectionData, {
-        onConflict: "business_id,program_id,calendar_id",
+        onConflict: "business_id,program_id,provider,calendar_id",
         ignoreDuplicates: false,
       });
 
