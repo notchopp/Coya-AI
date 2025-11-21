@@ -45,3 +45,4 @@ CREATE INDEX IF NOT EXISTS idx_users_owner_onboarding
   WHERE role = 'owner' AND owner_onboarding_completed = false;
 
 
+

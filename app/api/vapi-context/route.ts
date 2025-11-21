@@ -50,6 +50,20 @@ export async function POST(request: NextRequest) {
     // Extract extension and program_id
     const extension = body.extension || body.arguments?.extension || null;
     const programId = body.program_id || body.programId || body.arguments?.program_id || body.arguments?.programId || null;
+    
+    // Extract from_number (caller's phone number) for patient lookup
+    // VAPI variables: {{call.customer.number}} or {{customer.number}}
+    const fromNumber = body.from_number || 
+                      body.fromNumber || 
+                      body.caller_number ||
+                      body.customer?.number ||
+                      body.call?.customer?.number ||
+                      body.arguments?.from_number ||
+                      body.arguments?.fromNumber ||
+                      body.arguments?.caller_number ||
+                      body.arguments?.customer?.number ||
+                      body.arguments?.call?.customer?.number ||
+                      null;
 
     // Clean and trim the phone number (remove newlines, whitespace, etc.)
     if (toNumber && typeof toNumber === 'string') {
@@ -412,6 +426,56 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Look up patient context if caller's number is provided
+    let patientContext: any = null;
+    if (fromNumber && business) {
+      try {
+        // Normalize phone number for lookup
+        const normalizedPhone = fromNumber.replace(/[^\d+]/g, '');
+        const phoneFormats = [
+          fromNumber,
+          normalizedPhone,
+          normalizedPhone.startsWith('1') ? `+${normalizedPhone}` : `+1${normalizedPhone}`,
+          normalizedPhone.startsWith('1') ? normalizedPhone.substring(1) : normalizedPhone,
+        ];
+
+        // Try to find patient by phone number
+        for (const format of phoneFormats) {
+          const { data: patient } = await supabaseAdmin
+            .from('patients')
+            .select(`
+              patient_id,
+              patient_name,
+              phone,
+              last_visit,
+              last_treatment,
+              last_intent,
+              notes,
+              last_call_date
+            `)
+            .eq('business_id', business.id)
+            .eq('phone', format)
+            .maybeSingle();
+          
+          if (patient) {
+            patientContext = {
+              name: patient.patient_name,
+              last_visit: patient.last_visit, // date of last booked appointment
+              last_treatment: patient.last_treatment, // service from last booking
+              last_intent: patient.last_intent, // what they asked about last time (if no booking)
+              notes: patient.notes,
+              last_call_date: patient.last_call_date,
+            };
+            console.log("✅ Found patient context for caller:", fromNumber);
+            break;
+          }
+        }
+      } catch (patientError) {
+        // Don't fail context lookup if patient lookup fails
+        console.warn("⚠️ Patient lookup failed (non-critical):", patientError);
+      }
+    }
+
     // Build structured context with separate business and program sections
     // This makes it easier for AI to understand what's business-level vs program-level
     // and construct dynamic responses like "you reached outpatient therapy for allure clinic"
@@ -504,6 +568,11 @@ export async function POST(request: NextRequest) {
       context.extension = program.extension;
       if (program.description) context.program_description = program.description;
       if (program.to_number) context.program_phone_number = program.to_number;
+    }
+
+    // Add patient context if found
+    if (patientContext) {
+      context.patient = patientContext;
     }
 
     const duration = Date.now() - startTime;

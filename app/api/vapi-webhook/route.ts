@@ -1082,7 +1082,98 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 1️⃣6️⃣ Return success response
+    // 1️⃣6️⃣ Create/Update Patient Record
+    // Auto-create or update patient from call data
+    if (phone && business) {
+      try {
+        // Normalize phone number for lookup
+        const normalizedPhone = phone.replace(/[^\d+]/g, '');
+        const phoneFormats = [
+          phone,
+          normalizedPhone,
+          normalizedPhone.startsWith('1') ? `+${normalizedPhone}` : `+1${normalizedPhone}`,
+          normalizedPhone.startsWith('1') ? normalizedPhone.substring(1) : normalizedPhone,
+        ];
+
+        // Find existing patient by phone
+        let existingPatient: any = null;
+        for (const format of phoneFormats) {
+          const { data } = await supabaseAdmin
+            .from('patients')
+            .select('patient_id')
+            .eq('business_id', business.id)
+            .eq('phone', format)
+            .maybeSingle();
+          
+          if (data) {
+            existingPatient = data;
+            break;
+          }
+        }
+
+        const updateData: any = {
+          phone: phone,
+          patient_name: patientName || null,
+          last_intent: intent || null,
+          last_call_date: message.startedAt ? new Date(message.startedAt).toISOString() : new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // If they booked an appointment, update last_visit and last_treatment
+        if (schedule && schedule.start) {
+          try {
+            const appointmentDate = new Date(schedule.start);
+            updateData.last_visit = appointmentDate.toISOString().split('T')[0]; // Store as date only
+            updateData.last_treatment = schedule.service || schedule.summary || null;
+          } catch (e) {
+            console.warn("⚠️ Error parsing schedule date:", e);
+          }
+        }
+        // If no booking, last_visit and last_treatment stay as-is (from previous booking)
+        // But we still update last_intent and last_call_date
+
+        if (existingPatient) {
+          // Update existing patient
+          const { error: updateError } = await supabaseAdmin
+            .from('patients')
+            .update(updateData)
+            .eq('patient_id', existingPatient.patient_id);
+          
+          if (updateError) {
+            console.warn("⚠️ Error updating patient:", updateError);
+          } else {
+            console.log("✅ Updated patient record:", existingPatient.patient_id);
+          }
+        } else {
+          // Create new patient
+          const nameParts = (patientName || '').split(' ');
+          const { error: insertError } = await supabaseAdmin
+            .from('patients')
+            .insert({
+              business_id: business.id,
+              phone: phone,
+              patient_name: patientName,
+              email: email || null,
+              last_visit: schedule?.start ? new Date(schedule.start).toISOString().split('T')[0] : null,
+              last_treatment: schedule?.service || schedule?.summary || null,
+              last_intent: intent || null,
+              last_call_date: message.startedAt ? new Date(message.startedAt).toISOString() : new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            });
+          
+          if (insertError) {
+            console.warn("⚠️ Error creating patient:", insertError);
+          } else {
+            console.log("✅ Created new patient record for:", phone);
+          }
+        }
+      } catch (patientError) {
+        // Don't fail the webhook if patient update fails
+        console.warn("⚠️ Patient update failed (non-critical):", patientError);
+      }
+    }
+
+    // 1️⃣7️⃣ Return success response
     const response: any = {
       success: true,
       call_id: callId,
