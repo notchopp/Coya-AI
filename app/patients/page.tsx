@@ -325,26 +325,19 @@ export default function LiveCallsPage() {
   const [programs, setPrograms] = useState<Array<{ id: string; name: string }>>([]);
   const [callTurns, setCallTurns] = useState<Record<string, CallTurn>>({}); // Store one turn record per call_id
   const [connected, setConnected] = useState<boolean>(false);
-  const [mounted, setMounted] = useState(false);
   const [endedCallId, setEndedCallId] = useState<string | null>(null);
   const [hasLoadedCalls, setHasLoadedCalls] = useState(false); // Track if we've loaded calls at least once
   const [isAnonymized, setIsAnonymized] = useState(false);
 
   const effectiveBusinessId = useMemo(() => {
-    if (mounted && typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       return sessionStorage.getItem("business_id") || undefined;
     }
     return undefined;
-  }, [mounted]);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
-    let isMounted = true;
+    if (typeof window === "undefined") return;
 
     async function loadActiveCalls() {
       if (!effectiveBusinessId) {
@@ -396,8 +389,6 @@ export default function LiveCallsPage() {
       
       const { data: callsData, error: callsError } = await callsQuery
         .order("started_at", { ascending: false });
-
-      if (!isMounted) return;
       if (callsError) {
         console.error("❌ Error loading calls:", callsError);
         return;
@@ -473,4 +464,24 @@ export default function LiveCallsPage() {
             const matchingCall = activeCalls.find((call: any) => {
               return call.call_id && turn.call_id && call.call_id === turn.call_id;
             });
-            
+            if (matchingCall && turn.call_id) {
+              turnsByCallId[turn.call_id] = turn;
+            }
+          });
+          
+          setCallTurns(turnsByCallId);
+        }
+      }
+    }
+    
+    loadActiveCalls();
+  }, [effectiveBusinessId, isAdmin, programId, supabase]);
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Live Calls</h1>
+        <p className="text-gray-600">Active calls will appear here.</p>
+      </div>
+    </div>
+  );
+}

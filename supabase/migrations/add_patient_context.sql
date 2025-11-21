@@ -17,3 +17,5 @@ ON public.patients(business_id);
 COMMENT ON COLUMN public.patients.last_intent IS 'Last intent from call (what they asked about if no booking)';
 COMMENT ON COLUMN public.patients.last_call_date IS 'Timestamp of last call from this patient';
 
+
+

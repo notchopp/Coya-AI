@@ -52,20 +52,18 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
   const [connected, setConnected] = useState<boolean>(false);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [isAnonymized, setIsAnonymized] = useState(false);
   const [userProgramId, setUserProgramId] = useState<string | null>(null);
   const NO_PROGRAM_KEY = "__NO_PROGRAM__";
 
   // Get business_id from props or sessionStorage for multi-tenant
-  // Use mounted state to avoid hydration mismatch
   const effectiveBusinessId = useMemo(() => {
     if (businessId) return businessId;
-    if (mounted && typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       return sessionStorage.getItem("business_id") || undefined;
     }
     return undefined;
-  }, [businessId, mounted]);
+  }, [businessId]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -79,7 +77,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
 
   // Get user's program_id if they have one assigned (for non-admins)
   useEffect(() => {
-    if (!mounted) return;
+    if (typeof window === "undefined") return;
     
     async function loadUserProgramId() {
       if (isAdmin) {
@@ -103,15 +101,10 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
     }
     
     loadUserProgramId();
-  }, [mounted, supabase, isAdmin]);
+  }, [supabase, isAdmin]);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Don't run until mounted to avoid hydration issues
-    if (!mounted) return;
+    if (typeof window === "undefined") return;
 
     let isMounted = true;
 
@@ -132,7 +125,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
       // - Admins without selected program see all calls
       const filterProgramId = !isAdmin ? (userProgramId || programId) : null;
       
-      let callsQuery = supabase
+      const callsQuery = supabase
         .from("calls")
         .select("id,business_id,call_id,patient_id,status,phone,email,patient_name,last_summary,last_intent,success,started_at,ended_at,transcript,escalate,upsell,schedule,context,total_turns,program_id")
         .eq("business_id", effectiveBusinessId);
@@ -345,7 +338,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
         supabase.removeChannel(channel);
       });
     };
-  }, [supabase, effectiveBusinessId, mounted, userProgramId, programId, isAdmin, hasLoadedPrograms]);
+  }, [supabase, effectiveBusinessId, userProgramId, programId, isAdmin, hasLoadedPrograms]);
 
   function handleCallClick(call: Call) {
     setSelectedCall(call);

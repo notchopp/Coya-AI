@@ -10,28 +10,24 @@ interface AccentColorContextType {
 const AccentColorContext = createContext<AccentColorContextType | undefined>(undefined);
 
 export function AccentColorProvider({ children }: { children: ReactNode }) {
-  const [accentColor, setAccentColorState] = useState("#eab308"); // Default gold/yellow
+  const [accentColor, setAccentColorState] = useState(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("accentColor");
+      return saved || "#eab308";
+    }
+    return "#eab308"; // Default gold/yellow
+  });
 
   useEffect(() => {
-    // Load saved color from localStorage
-    const saved = localStorage.getItem("accentColor");
-    if (saved) {
-      setAccentColorState(saved);
-    }
-  }, []);
+    // Update CSS variable when accentColor changes
+    document.documentElement.style.setProperty("--accent-color", accentColor);
+  }, [accentColor]);
 
   const setAccentColor = (color: string) => {
     setAccentColorState(color);
     localStorage.setItem("accentColor", color);
-    
-    // Update CSS custom property
-    document.documentElement.style.setProperty("--accent-color", color);
   };
-
-  // Set initial CSS variable
-  useEffect(() => {
-    document.documentElement.style.setProperty("--accent-color", accentColor);
-  }, [accentColor]);
 
   return (
     <AccentColorContext.Provider value={{ accentColor, setAccentColor }}>
@@ -47,6 +43,8 @@ export function useAccentColor() {
   }
   return context;
 }
+
+
 
 
 

@@ -1197,7 +1197,7 @@ export default function ProgramsPage() {
                                       </div>
                                     </div>
                                     <p className="text-xs text-white/60">
-                                      This program's calendar is connected. The AI can schedule appointments for this program.
+                                      This program&apos;s calendar is connected. The AI can schedule appointments for this program.
                                     </p>
                                   </div>
                                 ) : (

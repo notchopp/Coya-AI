@@ -7,25 +7,19 @@ import { useState, useEffect } from "react";
  * Toggle premium animations and effects
  */
 export function usePremiumMode() {
-  const [isPremium, setIsPremium] = useState(false);
-  const [isLocalhost, setIsLocalhost] = useState(false);
-
-  useEffect(() => {
-    // Check if running on localhost
-    const isLocal = 
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-       window.location.hostname === "127.0.0.1" ||
-       window.location.hostname.includes("localhost"));
-
-    setIsLocalhost(isLocal);
-
-    // Load premium mode preference from localStorage (available everywhere now)
+  const [isPremium, setIsPremium] = useState(() => {
+    if (typeof window === "undefined") return false;
     const saved = localStorage.getItem("premiumMode");
-    if (saved === "true") {
-      setIsPremium(true);
-    }
-  }, []);
+    return saved === "true";
+  });
+  const [isLocalhost] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.includes("localhost")
+    );
+  });
 
   const togglePremium = () => {
     // Allow toggling everywhere, not just localhost

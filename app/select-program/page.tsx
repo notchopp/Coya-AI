@@ -85,7 +85,7 @@ export default function SelectProgramPage() {
           <Building2 className="h-16 w-16 mx-auto mb-4 text-white/40" />
           <h1 className="text-2xl font-bold text-white mb-2">No Programs Found</h1>
           <p className="text-white/60 mb-6">
-            This business doesn't have any programs set up yet.
+            This business doesn&apos;t have any programs set up yet.
           </p>
           <button
             onClick={() => router.push("/")}

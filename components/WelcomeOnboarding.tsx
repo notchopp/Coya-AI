@@ -332,9 +332,9 @@ export default function WelcomeOnboarding() {
                   </p>
                   <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 mt-6">
                     <p className="text-sm text-yellow-400/90">
-                      <strong>Beta Note:</strong> You're part of our beta program! We're gathering data 
-                      to improve the AI and make it even better. This isn't unfinished software — 
-                      it's a working product that gets smarter with every call.
+                      <strong>Beta Note:</strong> You&apos;re part of our beta program! We&apos;re gathering data 
+                      to improve the AI and make it even better. This isn&apos;t unfinished software — 
+                      it&apos;s a working product that gets smarter with every call.
                     </p>
                   </div>
                 </motion.div>

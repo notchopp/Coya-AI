@@ -10,18 +10,20 @@ type Props = {
 
 export function AnonymizationToggle({ onToggle }: Props) {
   const { accentColor } = useAccentColor();
-  const [isAnonymized, setIsAnonymized] = useState(false);
+  const [isAnonymized, setIsAnonymized] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const saved = sessionStorage.getItem("anonymization_enabled");
+    return saved === "true";
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Load from sessionStorage only after mount (prevents hydration mismatch)
-    const saved = sessionStorage.getItem("anonymization_enabled");
-    if (saved === "true") {
-      setIsAnonymized(true);
+    // Call onToggle if anonymization was already enabled
+    if (isAnonymized) {
       onToggle?.(true);
     }
-  }, [onToggle]);
+  }, [isAnonymized, onToggle]);
 
   const handleToggle = () => {
     const newValue = !isAnonymized;

@@ -570,7 +570,7 @@ function CreateBusinessModal({
               placeholder="+1234567890"
             />
             <p className="text-xs text-white/40 mt-1">
-              This is the phone number that will route to this business's AI receptionist
+              This is the phone number that will route to this business&apos;s AI receptionist
             </p>
           </div>
 

@@ -254,7 +254,7 @@ export default function SettingsPage() {
 
   // Add service even without categories (creates "Uncategorized" category)
   function addServiceWithoutCategory() {
-    let updated = [...formData.categories];
+    const updated = [...formData.categories];
     
     // Find or create "Uncategorized" category
     let uncategorizedIndex = updated.findIndex(cat => cat.name.toLowerCase() === "uncategorized");
@@ -1858,7 +1858,7 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-3">
             {formData.staff.length === 0 ? (
-              <p className="text-white/40 text-sm">No staff added yet. Click "Add Staff" to create one.</p>
+              <p className="text-white/40 text-sm">No staff added yet. Click &quot;Add Staff&quot; to create one.</p>
             ) : (
               formData.staff.map((member, index) => (
                 <motion.div
@@ -1977,7 +1977,7 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4">
             {formData.faqs.length === 0 ? (
-              <p className="text-white/40 text-sm">No FAQs added yet. Click "Add FAQ" to create one.</p>
+              <p className="text-white/40 text-sm">No FAQs added yet. Click &quot;Add FAQ&quot; to create one.</p>
             ) : (
               formData.faqs.map((faq, index) => (
                 <motion.div
@@ -2054,7 +2054,7 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4">
             {formData.promos.length === 0 ? (
-              <p className="text-white/40 text-sm">No promotions added yet. Click "Add Promo" to create one.</p>
+              <p className="text-white/40 text-sm">No promotions added yet. Click &quot;Add Promo&quot; to create one.</p>
             ) : (
               formData.promos.map((promo, index) => (
                 <motion.div
@@ -2218,7 +2218,7 @@ export default function SettingsPage() {
                 {!isAdmin && (
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-white/60">
-                      New users will be assigned the "User" role. Only admins can assign admin roles.
+                      New users will be assigned the &quot;User&quot; role. Only admins can assign admin roles.
                     </p>
                   </div>
                 )}
@@ -2269,7 +2269,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-4 p-3 rounded-lg border border-white/10">
                   <p className="text-xs text-white/60">
-                    The user will receive an email invitation to join your team. They'll be able to set their password and access the dashboard.
+                    The user will receive an email invitation to join your team. They&apos;ll be able to set their password and access the dashboard.
                   </p>
                 </div>
               </div>

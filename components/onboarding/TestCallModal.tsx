@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { X, Phone, Bot, UserCircle, Loader2 } from "lucide-react";
+import { X, Bot, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
 
@@ -30,6 +30,45 @@ export function TestCallModal({ callId, businessId, onClose }: TestCallModalProp
   const [duration, setDuration] = useState(0);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const supabase = getSupabaseClient();
+
+  const loadCallTurns = useCallback(async () => {
+    // Load call_turns data
+    const { data: turnsData, error: turnsError } = await (supabase as any)
+      .from("call_turns")
+      .select("transcript_json, total_turns, duration_sec")
+      .eq("call_id", callId)
+      .single();
+
+    if (turnsData && !turnsError) {
+      // Parse transcript_json
+      if (turnsData.transcript_json) {
+        const parsedTurns = Array.isArray(turnsData.transcript_json)
+          ? turnsData.transcript_json
+          : turnsData.transcript_json.turns || [];
+
+        setTurns(parsedTurns);
+      }
+
+      setTotalTurns(turnsData.total_turns || 0);
+      setDuration(turnsData.duration_sec || 0);
+    }
+
+    // Also check call status
+    const { data: callData } = await supabase
+      .from("calls")
+      .select("status, ended_at")
+      .eq("call_id", callId)
+      .single();
+
+    if (callData) {
+      if (callData.status === "ended" || callData.ended_at) {
+        setIsCallActive(false);
+        setCallStatus("ended");
+      } else if (callData.status === "active" || callData.status === "in-progress") {
+        setCallStatus("active");
+      }
+    }
+  }, [callId, supabase]);
 
   // Auto-scroll to bottom when new turns arrive
   useEffect(() => {
@@ -99,46 +138,7 @@ export function TestCallModal({ callId, businessId, onClose }: TestCallModalProp
       callsChannel.unsubscribe();
       clearInterval(pollInterval);
     };
-  }, [callId]);
-
-  const loadCallTurns = async () => {
-    // Load call_turns data
-    const { data: turnsData, error: turnsError } = await (supabase as any)
-      .from("call_turns")
-      .select("transcript_json, total_turns, duration_sec")
-      .eq("call_id", callId)
-      .single();
-
-    if (turnsData && !turnsError) {
-      // Parse transcript_json
-      if (turnsData.transcript_json) {
-        const parsedTurns = Array.isArray(turnsData.transcript_json)
-          ? turnsData.transcript_json
-          : turnsData.transcript_json.turns || [];
-
-        setTurns(parsedTurns);
-      }
-
-      setTotalTurns(turnsData.total_turns || 0);
-      setDuration(turnsData.duration_sec || 0);
-    }
-
-    // Also check call status
-    const { data: callData } = await supabase
-      .from("calls")
-      .select("status, ended_at")
-      .eq("call_id", callId)
-      .single();
-
-    if (callData) {
-      if (callData.status === "ended" || callData.ended_at) {
-        setIsCallActive(false);
-        setCallStatus("ended");
-      } else if (callData.status === "active" || callData.status === "in-progress") {
-        setCallStatus("active");
-      }
-    }
-  };
+  }, [callId, loadCallTurns, supabase]);
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
