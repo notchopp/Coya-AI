@@ -114,8 +114,8 @@ export default function OperationsDashboard() {
                   whileTap={{ scale: 0.98 }}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-white/10 text-white border border-white/20"
-                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10"
+                      ? "bg-black text-white border border-yellow-500/30"
+                      : "bg-black text-white/60 hover:border-yellow-500/30 hover:bg-yellow-500/10 hover:text-white border border-white/10"
                   }`}
                   style={isActive ? {
                     backgroundColor: `${accentColor}20`,
@@ -157,7 +157,7 @@ export default function OperationsDashboard() {
                 <p className="text-white/60 mb-4">Redirecting to Programs Management...</p>
                 <button
                   onClick={() => router.push("/ops/programs")}
-                  className="px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
+                  className="px-6 py-3 rounded-lg bg-black hover:border-yellow-500/30 hover:bg-yellow-500/10 border border-white/10 text-white transition-colors"
                 >
                   Go to Programs
                 </button>

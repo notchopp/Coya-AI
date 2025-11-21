@@ -19,3 +19,4 @@ CREATE INDEX IF NOT EXISTS idx_businesses_onboarding_step
   ON public.businesses USING btree (onboarding_step);
 
 
+

@@ -50,3 +50,4 @@ WITH CHECK (auth.role() = 'service_role');
 
 -- Note: Indexes already exist in schema (call_id, business_id, created_at)
 
+S

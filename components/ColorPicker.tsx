@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAccentColor } from "@/components/AccentColorProvider";
 import { Palette } from "lucide-react";
@@ -24,10 +24,16 @@ export function ColorPicker() {
   const [previewColor, setPreviewColor] = useState(accentColor); // Separate preview color
   const [showPicker, setShowPicker] = useState(false);
 
+  // Sync local state with accentColor when it changes externally
+  useEffect(() => {
+    setCustomColor(accentColor);
+    setPreviewColor(accentColor);
+  }, [accentColor]);
+
   const handleColorChange = (color: string) => {
     setCustomColor(color);
     setPreviewColor(color); // Update preview immediately
-    setAccentColor(color); // Also update the actual color immediately
+    setAccentColor(color); // Also update the actual color immediately - this triggers re-render of all components
   };
 
   return (
@@ -74,8 +80,9 @@ export function ColorPicker() {
         <label className="text-sm text-white/60 mb-2 block">Custom Color</label>
         <div className="flex items-center gap-3">
           <input
+            key={previewColor} // Force re-render when color changes
             type="color"
-            value={customColor}
+            value={previewColor}
             onChange={(e) => handleColorChange(e.target.value)}
             className="w-16 h-16 rounded-lg border-2 border-white/20 cursor-pointer"
             style={{ borderColor: previewColor }}

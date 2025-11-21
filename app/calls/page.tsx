@@ -859,14 +859,14 @@ export default function LiveCallsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-2xl p-6 max-w-md w-full border"
+              className="bg-black rounded-2xl p-6 max-w-md w-full border"
               style={{ borderColor: `${accentColor}4D` }}
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-white">Call Ended</h3>
                 <button
                   onClick={() => setEndedCallId(null)}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-lg hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors"
                 >
                   <X className="h-5 w-5 text-white/60" />
                 </button>
@@ -892,7 +892,7 @@ export default function LiveCallsPage() {
                 </motion.button>
                 <button
                   onClick={() => setEndedCallId(null)}
-                  className="px-4 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 text-white/80 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 text-white/80 transition-colors"
                 >
                   Dismiss
                 </button>
@@ -927,7 +927,7 @@ export default function LiveCallsPage() {
                     <div className="flex items-center gap-2">
                       <Building2 className="h-5 w-5" style={{ color: accentColor }} />
                       <h2 className="text-xl font-bold text-white">{programName}</h2>
-                      <span className="px-2 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-white/60">
+                      <span className="px-2 py-1 rounded-lg text-xs font-medium bg-black border border-white/10 text-white/60">
                         {displayProgramCalls.length} {displayProgramCalls.length === 1 ? "call" : "calls"}
                       </span>
                     </div>
@@ -940,7 +940,7 @@ export default function LiveCallsPage() {
                 );
               })}
               {Object.keys(callsByProgram).length === 0 && hasLoadedCalls && (
-                <div className="p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10">
+                <div className="p-12 text-center text-white/40 rounded-2xl bg-black border border-white/10">
                   No active calls
                 </div>
               )}
@@ -974,7 +974,7 @@ export default function LiveCallsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.1 }}
-        className="rounded-2xl glass-strong border border-white/10 overflow-hidden"
+        className="rounded-2xl bg-black border border-white/10 overflow-hidden"
       >
         {/* Call Header */}
         <div className="p-4 sm:p-6 border-b border-white/10">
@@ -1075,7 +1075,7 @@ export default function LiveCallsPage() {
                     <div className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl ${
                       message.role === "user"
                         ? "bg-blue-500/20 border border-blue-500/30 text-white rounded-br-sm"
-                        : "bg-white/5 border border-white/10 text-white/90 rounded-bl-sm"
+                        : "bg-black border border-white/10 text-white/90 rounded-bl-sm"
                     }`}>
                       <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
                     </div>

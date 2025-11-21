@@ -20,7 +20,8 @@ import {
   Trophy,
   CheckCircle2,
   DollarSign,
-  Users
+  Users,
+  Building2
 } from "lucide-react";
 import { format, startOfWeek, startOfMonth, subMonths, subWeeks } from "date-fns";
 import { useAccentColor } from "@/components/AccentColorProvider";
@@ -266,8 +267,7 @@ export default function Dashboard() {
       }
       
       const { data: allCallsData, error: callsError } = await callsQuery
-        .order("started_at", { ascending: false })
-        .limit(1000);
+        .order("started_at", { ascending: false });
 
       if (callsError) {
         console.error("Error loading calls:", callsError);
@@ -327,7 +327,7 @@ export default function Dashboard() {
       const totalCallsInPeriod = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
         return callDate >= periodStart && callDate <= periodEnd;
-      }).length;
+      });
       
       // Ended calls in period (for handled calls metric)
       const periodCalls = allCalls.filter(c => {
@@ -340,7 +340,7 @@ export default function Dashboard() {
         return callDate >= comparePeriodStart && callDate < comparePeriodEnd && (c.status === "ended" || c.ended_at);
       });
 
-      const totalCallsHandled = totalCallsInPeriod;
+      const totalCallsHandled = totalCallsInPeriod.length;
       const handledCalls = periodCalls.length;
       const missedCalls = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
@@ -349,10 +349,21 @@ export default function Dashboard() {
       }).length;
 
       // Bookings in current period (count ALL calls with schedule, not just ended ones)
-      const bookingsThisPeriod = allCalls.filter(c => {
+      const bookingsThisPeriodArray = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
         return callDate >= periodStart && callDate <= periodEnd && c.schedule !== null;
-      }).length;
+      });
+      const bookingsThisPeriod = bookingsThisPeriodArray.length;
+      
+      // Debug logging
+      console.log(`📊 Period: ${timePeriod}`, {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        totalCallsInPeriod: totalCallsInPeriod.length,
+        bookingsThisPeriod: bookingsThisPeriod,
+        allCallsCount: allCalls.length,
+        bookingsWithSchedule: bookingsThisPeriodArray.map(c => ({ id: c.id, started_at: c.started_at, schedule: c.schedule }))
+      });
       
       const bookingsLastPeriod = allCalls.filter(c => {
         const callDate = new Date(c.started_at);
@@ -939,56 +950,75 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+        className="flex flex-col gap-4"
       >
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col gap-1 mb-2">
+        {/* Top Row: Dashboard Title and User Info */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Dashboard</h1>
-              {businessName && (
-                <span className="text-base sm:text-lg lg:text-xl font-medium text-white/60">— {businessName}</span>
-              )}
-              <span className="beta-badge">Beta</span>
+              <span className="beta-badge" style={{ color: accentColor }}>Beta</span>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap mt-2">
               {program?.name && !isAdmin && (
                 <span className="text-sm sm:text-base font-medium text-white/40">{program.name}</span>
               )}
               {isAdmin && <ProgramSelector />}
             </div>
           </div>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-xs font-medium"
-            style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
-          >
-            #Founders Program
-          </motion.span>
+          {userName && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col items-start sm:items-end gap-1 flex-shrink-0"
+            >
+              <div className="text-white/60 text-base sm:text-lg">
+                Hey, <span className="font-medium" style={{ color: accentColor }}>{userName.split(' ')[0]}</span>
+              </div>
+              {funFact && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-white/50 text-xs sm:text-sm italic max-w-[200px] sm:max-w-none"
+                >
+                  {funFact}
+                </motion.div>
+              )}
+            </motion.div>
+          )}
         </div>
-        {userName && (
+        
+        {/* Center: Business Name - Personalized */}
+        {businessName && (
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col items-start sm:items-end gap-1 flex-shrink-0"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15 }}
+            className="flex justify-center"
           >
-            <div className="text-white/60 text-base sm:text-lg">
-              Hey, <span className="font-medium" style={{ color: accentColor }}>{userName.split(' ')[0]}</span>
-            </div>
-            {funFact && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-white/50 text-xs sm:text-sm italic max-w-[200px] sm:max-w-none"
-              >
-                {funFact}
-              </motion.div>
-            )}
+            <h2 
+              className="text-xl sm:text-2xl lg:text-3xl font-bold"
+              style={{
+                color: accentColor,
+                textShadow: `0 0 20px ${accentColor}80, 0 0 40px ${accentColor}60, 0 0 60px ${accentColor}40`,
+              }}
+            >
+              {businessName}
+            </h2>
           </motion.div>
         )}
+        
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-xs font-medium text-center"
+          style={{ color: `${accentColor}CC`, textShadow: `0 0 6px ${accentColor}66` }}
+        >
+          #Founders Program
+        </motion.span>
       </motion.div>
 
       {/* Error Message */}
@@ -1023,7 +1053,7 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+        className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl bg-black border border-white/10"
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -1042,7 +1072,7 @@ export default function Dashboard() {
           </div>
           
           {/* Time Period Toggle */}
-          <div className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-lg glass border border-white/10">
+          <div className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-lg bg-black border border-white/10">
             {(["daily", "weekly", "monthly"] as const).map((period) => (
               <button
                 key={period}
@@ -1071,7 +1101,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="p-3 sm:p-4 rounded-lg sm:rounded-xl glass border border-white/10"
+            className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-black border border-white/10"
           >
             <div className="text-xs text-white/60 mb-1">Total Calls Handled</div>
             <motion.div 
@@ -1090,7 +1120,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="p-4 rounded-xl glass border border-white/10 relative"
+            className="p-4 rounded-xl bg-black border border-white/10 relative"
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs text-white/60">
@@ -1144,7 +1174,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="p-4 rounded-xl glass border border-white/10"
+            className="p-4 rounded-xl bg-black border border-white/10"
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs text-white/60">Conversion</div>
@@ -1188,7 +1218,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3 }}
-              className="p-4 rounded-xl glass border border-white/10"
+              className="p-4 rounded-xl bg-black border border-white/10"
             >
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign className="h-3 w-3" style={{ color: accentColor }} />
@@ -1214,7 +1244,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="p-4 rounded-xl glass border border-white/10"
+            className="p-4 rounded-xl bg-black border border-white/10"
           >
             <div className="text-xs text-white/60 mb-1">Handled Ratio</div>
             <motion.div 
@@ -1239,7 +1269,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border"
+          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-black border"
           style={{
             borderColor: `${accentColor}4D`,
             background: `linear-gradient(to right, ${accentColor}1A, ${accentColor}33)`,
@@ -1275,7 +1305,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="lg:col-span-2 p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+            className="lg:col-span-2 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-black border border-white/10"
           >
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
               <div 
@@ -1306,7 +1336,7 @@ export default function Dashboard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.1 }}
-                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl glass border flex items-start gap-2 sm:gap-3 ${
+                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl bg-black border flex items-start gap-2 sm:gap-3 ${
                       insight.actionable 
                         ? "border" 
                         : "border-white/10"
@@ -1348,7 +1378,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10"
+          className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-black border border-white/10"
         >
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div 
@@ -1377,7 +1407,7 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
-                  className="p-3 rounded-lg glass border border-white/10"
+                  className="p-3 rounded-lg bg-black border border-white/10"
                 >
                   <div className="flex items-start gap-2">
                     {activity.type === "booking" && (

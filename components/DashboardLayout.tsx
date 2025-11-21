@@ -76,7 +76,7 @@ export default function DashboardLayout({
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 w-[280px] glass-strong border-r lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[280px] bg-black border-r lg:hidden"
               style={{ borderColor: `${accentColor}33` }}
             >
               <SidebarContent pathname={pathname} onNavigate={() => setSidebarOpen(false)} />
@@ -86,14 +86,14 @@ export default function DashboardLayout({
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col border-r glass-strong relative z-10" style={{ borderColor: `${accentColor}33` }}>
+      <aside className="hidden lg:flex w-64 flex-col border-r bg-black relative z-10" style={{ borderColor: `${accentColor}33` }}>
         <SidebarContent pathname={pathname} />
       </aside>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b glass-strong" style={{ borderColor: `${accentColor}33` }}>
+        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-black" style={{ borderColor: `${accentColor}33` }}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -117,18 +117,18 @@ export default function DashboardLayout({
             </motion.div>
             <div className="flex items-center gap-2">
               <span 
-                className="font-semibold text-sm"
+                key={accentColor}
+                className="font-semibold text-sm bg-clip-text text-transparent"
                 style={{
-                  background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
+                  background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
-                  color: "#eab308", // Fallback color for browsers that don't support background-clip
                 }}
               >
                 COYA AI
               </span>
-              <span className="beta-badge">Beta</span>
+              <span className="beta-badge" style={{ color: accentColor }}>Beta</span>
             </div>
           </div>
           <motion.button
@@ -173,7 +173,7 @@ export default function DashboardLayout({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setSidebarOpen(true)}
-          className="lg:hidden fixed bottom-4 left-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
+          className="lg:hidden fixed bottom-4 left-4 z-50 p-4 rounded-full bg-black border shadow-2xl"
           style={{
             borderColor: 'rgba(255, 255, 255, 0.2)',
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -192,7 +192,7 @@ export default function DashboardLayout({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={togglePremium}
-            className="lg:hidden fixed bottom-4 right-4 z-50 p-4 rounded-full glass-strong border shadow-2xl"
+            className="lg:hidden fixed bottom-4 right-4 z-50 p-4 rounded-full bg-black border shadow-2xl"
             style={{
               borderColor: isPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.2)',
               backgroundColor: isPremium ? `${accentColor}33` : 'rgba(255, 255, 255, 0.1)',
@@ -365,34 +365,39 @@ function SidebarContent({
           >
             <div className="flex items-center gap-2">
               <span 
+                key={accentColor}
                 className="font-bold text-lg bg-clip-text text-transparent"
                 style={{
-                  background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
+                  background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
                 }}
               >
                 COYA AI
               </span>
               <motion.span
-                className="beta-badge"
                 initial={showPremium ? { scale: 0 } : false}
                 animate={showPremium ? { scale: 1 } : {}}
                 transition={showPremium ? { type: "spring", delay: 0.4 } : {}}
                 whileHover={showPremium ? { scale: 1.05 } : {}}
+                className="beta-badge"
+                style={{ color: accentColor }}
               >
                 Beta
               </motion.span>
             </div>
             <motion.div
+              key={`live-${accentColor}`}
               initial={showPremium ? { opacity: 0 } : false}
               animate={showPremium ? { opacity: 1 } : {}}
               transition={showPremium ? { delay: 0.5 } : {}}
               className="text-xs bg-clip-text text-transparent mt-0.5"
               style={{
-                background: `linear-gradient(to right, #eab308, #fde047, #eab308)`, // Always golden
+                background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
               }}
             >
               Live Receptionist
@@ -430,7 +435,7 @@ function SidebarContent({
             animate={isPremium ? { opacity: 1, x: 0 } : {}}
             transition={isPremium ? { delay: 0.7 } : {}}
             whileHover={isPremium ? { scale: 1.02, x: 4 } : {}}
-            className="p-2 rounded-lg glass border border-white/10 relative overflow-hidden group"
+            className="p-2 rounded-lg bg-black border border-white/10 relative overflow-hidden group"
           >
             {isPremium && (
               <motion.div
@@ -464,7 +469,7 @@ function SidebarContent({
             whileHover={isPremium ? { scale: 1.02, x: 4 } : {}}
             whileTap={isPremium ? { scale: 0.98 } : {}}
             onClick={togglePeriod}
-            className="w-full p-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors text-left relative group overflow-hidden"
+            className="w-full p-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors text-left relative group overflow-hidden"
           >
             {isPremium && (
               <motion.div
@@ -625,7 +630,7 @@ function SidebarContent({
           whileHover={isPremium ? { scale: 1.02, x: 4 } : {}}
           whileTap={isPremium ? { scale: 0.98 } : {}}
           onClick={() => showTutorial()}
-          className="w-full px-3 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
+          className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
         >
           {isPremium && (
             <motion.div
@@ -654,7 +659,7 @@ function SidebarContent({
           whileHover={{ scale: 1.02, x: 4 }}
           whileTap={{ scale: 0.98 }}
           onClick={togglePremium}
-          className="w-full px-3 py-2 rounded-lg glass border hover:bg-white/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
+          className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
           style={{
             borderColor: showPremium ? `${accentColor}66` : 'rgba(255, 255, 255, 0.1)',
             backgroundColor: showPremium ? `${accentColor}15` : undefined,
@@ -687,7 +692,7 @@ function SidebarContent({
           whileHover={isPremium ? { scale: 1.02, x: 4 } : {}}
           whileTap={isPremium ? { scale: 0.98 } : {}}
           onClick={toggleTheme}
-          className="w-full px-3 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
+          className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-2 text-sm text-white/80 relative overflow-hidden group"
         >
           {isPremium && (
             <motion.div

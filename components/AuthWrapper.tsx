@@ -21,10 +21,11 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   const isSelectProgramPage = pathname === "/select-program";
   const isDemoDashboard = pathname === "/demo-dashboard";
   const isOnboardingPage = pathname.startsWith("/onboarding");
+  const isDemoPage = pathname.startsWith("/demo");
 
   useEffect(() => {
     async function checkAuth() {
-      if (isLoginPage || isSignupPage || isAuthCallback || isDemoDashboard || isOnboardingPage) {
+      if (isLoginPage || isSignupPage || isAuthCallback || isDemoDashboard || isOnboardingPage || isDemoPage) {
         setLoading(false);
         return;
       }
@@ -175,7 +176,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (isLoginPage || isSignupPage || isAuthCallback || isSelectProgramPage || isDemoDashboard || isOnboardingPage) {
+  if (isLoginPage || isSignupPage || isAuthCallback || isSelectProgramPage || isDemoDashboard || isOnboardingPage || isDemoPage) {
     return <>{children}</>;
   }
 
@@ -221,10 +222,14 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
         }`} style={{ borderColor: `${accentColor}33` }}>
           <div className="p-6 border-b border-white/10">
             <div className="flex items-center gap-3 mb-4">
-              <div className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
+              <div className="text-2xl font-bold" style={{ color: accentColor }}>
                 COYA AI
               </div>
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+              <span className="px-2 py-0.5 rounded text-xs font-medium border" style={{ 
+                color: accentColor,
+                backgroundColor: `${accentColor}20`,
+                borderColor: `${accentColor}30`
+              }}>
                 ADMIN
               </span>
             </div>
@@ -256,7 +261,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col border-r glass-strong relative z-10" style={{ borderColor: `${accentColor}33` }}>
+      <aside className="hidden lg:flex w-64 flex-col border-r bg-black relative z-10" style={{ borderColor: `${accentColor}33` }}>
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3 mb-4">
             <div className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
@@ -295,14 +300,14 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b glass-strong" style={{ borderColor: `${accentColor}33` }}>
+        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-black" style={{ borderColor: `${accentColor}33` }}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
             <Menu className="h-5 w-5 text-white" />
           </button>
-          <div className="text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 bg-clip-text text-transparent">
+          <div className="text-lg font-bold" style={{ color: accentColor }}>
             COYA AI ADMIN
           </div>
           <div className="w-9" /> {/* Spacer */}

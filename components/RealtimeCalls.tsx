@@ -409,7 +409,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-white/5 border border-white/10"
+                      className="col-span-full p-12 text-center text-white/40 rounded-2xl bg-black border border-white/10"
                     >
                       No calls yet.
                     </motion.div>
@@ -452,7 +452,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
                             }}
                             whileHover={{ scale: 1.01, y: -2 }}
                             onClick={() => handleCallClick(c)}
-                            className="group cursor-pointer p-5 rounded-2xl glass border border-white/10 hover:bg-white/10"
+                            className="group cursor-pointer p-5 rounded-2xl bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10"
                             style={{
                               borderColor: "rgba(255, 255, 255, 0.1)",
                               transition: "border-color 0.2s ease, background-color 0.2s ease",
@@ -483,7 +483,7 @@ function RealtimeCalls({ businessId, readOnly = false }: Props) {
                                     <PhoneIncoming className="h-5 w-5" style={{ color: accentColor }} />
                                   </div>
                                 ) : (
-                                  <div className="p-2 rounded-xl bg-white/10">
+                                  <div className="p-2 rounded-xl bg-black border border-white/10">
                                     <PhoneOff className="h-5 w-5 text-white/60" />
                                   </div>
                                 )}

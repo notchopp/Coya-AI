@@ -483,10 +483,82 @@ function SignupPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-yellow-950/20 to-black" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-black overflow-hidden">
+      {/* Animated Gold Background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Floating Gold Particles */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={`particle-${i}`}
+            className="absolute rounded-full"
+            style={{
+              width: `${4 + (i % 3) * 2}px`,
+              height: `${4 + (i % 3) * 2}px`,
+              background: `radial-gradient(circle, #fde047, #eab308)`,
+              boxShadow: `0 0 ${8 + (i % 4) * 4}px rgba(234, 179, 8, 0.6)`,
+              left: `${(i * 37) % 100}%`,
+              top: `${(i * 23) % 100}%`,
+            }}
+            animate={{
+              y: [0, -30, 0],
+              x: [0, Math.sin(i) * 20, 0],
+              opacity: [0.3, 0.8, 0.3],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 3 + (i % 3),
+              repeat: Infinity,
+              delay: i * 0.2,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+        
+        {/* Animated Gold Waves */}
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 20% 50%, rgba(234, 179, 8, 0.15) 0%, transparent 50%),
+                         radial-gradient(ellipse at 80% 80%, rgba(253, 224, 71, 0.1) 0%, transparent 50%),
+                         radial-gradient(ellipse at 50% 20%, rgba(234, 179, 8, 0.1) 0%, transparent 50%)`,
+          }}
+          animate={{
+            backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+        
+        {/* Pulsing Gold Orbs */}
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={`orb-${i}`}
+            className="absolute rounded-full blur-3xl"
+            style={{
+              width: `${200 + i * 100}px`,
+              height: `${200 + i * 100}px`,
+              background: `radial-gradient(circle, rgba(234, 179, 8, ${0.2 - i * 0.05}), transparent)`,
+              left: `${20 + i * 30}%`,
+              top: `${30 + i * 20}%`,
+            }}
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.2, 0.4, 0.2],
+            }}
+            transition={{
+              duration: 4 + i,
+              repeat: Infinity,
+              delay: i * 1.3,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
       
-      {/* Logo - Top Left of Background */}
+      {/* Logo - Top Left of Background - Always Yellow/Gold */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -504,7 +576,7 @@ function SignupPageContent() {
             ease: "easeInOut",
           }}
         >
-          <Coyalogo src="/logo.gif" size={50} />
+          <Coyalogo src="/logo.gif" size={50} accentColorOverride="#eab308" />
         </motion.div>
       </motion.div>
       
@@ -514,7 +586,10 @@ function SignupPageContent() {
         transition={{ duration: 0.5 }}
         className="relative w-full max-w-md z-20"
       >
-        <div className="glass-strong rounded-3xl p-12 border border-white/10 shadow-2xl">
+        <div className="rounded-3xl p-12 border border-yellow-500/30 shadow-2xl backdrop-blur-xl" style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(20px)',
+        }}>
           {/* Logo & Branding - Centered */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -527,28 +602,32 @@ function SignupPageContent() {
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                className="text-5xl font-bold text-white"
+                className="text-5xl font-bold bg-clip-text text-transparent"
+                style={{
+                  background: `linear-gradient(to right, #eab308, #fde047, #eab308)`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
               >
-                COYA
+                COYA AI
               </motion.h1>
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-3xl font-semibold text-yellow-400/90"
-              >
-                AI
-              </motion.span>
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
                 className="beta-badge self-start mt-2"
+                style={{ color: "#eab308" }}
               >
                 Beta
               </motion.span>
             </div>
-            <p className="text-white/60 text-sm">
+            <p className="text-sm bg-clip-text text-transparent"
+              style={{
+                background: `linear-gradient(to right, #eab308, #fde047, #eab308)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
               {isFromInvite ? "Welcome! Set Up Your Account" : "Set Up Your Account"}
             </p>
           </motion.div>
@@ -578,7 +657,7 @@ function SignupPageContent() {
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-all"
+                  className="flex-1 px-4 py-2 rounded-lg bg-black border border-white/10 text-white font-semibold hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-all"
                 >
                   Use Different Email
                 </motion.button>
@@ -610,7 +689,8 @@ function SignupPageContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-yellow-500/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all backdrop-blur-sm"
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
                   placeholder="your@email.com"
                   autoComplete="email"
                 />
@@ -665,7 +745,8 @@ function SignupPageContent() {
                   name="signup-email"
                   value={email}
                   disabled
-                  className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white/60 cursor-not-allowed"
+                  className="w-full px-4 py-3 rounded-xl border border-yellow-500/20 text-white/60 cursor-not-allowed backdrop-blur-sm"
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
                 />
               </div>
 
@@ -681,7 +762,8 @@ function SignupPageContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-yellow-500/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all backdrop-blur-sm"
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
@@ -700,7 +782,8 @@ function SignupPageContent() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 rounded-xl glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-yellow-500/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all backdrop-blur-sm"
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />

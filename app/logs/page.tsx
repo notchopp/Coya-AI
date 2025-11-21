@@ -493,7 +493,7 @@ function LogsPageContent() {
             placeholder="Search calls by number, summary, or transcript..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl glass border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all"
             onFocus={(e) => {
               e.currentTarget.style.borderColor = `${accentColor}80`;
               e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -509,10 +509,10 @@ function LogsPageContent() {
             onClick={() => setShowFilter(!showFilter)}
             aria-label={showFilter ? "Close filters" : "Open filters"}
             aria-expanded={showFilter}
-            className={`px-4 py-3 rounded-xl glass border transition-colors flex items-center gap-2 text-white ${
+            className={`px-4 py-3 rounded-xl bg-black border transition-colors flex items-center gap-2 text-white ${
               hasActiveFilters
                 ? "border"
-                : "border-white/10 hover:bg-white/10"
+                : "border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10"
             }`}
             style={hasActiveFilters ? {
               borderColor: `${accentColor}80`,
@@ -541,13 +541,13 @@ function LogsPageContent() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute right-0 top-full mt-2 w-80 p-4 rounded-xl glass-strong border border-white/10 z-50"
+                className="absolute right-0 top-full mt-2 w-80 p-4 rounded-xl bg-black border border-white/10 z-50"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-white">Filters</h3>
                   <button
                     onClick={() => setShowFilter(false)}
-                    className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+                    className="p-1 rounded-lg hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors"
                   >
                     <X className="h-4 w-4 text-white/60" />
                   </button>
@@ -566,7 +566,7 @@ function LogsPageContent() {
                       onChange={(e) =>
                         setFilters({ ...filters, status: e.target.value || null })
                       }
-                      className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:ring-2 transition-all text-sm"
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -597,7 +597,7 @@ function LogsPageContent() {
                           success: e.target.value === "" ? null : e.target.value === "true",
                         })
                       }
-                      className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:ring-2 transition-all text-sm"
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -625,7 +625,7 @@ function LogsPageContent() {
                       onChange={(e) =>
                         setFilters({ ...filters, intent: e.target.value || null })
                       }
-                      className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:ring-2 transition-all text-sm"
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -661,7 +661,7 @@ function LogsPageContent() {
                             },
                           })
                         }
-                        className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:ring-2 transition-all text-sm"
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -685,7 +685,7 @@ function LogsPageContent() {
                             },
                           })
                         }
-                        className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 transition-all text-sm"
+                        className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:ring-2 transition-all text-sm"
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = `${accentColor}80`;
                         e.currentTarget.style.boxShadow = `0 0 0 2px ${accentColor}80`;
@@ -701,7 +701,7 @@ function LogsPageContent() {
                   {hasActiveFilters && (
                     <button
                       onClick={clearFilters}
-                      className="w-full px-3 py-2 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors text-sm text-white/80"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors text-sm text-white/80"
                     >
                       Clear Filters
                     </button>
@@ -714,7 +714,7 @@ function LogsPageContent() {
         <button
           onClick={exportToCSV}
           aria-label="Export call logs to CSV"
-          className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl glass border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
+          className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center justify-center gap-2 text-white min-h-[44px] text-sm sm:text-base"
         >
           <Download className="h-4 w-4" />
           <span className="hidden sm:inline">Export CSV</span>
@@ -753,7 +753,7 @@ function LogsPageContent() {
                 <div className="flex items-center gap-2 mb-4">
                   <Building2 className="h-5 w-5" style={{ color: accentColor }} />
                   <h2 className="text-xl font-bold text-white">{programName}</h2>
-                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-white/60">
+                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-black border border-white/10 text-white/60">
                     {displayProgramLogs.length} {displayProgramLogs.length === 1 ? "call" : "calls"}
                   </span>
                 </div>
@@ -872,7 +872,7 @@ function LogsPageContent() {
                         damping: 25,
                         mass: 0.5
                       }}
-                      className="rounded-2xl glass-strong border border-white/10 overflow-hidden cursor-pointer group"
+                      className="rounded-2xl bg-black border border-white/10 overflow-hidden cursor-pointer group"
                       style={{
                         boxShadow: "0 8px 16px -4px rgba(0, 0, 0, 0.2), 0 4px 8px -2px rgba(0, 0, 0, 0.1)",
                         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
@@ -906,7 +906,7 @@ function LogsPageContent() {
                               ? "bg-emerald-500/20 border-emerald-500/30"
                               : statusColor === "yellow"
                               ? ""
-                              : "bg-white/10 border-white/10"
+                              : "bg-black border-white/10"
                           }`}
                           style={statusColor === "yellow" ? {
                             backgroundColor: `${accentColor}33`,
@@ -978,7 +978,7 @@ function LogsPageContent() {
                               ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                               : statusColor === "yellow"
                               ? ""
-                              : "bg-white/10 text-white/60 border-white/10"
+                              : "bg-black text-white/60 border-white/10"
                           }`}
                           style={statusColor === "yellow" ? {
                             backgroundColor: `${accentColor}33`,

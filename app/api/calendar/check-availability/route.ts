@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { getCalendarProvider, ensureFreshToken, type CalendarConnection } from "@/lib/calendar-providers";
 
 /**
  * Vapi Tool: Check Calendar Availability
- * Checks if a time slot is available in the connected Google Calendar
+ * Checks if a time slot is available in the connected calendar (supports Google, Outlook, Calendly)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +24,8 @@ export async function POST(request: NextRequest) {
     let connectionQuery = (supabaseAdmin as any)
       .from("calendar_connections")
       .select("*")
-      .eq("business_id", business_id);
+      .eq("business_id", business_id)
+      .eq("is_active", true);
 
     if (program_id) {
       connectionQuery = connectionQuery.eq("program_id", program_id);
@@ -32,87 +34,44 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: connectionData, error: connError } = await connectionQuery.maybeSingle();
-    const connection = connectionData as any;
+    const connection = connectionData as CalendarConnection;
 
     if (connError || !connectionData) {
       return NextResponse.json(
-        { error: "No calendar connection found for this business/program" },
+        { error: "No active calendar connection found for this business/program" },
         { status: 404 }
       );
     }
 
-    // Check if token needs refresh
+    // Get provider adapter
+    const adapter = getCalendarProvider(connection.provider);
+
+    // Ensure token is fresh
+    let accessToken = await ensureFreshToken(connection, adapter);
+    
+    // Update connection if token was refreshed
     const expiresAt = new Date(connection.token_expires_at);
     const now = new Date();
-    let accessToken = connection.access_token;
-
     if (expiresAt <= now) {
-      // Refresh token
-      const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: process.env.GOOGLE_CLIENT_ID!,
-          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-          refresh_token: connection.refresh_token,
-          grant_type: "refresh_token",
-        }),
-      });
-
-      if (refreshResponse.ok) {
-        const tokenData = await refreshResponse.json();
-        accessToken = tokenData.access_token;
-        const newExpiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
-
-        // Update stored token
-        await (supabaseAdmin as any)
-          .from("calendar_connections")
-          .update({
-            access_token: accessToken,
-            token_expires_at: newExpiresAt.toISOString(),
-          })
-          .eq("id", connection.id);
-      }
+      const newExpiresAt = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour default
+      await (supabaseAdmin as any)
+        .from("calendar_connections")
+        .update({
+          access_token: accessToken,
+          token_expires_at: newExpiresAt.toISOString(),
+        })
+        .eq("id", connection.id);
+      
+      connection.access_token = accessToken;
     }
 
     // Parse date and time
     const startDateTime = new Date(`${date}T${time}`);
     const endDateTime = new Date(startDateTime.getTime() + duration_minutes * 60000);
 
-    // Format for Google Calendar API (RFC3339)
-    const timeMin = startDateTime.toISOString();
-    const timeMax = endDateTime.toISOString();
-
-    // Check for existing events in this time slot
-    const calendarResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${connection.calendar_id}/events?` +
-      `timeMin=${encodeURIComponent(timeMin)}&` +
-      `timeMax=${encodeURIComponent(timeMax)}&` +
-      `singleEvents=true&` +
-      `orderBy=startTime`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!calendarResponse.ok) {
-      const errorData = await calendarResponse.json();
-      console.error("Google Calendar API error:", errorData);
-      return NextResponse.json(
-        { error: "Failed to check calendar availability", details: errorData.error?.message },
-        { status: 500 }
-      );
-    }
-
-    const calendarData = await calendarResponse.json();
-    const existingEvents = calendarData.items || [];
-
-    // Check if slot is available
-    const isAvailable = existingEvents.length === 0;
+    // Check availability using provider adapter
+    const availability = await adapter.checkAvailability(connection, startDateTime, endDateTime);
+    const isAvailable = availability.available;
 
     // If not available, find next available slots
     let nextAvailableSlots: Array<{ date: string; time: string }> = [];
@@ -130,27 +89,13 @@ export async function POST(request: NextRequest) {
           const slotStart = new Date(`${dateStr}T${timeSlot}`);
           const slotEnd = new Date(slotStart.getTime() + duration_minutes * 60000);
           
-          const slotResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/${connection.calendar_id}/events?` +
-            `timeMin=${encodeURIComponent(slotStart.toISOString())}&` +
-            `timeMax=${encodeURIComponent(slotEnd.toISOString())}&` +
-            `singleEvents=true`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
-
-          if (slotResponse.ok) {
-            const slotData = await slotResponse.json();
-            if ((slotData.items || []).length === 0) {
-              nextAvailableSlots.push({
-                date: dateStr,
-                time: timeSlot,
-              });
-              if (nextAvailableSlots.length >= 3) break;
-            }
+          const slotAvailability = await adapter.checkAvailability(connection, slotStart, slotEnd);
+          if (slotAvailability.available) {
+            nextAvailableSlots.push({
+              date: dateStr,
+              time: timeSlot,
+            });
+            if (nextAvailableSlots.length >= 3) break;
           }
         }
         if (nextAvailableSlots.length >= 3) break;
@@ -165,6 +110,7 @@ export async function POST(request: NextRequest) {
         duration_minutes,
       },
       next_available_slots: nextAvailableSlots,
+      provider: connection.provider,
     });
   } catch (error) {
     console.error("Check availability error:", error);

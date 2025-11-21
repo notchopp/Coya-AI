@@ -74,15 +74,15 @@ export default function OnboardingLayout({
       }
 
       // Get current step from URL pathname
-      let step = 2; // Default to step 2 (Business Setup)
+      let step = 1; // Default to step 1 (Business Setup)
       
-      // Map URL to step number
-      if (pathname.includes("business-setup")) step = 2;
-      else if (pathname.includes("mode-selection")) step = 3;
-      else if (pathname.includes("business-config") || pathname.includes("program-config")) step = 4;
-      else if (pathname.includes("test-call")) step = 5;
-      else if (pathname.includes("tutorial")) step = 6;
-      else if (pathname.includes("go-live")) step = 7;
+      // Map URL to step number (matching OnboardingProgress component)
+      if (pathname.includes("business-setup")) step = 1;
+      else if (pathname.includes("mode-selection")) step = 2;
+      else if (pathname.includes("business-config") || pathname.includes("program-config")) step = 3;
+      else if (pathname.includes("test-call")) step = 4;
+      else if (pathname.includes("tutorial")) step = 5;
+      else if (pathname.includes("go-live")) step = 6;
 
       setCurrentStep(step);
       setLoading(false);
@@ -100,12 +100,12 @@ export default function OnboardingLayout({
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-20 sm:pb-12">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-4 sm:mb-8"
         >
           <OnboardingProgress currentStep={currentStep} />
         </motion.div>
@@ -114,6 +114,7 @@ export default function OnboardingLayout({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="pb-safe"
         >
           {children}
         </motion.div>

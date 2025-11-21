@@ -192,18 +192,16 @@ html {
   color: rgba(26, 26, 26, 0.4) !important;
 }
 
-/* Beta badge - uses CSS variable for accent color */
+/* Beta badge - uses accent color from context */
 .beta-badge {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #eab308; /* Always golden, matching COYA AI */
   opacity: 0.9;
 }
 
 .light .beta-badge {
-  color: #eab308; /* Always golden */
   opacity: 1;
 }
 

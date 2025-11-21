@@ -44,3 +44,4 @@ CREATE INDEX IF NOT EXISTS idx_users_owner_onboarding
   ON public.users USING btree (owner_onboarding_completed) 
   WHERE role = 'owner' AND owner_onboarding_completed = false;
 
+

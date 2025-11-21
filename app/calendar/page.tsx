@@ -337,7 +337,7 @@ export default function CalendarPage() {
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-2"
         >
-          <div className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl glass-strong border border-white/10">
+          <div className="p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl bg-black border border-white/10">
             <style jsx global>{`
               :root {
                 --calendar-accent: ${accentColor};
@@ -501,7 +501,7 @@ export default function CalendarPage() {
                     scale: isHighlighted ? 1.02 : 1,
                   }}
                   transition={{ duration: 0.2 }}
-                  className={`p-3 sm:p-4 rounded-lg sm:rounded-xl glass transition-all ${
+                  className={`p-3 sm:p-4 rounded-lg sm:rounded-xl bg-black transition-all ${
                     isHighlighted
                       ? ""
                       : "border border-white/10 hover:border-yellow-500/50"
@@ -563,7 +563,7 @@ export default function CalendarPage() {
                   className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
                 >
                   <div
-                    className="glass-strong rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden pointer-events-auto"
+                    className="bg-black rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden pointer-events-auto"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Header */}
@@ -592,7 +592,7 @@ export default function CalendarPage() {
                           setIsBookingModalOpen(false);
                           setSelectedBooking(null);
                         }}
-                        className="p-2 rounded-xl hover:bg-white/10 transition-colors"
+                        className="p-2 rounded-xl hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors"
                       >
                         <X className="h-5 w-5 text-white/60" />
                       </button>

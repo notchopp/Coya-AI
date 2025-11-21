@@ -92,174 +92,247 @@ export async function POST(request: NextRequest) {
       withoutPlusOne,
     });
 
-    // PRIORITY 1: Check if to_number matches a program's direct number (direct program routing)
-    // This enables extension forwarding: clinic forwards extension → program number → direct program context
-    let program: any = null;
+    // PRIORITY 0: Check if this is a demo business (sandbox mode)
+    // All demo businesses use the same phone number: +1 (215) 986 2752
+    const DEMO_PHONE_NUMBER = "+12159862752"; // +1 (215) 986 2752
+    const demoPhoneFormats = [
+      DEMO_PHONE_NUMBER,
+      "12159862752",
+      "+1 (215) 986 2752",
+      "(215) 986 2752",
+      "2159862752",
+    ];
+    
     let business: any = null;
+    let program: any = null;
     let businessError: any = null;
 
-    const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
-    const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+    // Check if incoming number matches the demo phone number
+    const isDemoCall = demoPhoneFormats.some(format => 
+      toNumber === format || 
+      normalizedNumber === format.replace(/[^\d+]/g, '') ||
+      withPlusOne === format.replace(/[^\d+]/g, '') ||
+      withoutPlusOne === format.replace(/[^\d+]/g, '').replace(/^\+?1/, '')
+    );
 
-    console.log("🔍 PRIORITY 1: Checking programs.to_number for formats:", phoneFormats);
-
-    // Try to find program by phone number first (highest priority for direct routing)
-    for (const format of phoneFormats) {
-      console.log(`🔍 Checking program with format: "${format}"`);
-      const { data: programData, error: programError } = await (supabaseAdmin
-        .from("programs") as any)
-        .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking)`)
-        .eq("to_number", format)
+    if (isDemoCall) {
+      console.log("🎯 DEMO CALL DETECTED: Finding active demo session");
+      
+      // Find the most recent active demo session
+      const { data: activeSession, error: sessionError } = await supabaseAdmin
+        .from("demo_sessions")
+        .select(`
+          *,
+          demo_business:businesses!demo_sessions_demo_business_id_fkey(*)
+        `)
+        .eq("is_active", true)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (programError && programError.code !== "PGRST116") {
-        console.warn("⚠️ Error checking program number:", programError);
-      } else if (programData) {
-        program = programData;
-        business = programData.business;
-        
-        // If program found but business join failed, fetch business separately
-        if (program && !business && program.business_id) {
-          const { data: businessData } = await supabaseAdmin
-            .from("businesses")
-            .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id")
-            .eq("id", program.business_id)
-            .maybeSingle();
+      if (sessionError) {
+        console.error("Error finding active demo session:", sessionError);
+      } else if (activeSession) {
+        const session = activeSession as any;
+        const expiresAt = new Date(session.expires_at);
+        if (expiresAt < new Date()) {
+          console.log("⚠️ Demo session expired:", session.id);
+          return NextResponse.json({
+            error: "Demo session has expired",
+            expired: true,
+            message: "This demo session has ended. Please start a new demo.",
+          }, { status: 410 });
+        }
+
+        if (session.demo_business) {
+          // Use demo business
+          console.log("🎯 DEMO MODE: Using demo business:", session.demo_business.name);
+          business = session.demo_business;
+          // Demo businesses don't have programs, so skip program lookup
+        } else {
+          console.log("⚠️ Demo session found but no business associated");
+          return NextResponse.json({
+            error: "Demo business not configured",
+            message: "Please configure your demo business first.",
+          }, { status: 404 });
+        }
+      } else {
+        console.log("⚠️ No active demo session found for demo number");
+        return NextResponse.json({
+          error: "No active demo session found",
+          message: "Please start a new demo session.",
+        }, { status: 404 });
+      }
+    }
+
+    // PRIORITY 1: Check if to_number matches a program's direct number (direct program routing)
+    // This enables extension forwarding: clinic forwards extension → program number → direct program context
+    // Skip program lookup if we're in demo mode
+    if (!business?.is_demo) {
+      const programColumns = "id,name,extension,business_id,to_number,hours,services,staff,faqs,promos,description";
+      const phoneFormats = [toNumber, normalizedNumber, withPlusOne, withoutPlusOne];
+
+      console.log("🔍 PRIORITY 1: Checking programs.to_number for formats:", phoneFormats);
+
+      // Try to find program by phone number first (highest priority for direct routing)
+      for (const format of phoneFormats) {
+        console.log(`🔍 Checking program with format: "${format}"`);
+        const { data: programData, error: programError } = await (supabaseAdmin
+          .from("programs") as any)
+          .select(`${programColumns}, business:businesses!programs_parent_business_fkey(id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking)`)
+          .eq("to_number", format)
+          .maybeSingle();
+
+        if (programError && programError.code !== "PGRST116") {
+          console.warn("⚠️ Error checking program number:", programError);
+        } else if (programData) {
+          program = programData;
+          business = programData.business;
           
-          if (businessData) {
-            business = businessData;
-            console.log("✅ Fetched business separately for program:", business.name);
+          // If program found but business join failed, fetch business separately
+          if (program && !business && program.business_id) {
+            const { data: businessData } = await supabaseAdmin
+              .from("businesses")
+              .select("id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id")
+              .eq("id", program.business_id)
+              .maybeSingle();
+            
+            if (businessData) {
+              business = businessData;
+              console.log("✅ Fetched business separately for program:", business.name);
+            }
+          }
+          
+          console.log("✅ Found program by phone number (direct routing):", {
+            program: program.name,
+            phone: format,
+            business: business?.name
+          });
+          break; // Found program, exit loop
+        } else {
+          console.log(`❌ No program found for format: "${format}"`);
+        }
+      }
+
+      if (!program) {
+        console.log("⚠️ No program found for any format, falling back to businesses lookup");
+      }
+
+      // PRIORITY 2: If no program found by phone, check businesses table (existing logic)
+      if (!business && !program) {
+        // Optimized: Only select needed columns for faster queries
+        // Note: insurances column doesn't exist in programs or businesses tables
+        // Include program_id to auto-select default program for this business
+        const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking";
+        
+        // Try 1: Exact match with cleaned number
+        let { data, error } = await supabaseAdmin
+          .from("businesses")
+          .select(businessColumns)
+          .eq("to_number", toNumber)
+          .maybeSingle();
+        
+        console.log("🔍 First lookup attempt:", {
+          searchingFor: toNumber,
+          found: !!data,
+          error: error?.message,
+          errorCode: error?.code,
+        });
+        
+        if (data) {
+          business = data;
+          console.log("✅ Found business on first try!");
+        } else if (error && error.code !== "PGRST116") {
+          businessError = error;
+        }
+
+        // Try 2: Normalized (no spaces/dashes)
+        if (!business) {
+          ({ data, error } = await supabaseAdmin
+            .from("businesses")
+            .select(businessColumns)
+            .eq("to_number", normalizedNumber)
+            .maybeSingle());
+          
+          if (data) {
+            business = data;
+            console.log("✅ Found business with normalized format:", normalizedNumber);
+          } else if (error && error.code !== "PGRST116") {
+            businessError = error;
           }
         }
-        
-        console.log("✅ Found program by phone number (direct routing):", {
-          program: program.name,
-          phone: format,
-          business: business?.name
-        });
-        break; // Found program, exit loop
-      } else {
-        console.log(`❌ No program found for format: "${format}"`);
-      }
-    }
 
-    if (!program) {
-      console.log("⚠️ No program found for any format, falling back to businesses lookup");
-    }
-
-    // PRIORITY 2: If no program found by phone, check businesses table (existing logic)
-    if (!business && !program) {
-      // Optimized: Only select needed columns for faster queries
-      // Note: insurances column doesn't exist in programs or businesses tables
-      // Include program_id to auto-select default program for this business
-      const businessColumns = "id,name,to_number,vertical,address,hours,services,staff,faqs,promos,program_id,categories,mobile_services,packages,same_day_booking";
-    
-    // Try 1: Exact match with cleaned number
-    let { data, error } = await supabaseAdmin
-      .from("businesses")
-      .select(businessColumns)
-      .eq("to_number", toNumber)
-      .maybeSingle();
-    
-    console.log("🔍 First lookup attempt:", {
-      searchingFor: toNumber,
-      found: !!data,
-      error: error?.message,
-      errorCode: error?.code,
-    });
-    
-    if (data) {
-      business = data;
-      console.log("✅ Found business on first try!");
-    } else if (error && error.code !== "PGRST116") {
-      businessError = error;
-    }
-
-    // Try 2: Normalized (no spaces/dashes)
-    if (!business) {
-      ({ data, error } = await supabaseAdmin
-        .from("businesses")
-        .select(businessColumns)
-        .eq("to_number", normalizedNumber)
-        .maybeSingle());
-      
-      if (data) {
-        business = data;
-        console.log("✅ Found business with normalized format:", normalizedNumber);
-      } else if (error && error.code !== "PGRST116") {
-        businessError = error;
-      }
-    }
-
-    // Try 3: With +1 prefix
-    if (!business) {
-      ({ data, error } = await supabaseAdmin
-        .from("businesses")
-        .select(businessColumns)
-        .eq("to_number", withPlusOne)
-        .maybeSingle());
-      
-      if (data) {
-        business = data;
-        console.log("✅ Found business with +1 format:", withPlusOne);
-      } else if (error && error.code !== "PGRST116") {
-        businessError = error;
-      }
-    }
-
-    // Try 4: Without +1 prefix
-    if (!business) {
-      ({ data, error } = await supabaseAdmin
-        .from("businesses")
-        .select(businessColumns)
-        .eq("to_number", withoutPlusOne)
-        .maybeSingle());
-      
-      if (data) {
-        business = data;
-        console.log("✅ Found business without +1 format:", withoutPlusOne);
-      } else if (error && error.code !== "PGRST116") {
-        businessError = error;
-      }
-    }
-
-    // Debug: List all businesses to see what format they use
-    if (!business) {
-      const { data: allBusinesses } = await supabaseAdmin
-        .from("businesses")
-        .select("id, name, to_number")
-        .limit(10);
-      
-      console.log("🔍 Sample businesses in database:", allBusinesses);
-      console.log("🔍 Looking for:", { toNumber, normalizedNumber, digitsOnly, withPlusOne, withoutPlusOne });
-    }
-
-    if (businessError && businessError.code !== "PGRST116") {
-      console.error("Error fetching business:", businessError);
-      return NextResponse.json(
-        { error: "Failed to fetch business context", details: businessError.message },
-        { status: 500 }
-      );
-    }
-
-    if (!business) {
-      const duration = Date.now() - startTime;
-      console.warn("⚠️ Business not found for phone number after trying multiple formats:", {
-        original: toNumber,
-        normalized: normalizedNumber,
-        digitsOnly,
-        withPlusOne,
-        withoutPlusOne,
-      });
-      return NextResponse.json(
-        { error: "Business not found for phone number", to_number: toNumber, tried_formats: [toNumber, normalizedNumber, withPlusOne, withoutPlusOne] },
-        { 
-          status: 404,
-          headers: { 'X-Response-Time': `${duration}ms` },
+        // Try 3: With +1 prefix
+        if (!business) {
+          ({ data, error } = await supabaseAdmin
+            .from("businesses")
+            .select(businessColumns)
+            .eq("to_number", withPlusOne)
+            .maybeSingle());
+          
+          if (data) {
+            business = data;
+            console.log("✅ Found business with +1 format:", withPlusOne);
+          } else if (error && error.code !== "PGRST116") {
+            businessError = error;
+          }
         }
-      );
+
+        // Try 4: Without +1 prefix
+        if (!business) {
+          ({ data, error } = await supabaseAdmin
+            .from("businesses")
+            .select(businessColumns)
+            .eq("to_number", withoutPlusOne)
+            .maybeSingle());
+          
+          if (data) {
+            business = data;
+            console.log("✅ Found business without +1 format:", withoutPlusOne);
+          } else if (error && error.code !== "PGRST116") {
+            businessError = error;
+          }
+        }
+
+        // Debug: List all businesses to see what format they use
+        if (!business) {
+          const { data: allBusinesses } = await supabaseAdmin
+            .from("businesses")
+            .select("id, name, to_number")
+            .limit(10);
+          
+          console.log("🔍 Sample businesses in database:", allBusinesses);
+          console.log("🔍 Looking for:", { toNumber, normalizedNumber, digitsOnly, withPlusOne, withoutPlusOne });
+        }
+
+        if (businessError && businessError.code !== "PGRST116") {
+          console.error("Error fetching business:", businessError);
+          return NextResponse.json(
+            { error: "Failed to fetch business context", details: businessError.message },
+            { status: 500 }
+          );
+        }
+
+        if (!business) {
+          const duration = Date.now() - startTime;
+          console.warn("⚠️ Business not found for phone number after trying multiple formats:", {
+            original: toNumber,
+            normalized: normalizedNumber,
+            digitsOnly,
+            withPlusOne,
+            withoutPlusOne,
+          });
+          return NextResponse.json(
+            { error: "Business not found for phone number", to_number: toNumber, tried_formats: [toNumber, normalizedNumber, withPlusOne, withoutPlusOne] },
+            { 
+              status: 404,
+              headers: { 'X-Response-Time': `${duration}ms` },
+            }
+          );
+        }
+      }
     }
-    } // Close the if (!business) block
 
     // PRIORITY 3: If program not found by phone number, check by extension/program_id
     // Priority order:

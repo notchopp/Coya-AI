@@ -9,6 +9,7 @@ type CoyalogoProps = {
   className?: string;
   src?: string; // Path to custom PNG/GIF/MP4 image/video
   alt?: string;
+  accentColorOverride?: string; // Override accent color (e.g., for login page to always be yellow)
 };
 
 // Convert hex color to CSS filter that approximates the color
@@ -69,9 +70,10 @@ function hexToFilter(hex: string): string {
   return `hue-rotate(${hueRotation}deg) saturate(${saturationAdjust}) brightness(${brightnessAdjust})`;
 }
 
-export default function Coyalogo({ size = 24, className = "", src, alt = "COYA AI Logo" }: CoyalogoProps) {
+export default function Coyalogo({ size = 24, className = "", src, alt = "COYA AI Logo", accentColorOverride }: CoyalogoProps) {
   const { accentColor } = useAccentColor();
-  const colorFilter = hexToFilter(accentColor);
+  const effectiveAccentColor = accentColorOverride || accentColor;
+  const colorFilter = hexToFilter(effectiveAccentColor);
   
   // If custom image/video provided, use it instead of SVG
   if (src) {
@@ -97,7 +99,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
               width: size, 
               height: size, 
               background: "transparent",
-              // No filter - logo stays golden/yellow by default
+              filter: colorFilter, // Apply accent color filter
             }}
           />
         </motion.div>
@@ -122,7 +124,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
           unoptimized={src.endsWith('.gif')} // Allow GIF animations
           style={{ 
             background: "transparent",
-            // No filter - logo stays golden/yellow by default
+            filter: colorFilter, // Apply accent color filter
           }}
         />
       </motion.div>
@@ -146,16 +148,16 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
       <defs>
         {/* Dynamic gradient based on accent color */}
         <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={accentColor} stopOpacity="1" />
-          <stop offset="25%" stopColor={accentColor} stopOpacity="1" />
-          <stop offset="60%" stopColor={accentColor} stopOpacity="0.9" />
-          <stop offset="100%" stopColor={accentColor} stopOpacity="0.85" />
+          <stop offset="0%" stopColor={effectiveAccentColor} stopOpacity="1" />
+          <stop offset="25%" stopColor={effectiveAccentColor} stopOpacity="1" />
+          <stop offset="60%" stopColor={effectiveAccentColor} stopOpacity="0.9" />
+          <stop offset="100%" stopColor={effectiveAccentColor} stopOpacity="0.85" />
         </linearGradient>
         
         {/* Radial gradient for speckles */}
         <radialGradient id="speckleGradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={accentColor} stopOpacity="0.6" />
-          <stop offset="100%" stopColor={accentColor} stopOpacity="0.2" />
+          <stop offset="0%" stopColor={effectiveAccentColor} stopOpacity="0.6" />
+          <stop offset="100%" stopColor={effectiveAccentColor} stopOpacity="0.2" />
         </radialGradient>
       </defs>
 
@@ -270,7 +272,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
                 Q ${control1X} ${control1Y} ${control2X} ${control2Y}
                 Q ${control3X} ${control3Y} ${bottomTipX} ${bottomTipY}`}
             fill="none"
-            stroke={accentColor}
+            stroke={effectiveAccentColor}
             strokeWidth="1.2"
             strokeLinecap="round"
             opacity={opacity}
@@ -313,7 +315,7 @@ export default function Coyalogo({ size = 24, className = "", src, alt = "COYA A
                 Q ${control1X} ${control1Y} ${control2X} ${control2Y}
                 Q ${control3X} ${control3Y} ${bottomTipX} ${bottomTipY}`}
             fill="none"
-            stroke={accentColor}
+            stroke={effectiveAccentColor}
             strokeWidth="0.8"
             opacity={opacity}
             initial={{ pathLength: 0 }}

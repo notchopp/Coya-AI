@@ -474,7 +474,7 @@ export default function ProgramsPage() {
             {activeTab === "programs" && (
               <button
                 onClick={() => setCreatingProgram(true)}
-                className="px-4 py-2 rounded-lg border text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-lg border text-white hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-2"
                 style={{ borderColor: accentColor }}
               >
                 <Plus className="h-4 w-4" />
@@ -525,7 +525,7 @@ export default function ProgramsPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white/5 border border-white/10 rounded-xl p-6 max-w-md w-full"
+                className="bg-black border border-white/10 rounded-xl p-6 max-w-md w-full"
                 style={{ borderColor: `${accentColor}33` }}
               >
                 <h3 className="text-xl font-bold text-white mb-4">Create New Program</h3>
@@ -538,7 +538,7 @@ export default function ProgramsPage() {
                       name="new-program-name"
                       value={newProgram.name || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/50"
                       placeholder="Program Name"
                     />
                   </div>
@@ -550,7 +550,7 @@ export default function ProgramsPage() {
                       name="new-program-extension"
                       value={newProgram.extension || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, extension: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/50"
                       placeholder="Extension"
                     />
                   </div>
@@ -562,7 +562,7 @@ export default function ProgramsPage() {
                       name="new-program-phone"
                       value={newProgram.to_number || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, to_number: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/50"
                       placeholder="Phone Number"
                     />
                   </div>
@@ -573,7 +573,7 @@ export default function ProgramsPage() {
                       name="new-program-description"
                       value={newProgram.description || ""}
                       onChange={(e) => setNewProgram({ ...newProgram, description: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/50"
                       rows={3}
                       placeholder="Description"
                     />
@@ -592,7 +592,7 @@ export default function ProgramsPage() {
                   <button
                     onClick={() => setCreatingProgram(false)}
                     disabled={saving}
-                    className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-black border border-white/10 text-white hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors"
                   >
                     Cancel
                   </button>
@@ -610,7 +610,7 @@ export default function ProgramsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl bg-white/5 border border-white/10"
+                className="p-4 rounded-xl bg-black border border-white/10"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Building2 className="h-5 w-5" style={{ color: accentColor }} />
@@ -623,7 +623,7 @@ export default function ProgramsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="p-4 rounded-xl bg-white/5 border border-white/10"
+                className="p-4 rounded-xl bg-black border border-white/10"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Phone className="h-5 w-5" style={{ color: accentColor }} />
@@ -638,7 +638,7 @@ export default function ProgramsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="p-4 rounded-xl bg-white/5 border border-white/10"
+                className="p-4 rounded-xl bg-black border border-white/10"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Calendar className="h-5 w-5" style={{ color: accentColor }} />
@@ -653,7 +653,7 @@ export default function ProgramsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="p-4 rounded-xl bg-white/5 border border-white/10"
+                className="p-4 rounded-xl bg-black border border-white/10"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <DollarSign className="h-5 w-5" style={{ color: accentColor }} />
@@ -671,14 +671,14 @@ export default function ProgramsPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-8 rounded-xl bg-white/5 border border-white/10 text-center"
+                  className="p-8 rounded-xl bg-black border border-white/10 text-center"
                 >
                   <Building2 className="h-12 w-12 mx-auto mb-4 text-white/40" />
                   <h3 className="text-xl font-bold text-white mb-2">No Programs Yet</h3>
                   <p className="text-white/60 mb-4">Create your first program to get started.</p>
                   <button
                     onClick={() => setCreatingProgram(true)}
-                    className="px-4 py-2 rounded-lg border text-white hover:bg-white/10 transition-colors"
+                    className="px-4 py-2 rounded-lg border text-white hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors"
                     style={{ borderColor: accentColor }}
                   >
                     <Plus className="h-4 w-4 inline mr-2" />
@@ -702,7 +702,7 @@ export default function ProgramsPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="p-6 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                      className="p-6 rounded-xl bg-black border border-white/10 hover:border-yellow-500/30 transition-all"
                     >
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         <div className="flex-1">
@@ -715,7 +715,7 @@ export default function ProgramsPage() {
                                   name={`program-name-${program.id}`}
                                   value={editingProgram.name}
                                   onChange={(e) => setEditingProgram({ ...editingProgram, name: e.target.value })}
-                                  className="text-xl font-bold text-white bg-white/10 border border-white/20 rounded px-3 py-1 mb-2 focus:outline-none focus:border-white/40"
+                                  className="text-xl font-bold text-white bg-black border border-white/10 rounded px-3 py-1 mb-2 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/50"
                                 />
                               ) : (
                                 <h3 className="text-xl font-bold text-white mb-2">{program.name}</h3>
@@ -742,7 +742,7 @@ export default function ProgramsPage() {
                                   </button>
                                   <button
                                     onClick={() => setEditingProgram(null)}
-                                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
+                                    className="p-2 rounded-lg bg-black hover:border-yellow-500/30 hover:bg-yellow-500/10 border border-white/10 text-white transition-colors"
                                   >
                                     <X className="h-4 w-4" />
                                   </button>
@@ -754,7 +754,7 @@ export default function ProgramsPage() {
                                       setProgramId(program.id);
                                       router.push("/");
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors flex items-center gap-1.5 text-sm"
+                                    className="px-3 py-1.5 rounded-lg bg-black hover:border-yellow-500/30 hover:bg-yellow-500/10 border border-white/10 text-white transition-colors flex items-center gap-1.5 text-sm"
                                     style={{ borderColor: accentColor }}
                                   >
                                     <LayoutDashboard className="h-3.5 w-3.5" />
@@ -769,7 +769,7 @@ export default function ProgramsPage() {
                                       };
                                       setEditingProgram(programWithHours);
                                     }}
-                                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
+                                    className="p-2 rounded-lg bg-black hover:border-yellow-500/30 hover:bg-yellow-500/10 border border-white/10 text-white transition-colors"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </button>
@@ -794,7 +794,7 @@ export default function ProgramsPage() {
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
-                              className="space-y-4 mb-4 p-4 rounded-xl bg-white/5 border border-white/10"
+                              className="space-y-4 mb-4 p-4 rounded-xl bg-black border border-white/10"
                             >
                               {/* Basic Info */}
                               <div className="space-y-3">
@@ -806,7 +806,7 @@ export default function ProgramsPage() {
                                     name={`program-extension-${program.id}`}
                                     value={editingProgram.extension || ""}
                                     onChange={(e) => setEditingProgram({ ...editingProgram, extension: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                     placeholder="Extension"
                                   />
                                 </div>
@@ -818,7 +818,7 @@ export default function ProgramsPage() {
                                     name={`program-phone-${program.id}`}
                                     value={editingProgram.to_number || ""}
                                     onChange={(e) => setEditingProgram({ ...editingProgram, to_number: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                     placeholder="Phone Number"
                                   />
                                 </div>
@@ -829,7 +829,7 @@ export default function ProgramsPage() {
                                     name={`program-description-${program.id}`}
                                     value={editingProgram.description || ""}
                                     onChange={(e) => setEditingProgram({ ...editingProgram, description: e.target.value })}
-                                    className="w-full px-3 py-2 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                    className="w-full px-3 py-2 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                     rows={2}
                                     placeholder="Description"
                                   />
@@ -850,7 +850,7 @@ export default function ProgramsPage() {
                                       const currentServices = Array.isArray(editingProgram.services) ? editingProgram.services : [];
                                       setEditingProgram({ ...editingProgram, services: [...currentServices, ""] });
                                     }}
-                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
+                                    className="px-2 py-1 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                     Add
@@ -876,7 +876,7 @@ export default function ProgramsPage() {
                                             const updatedServices = currentServices.map((s, i) => (i === idx ? e.target.value : s));
                                             setEditingProgram({ ...editingProgram, services: updatedServices });
                                           }}
-                                          className="px-3 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
+                                          className="px-3 py-1.5 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm min-w-[120px]"
                                           placeholder="Service name"
                                         />
                                         <button
@@ -911,7 +911,7 @@ export default function ProgramsPage() {
                                       const currentStaff = Array.isArray(editingProgram.staff) ? editingProgram.staff : [];
                                       setEditingProgram({ ...editingProgram, staff: [...currentStaff, { name: "", role: "", hours: "" }] });
                                     }}
-                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
+                                    className="px-2 py-1 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                     Add
@@ -924,7 +924,7 @@ export default function ProgramsPage() {
                                         key={idx}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
+                                        className="p-2.5 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-all space-y-2"
                                       >
                                         <div className="flex items-center gap-2">
                                           <label htmlFor={`staff-name-${idx}-${program.id}`} className="sr-only">Staff Name</label>
@@ -938,7 +938,7 @@ export default function ProgramsPage() {
                                               const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, name: e.target.value } : m);
                                               setEditingProgram({ ...editingProgram, staff: updatedStaff });
                                             }}
-                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                             placeholder="Name"
                                           />
                                           <label htmlFor={`staff-role-${idx}-${program.id}`} className="sr-only">Staff Role</label>
@@ -952,7 +952,7 @@ export default function ProgramsPage() {
                                               const updatedStaff = currentStaff.map((m, i) => i === idx ? { ...m, role: e.target.value } : m);
                                               setEditingProgram({ ...editingProgram, staff: updatedStaff });
                                             }}
-                                            className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                             placeholder="Role"
                                           />
                                           <button
@@ -1030,7 +1030,7 @@ export default function ProgramsPage() {
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: dayIndex * 0.03 }}
-                                        className="flex items-center gap-3 p-2 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all"
+                                        className="flex items-center gap-3 p-2 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-all"
                                       >
                                         <div className="w-24 flex-shrink-0">
                                           <span className="text-xs font-semibold capitalize text-white/90">
@@ -1055,7 +1055,7 @@ export default function ProgramsPage() {
                                                 }
                                                 setEditingProgram({ ...editingProgram, hours: updatedHours });
                                               }}
-                                              className="px-2.5 py-1.5 pr-8 rounded-lg glass border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all cursor-pointer appearance-none w-32"
+                                              className="px-2.5 py-1.5 pr-8 rounded-lg bg-black border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all cursor-pointer appearance-none w-32"
                                               style={{ 
                                                 colorScheme: "dark",
                                                 backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -1082,7 +1082,7 @@ export default function ProgramsPage() {
                                                 setEditingProgram({ ...editingProgram, hours: updatedHours });
                                               }}
                                               autoFocus={showCustomInput && !currentHours}
-                                              className="flex-1 px-2.5 py-1.5 rounded-lg glass border border-white/10 bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
+                                              className="flex-1 px-2.5 py-1.5 rounded-lg bg-black border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all text-sm"
                                               placeholder="e.g., 8am-9pm"
                                             />
                                           )}
@@ -1107,7 +1107,7 @@ export default function ProgramsPage() {
                                       const currentFaqs = Array.isArray(editingProgram.faqs) ? editingProgram.faqs : [];
                                       setEditingProgram({ ...editingProgram, faqs: [...currentFaqs, { question: "", answer: "" }] });
                                     }}
-                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
+                                    className="px-2 py-1 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                     Add
@@ -1120,7 +1120,7 @@ export default function ProgramsPage() {
                                         key={idx}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
+                                        className="p-2.5 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-all space-y-2"
                                       >
                                         <label htmlFor={`faq-question-${idx}-${program.id}`} className="sr-only">FAQ Question</label>
                                         <input
@@ -1242,7 +1242,7 @@ export default function ProgramsPage() {
                                       const currentPromos = Array.isArray(editingProgram.promos) ? editingProgram.promos : [];
                                       setEditingProgram({ ...editingProgram, promos: [...currentPromos, { title: "", description: "" }] });
                                     }}
-                                    className="px-2 py-1 rounded-lg glass border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
+                                    className="px-2 py-1 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors flex items-center gap-1.5 text-xs text-white/80"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                     Add
@@ -1255,7 +1255,7 @@ export default function ProgramsPage() {
                                         key={idx}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="p-2.5 rounded-lg glass border border-white/10 hover:border-yellow-500/30 hover:bg-white/5 transition-all space-y-2"
+                                        className="p-2.5 rounded-lg bg-black border border-white/10 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-all space-y-2"
                                       >
                                         <label htmlFor={`promo-title-${idx}-${program.id}`} className="sr-only">Promotion Title</label>
                                         <input
@@ -1313,19 +1313,19 @@ export default function ProgramsPage() {
 
                           {/* Stats */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div className="p-3 rounded-lg bg-black border border-white/10">
                               <div className="text-xs text-white/60 mb-1">Calls (30d)</div>
                               <div className="text-lg font-bold text-white">{stats.totalCalls}</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div className="p-3 rounded-lg bg-black border border-white/10">
                               <div className="text-xs text-white/60 mb-1">Bookings (30d)</div>
                               <div className="text-lg font-bold text-white">{stats.totalBookings}</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div className="p-3 rounded-lg bg-black border border-white/10">
                               <div className="text-xs text-white/60 mb-1">Conversion</div>
                               <div className="text-lg font-bold text-white">{stats.conversionRate.toFixed(1)}%</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                            <div className="p-3 rounded-lg bg-black border border-white/10">
                               <div className="text-xs text-white/60 mb-1">Revenue (30d)</div>
                               <div className="text-lg font-bold text-white">${stats.revenue.toLocaleString()}</div>
                             </div>
@@ -1345,7 +1345,7 @@ export default function ProgramsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 rounded-xl bg-white/5 border border-white/10"
+            className="p-6 rounded-xl bg-black border border-white/10"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -1371,7 +1371,7 @@ export default function ProgramsPage() {
                     </button>
                     <button
                       onClick={() => setEditingBusiness(null)}
-                      className="p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors"
+                      className="p-2 rounded-lg bg-black hover:border-yellow-500/30 hover:bg-yellow-500/10 border border-white/10 text-white transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
