@@ -113,16 +113,27 @@ export default function DemoLive() {
     const supabase = getSupabaseClient();
     
     async function loadPatients() {
-      const { data: patientsData } = await (supabase as any)
-        .from("patients")
-        .select("*")
-        .eq("business_id", DEMO_BUSINESS_ID)
-        .order("last_call_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(5);
+      try {
+        console.log("🔍 Loading patients for demo business:", DEMO_BUSINESS_ID);
+        const { data: patientsData, error: patientsError } = await (supabase as any)
+          .from("patients")
+          .select("*")
+          .eq("business_id", DEMO_BUSINESS_ID)
+          .order("last_call_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-      if (patientsData) {
+        if (patientsError) {
+          console.error("❌ Error loading patients:", patientsError);
+          setPatients([]);
+          return;
+        }
+
+        console.log("✅ Loaded patients:", patientsData?.length || 0, patientsData);
         setPatients(patientsData || []);
+      } catch (error) {
+        console.error("❌ Exception loading patients:", error);
+        setPatients([]);
       }
     }
 
