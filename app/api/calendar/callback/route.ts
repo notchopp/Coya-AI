@@ -67,35 +67,93 @@ export async function GET(request: NextRequest) {
     const tokenData = await tokenResponse.json();
     const { access_token, refresh_token, expires_in, scope } = tokenData;
 
-    // Get user info to get email and calendar ID
-    const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    });
-
-    if (!userInfoResponse.ok) {
-      console.error("Failed to get user info");
+    if (!access_token) {
+      console.error("No access token received:", tokenData);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/settings?calendar_error=user_info_failed`
+        `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/settings?calendar_error=no_access_token`
       );
     }
 
-    const userInfo = await userInfoResponse.json();
-    const email = userInfo.email;
-    const providerAccountId = userInfo.id; // Google user ID
+    // Get user info to get email and calendar ID
+    // Try v2 endpoint first, fallback to v1 if needed
+    let userInfo: any = null;
+    let email: string | null = null;
+    let providerAccountId: string | null = null;
 
-    // Get primary calendar ID
-    const calendarResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList/primary", {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    });
+    // Try v2 userinfo endpoint
+    try {
+      const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
 
+      if (userInfoResponse.ok) {
+        userInfo = await userInfoResponse.json();
+        email = userInfo.email;
+        providerAccountId = userInfo.id;
+      } else {
+        console.warn("v2 userinfo failed, trying v1:", {
+          status: userInfoResponse.status,
+          statusText: userInfoResponse.statusText,
+        });
+        
+        // Fallback to v1 endpoint
+        const userInfoV1Response = await fetch("https://www.googleapis.com/oauth2/v1/userinfo", {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        });
+
+        if (userInfoV1Response.ok) {
+          userInfo = await userInfoV1Response.json();
+          email = userInfo.email;
+          providerAccountId = userInfo.id;
+        } else {
+          // Last resort: try to get email from token info endpoint
+          const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${access_token}`);
+          if (tokenInfoResponse.ok) {
+            const tokenInfo = await tokenInfoResponse.json();
+            console.warn("Using tokeninfo as fallback:", tokenInfo);
+            // Token info doesn't have email, but we can still proceed with a placeholder
+            // We'll need email, so this is a problem
+          }
+        }
+      }
+    } catch (userInfoError) {
+      console.error("Error fetching user info:", userInfoError);
+    }
+
+    // If we still don't have email, we can't proceed
+    if (!email) {
+      console.error("Could not retrieve email from Google. Token data:", {
+        has_access_token: !!access_token,
+        scope,
+        token_keys: Object.keys(tokenData),
+      });
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_SITE_URL || "https://coya-ai.vercel.app"}/settings?calendar_error=no_email_retrieved`
+      );
+    }
+
+    // Get primary calendar ID (use primary as default, don't fail if this call fails)
     let calendarId = "primary";
-    if (calendarResponse.ok) {
-      const calendarData = await calendarResponse.json();
-      calendarId = calendarData.id || "primary";
+    try {
+      const calendarResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList/primary", {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+
+      if (calendarResponse.ok) {
+        const calendarData = await calendarResponse.json();
+        calendarId = calendarData.id || "primary";
+      } else {
+        console.warn("Could not fetch calendar details, using 'primary' as default");
+      }
+    } catch (calendarError) {
+      console.warn("Error fetching calendar details, using 'primary' as default:", calendarError);
+      // Continue with "primary" as default
     }
 
     // Calculate token expiration

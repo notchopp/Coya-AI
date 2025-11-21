@@ -43,9 +43,12 @@ export async function GET(request: NextRequest) {
     const state = Buffer.from(JSON.stringify({ business_id, program_id: program_id || null })).toString("base64");
 
     // Google OAuth scopes for Calendar API
+    // Include userinfo scope to get email and user ID
     const scopes = [
       "https://www.googleapis.com/auth/calendar",
       "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
     ].join(" ");
 
     // Build OAuth URL
