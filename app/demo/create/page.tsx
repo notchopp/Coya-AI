@@ -10,26 +10,70 @@ export default function CreateDemo() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [waitTime, setWaitTime] = useState<{ minutes: number; seconds: number } | null>(null);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [queueToken, setQueueToken] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
-  // Countdown timer for wait time
+  // Sync timer with active session
   useEffect(() => {
-    if (!waitTime) return;
+    if (!expiresAt) return;
 
-    const interval = setInterval(() => {
-      setWaitTime((prev) => {
-        if (!prev) return null;
-        if (prev.seconds <= 1) {
-          if (prev.minutes <= 0) {
-            return null; // Wait time expired, allow retry
-          }
-          return { minutes: prev.minutes - 1, seconds: 59 };
-        }
-        return { minutes: prev.minutes, seconds: prev.seconds - 1 };
-      });
-    }, 1000);
+    const updateTimer = () => {
+      const now = new Date();
+      const expiry = new Date(expiresAt);
+      const diffMs = expiry.getTime() - now.getTime();
+      
+      if (diffMs <= 0) {
+        setWaitTime(null);
+        setQueuePosition(null);
+        setExpiresAt(null);
+        return;
+      }
+
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+      setWaitTime({ minutes, seconds });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [waitTime]);
+  }, [expiresAt]);
+
+  // Poll for queue updates and timer sync
+  useEffect(() => {
+    if (!queueToken) return;
+
+    const pollQueue = async () => {
+      try {
+        const response = await fetch(`/api/demo/${queueToken}`);
+        const data = await response.json();
+        
+        if (data.session) {
+          if (data.session.queuePosition) {
+            setQueuePosition(data.session.queuePosition);
+          }
+          if (data.session.activeSessionExpiresAt) {
+            setExpiresAt(data.session.activeSessionExpiresAt);
+          } else if (data.session.expires_at) {
+            setExpiresAt(data.session.expires_at);
+          }
+          
+          // If session is now active, redirect
+          if (data.session.is_active && !data.session.isExpired) {
+            router.push(`/demo/${queueToken}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error polling queue:", error);
+      }
+    };
+
+    pollQueue();
+    const interval = setInterval(pollQueue, 2000);
+    return () => clearInterval(interval);
+  }, [queueToken, router]);
 
   const handleCreate = async () => {
     setLoading(true);
@@ -37,17 +81,33 @@ export default function CreateDemo() {
       const response = await fetch("/api/demo/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, queueToken: queueToken || undefined }),
       });
 
       const data = await response.json();
       
       if (!response.ok) {
-        if (data.nextAvailableIn !== undefined) {
-          // Set wait time and start countdown
+        if (data.inQueue && data.queueToken) {
+          // User is in queue
+          setQueueToken(data.queueToken);
+          setQueuePosition(data.queuePosition || 1);
+          if (data.expiresAt) {
+            setExpiresAt(data.expiresAt);
+          } else {
+            const minutes = data.nextAvailableIn || 0;
+            const seconds = data.nextAvailableInSeconds || minutes * 60;
+            setWaitTime({ minutes, seconds });
+          }
+          setLoading(false);
+          return;
+        } else if (data.nextAvailableIn !== undefined) {
+          // Set wait time
           const minutes = data.nextAvailableIn;
           const seconds = data.nextAvailableInSeconds || minutes * 60;
           setWaitTime({ minutes, seconds });
+          if (data.expiresAt) {
+            setExpiresAt(data.expiresAt);
+          }
           setLoading(false);
           return;
         } else {
@@ -99,7 +159,9 @@ export default function CreateDemo() {
             >
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-red-400" />
-                <p className="text-sm text-red-400 font-medium">Demo Session In Progress</p>
+                <p className="text-sm text-red-400 font-medium">
+                  {queuePosition ? `You are #${queuePosition} in line` : "Demo Session In Progress"}
+                </p>
               </div>
               <p className="text-2xl font-bold text-white mb-1">
                 {waitTime.minutes > 0 
@@ -108,7 +170,10 @@ export default function CreateDemo() {
                 }
               </p>
               <p className="text-xs text-white/60">
-                Next available in {waitTime.minutes > 0 ? `${waitTime.minutes} minute${waitTime.minutes !== 1 ? 's' : ''} and ${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}` : `${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}`}
+                {queuePosition 
+                  ? `Your spot is reserved. Next available in ${waitTime.minutes > 0 ? `${waitTime.minutes} minute${waitTime.minutes !== 1 ? 's' : ''} and ${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}` : `${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}`}`
+                  : `Next available in ${waitTime.minutes > 0 ? `${waitTime.minutes} minute${waitTime.minutes !== 1 ? 's' : ''} and ${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}` : `${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}`}`
+                }
               </p>
             </motion.div>
           )}
@@ -125,14 +190,26 @@ export default function CreateDemo() {
           </div>
 
           <button
-            onClick={handleCreate}
-            disabled={loading || (waitTime !== null && (waitTime.minutes > 0 || waitTime.seconds > 0))}
+            onClick={() => {
+              if (queueToken) {
+                // Try to activate from queue
+                handleCreate();
+              } else {
+                handleCreate();
+              }
+            }}
+            disabled={loading || (waitTime !== null && (waitTime.minutes > 0 || waitTime.seconds > 0) && !queueToken)}
             className="w-full px-6 py-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Creating Demo...
+                {queueToken ? "Checking queue..." : "Creating Demo..."}
+              </>
+            ) : queueToken && waitTime && (waitTime.minutes > 0 || waitTime.seconds > 0) ? (
+              <>
+                <Clock className="h-5 w-5" />
+                Waiting in queue...
               </>
             ) : waitTime && (waitTime.minutes > 0 || waitTime.seconds > 0) ? (
               <>

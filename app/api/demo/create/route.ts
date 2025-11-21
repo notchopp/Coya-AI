@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If there's an active session, calculate wait time
+    // If there's an active session, add user to queue and return queue position
     if (activeSessions && activeSessions.length > 0) {
       const activeSession = activeSessions[0] as any;
       const expiresAt = new Date(activeSession.expires_at);
@@ -41,12 +41,40 @@ export async function POST(request: NextRequest) {
       const waitTimeMinutes = Math.ceil(waitTimeMs / (1000 * 60));
       const waitTimeSeconds = Math.ceil(waitTimeMs / 1000);
 
+      // Count how many people are already in queue (waiting sessions)
+      const { data: waitingSessions, error: queueError } = await supabaseAdmin
+        .from("demo_sessions")
+        .select("id")
+        .eq("is_active", false) // Waiting sessions are not active yet
+        .or(`expires_at.is.null,expires_at.lt.${now.toISOString()}`)
+        .order("created_at", { ascending: true });
+
+      // Create a waiting session for this user (queue entry)
+      const queueToken = randomUUID();
+      const { data: queueSession, error: queueSessionError } = await (supabaseAdmin
+        .from("demo_sessions") as any)
+        .insert({
+          session_token: queueToken,
+          email: email || null,
+          phone: phone || null,
+          expires_at: expiresAt.toISOString(), // Same expiration as active session
+          is_active: false, // Mark as waiting/in queue
+          demo_business_id: "eea1f8b5-f4ed-4141-85c7-c381643ce9df",
+        })
+        .select()
+        .single();
+
+      const queuePosition = (waitingSessions?.length || 0) + 1; // Position in queue
+
       return NextResponse.json({
         available: false,
+        inQueue: true,
+        queuePosition: queuePosition,
+        queueToken: queueToken,
         nextAvailableIn: waitTimeMinutes,
         nextAvailableInSeconds: waitTimeSeconds,
-        message: `Demo session in progress. Next available in ${waitTimeMinutes} minute${waitTimeMinutes !== 1 ? 's' : ''}.`,
         expiresAt: activeSession.expires_at,
+        message: `Demo session in progress. You are #${queuePosition} in line. Next available in ${waitTimeMinutes} minute${waitTimeMinutes !== 1 ? 's' : ''}.`,
       }, { status: 429 });
     }
 
@@ -79,7 +107,106 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", DEMO_BUSINESS_ID);
 
-    // Generate session token
+    // Check if this is a queue token trying to activate
+    const queueToken = body.queueToken;
+    if (queueToken) {
+      // User is activating from queue - check if it's their turn
+      const { data: queueSession, error: queueError } = await supabaseAdmin
+        .from("demo_sessions")
+        .select("id, created_at, expires_at")
+        .eq("session_token", queueToken)
+        .eq("is_active", false)
+        .single();
+      
+      const queueSessionData = queueSession as any;
+
+      if (queueError || !queueSessionData) {
+        return NextResponse.json(
+          { error: "Invalid queue token" },
+          { status: 400 }
+        );
+      }
+
+      // Check if there are any active sessions
+      const { data: activeCheck } = await supabaseAdmin
+        .from("demo_sessions")
+        .select("id")
+        .eq("is_active", true)
+        .gt("expires_at", new Date().toISOString())
+        .limit(1);
+
+      if (activeCheck && activeCheck.length > 0) {
+        // Still an active session - check queue position
+        const { data: allWaiting, error: waitingError } = await supabaseAdmin
+          .from("demo_sessions")
+          .select("id, created_at")
+          .eq("is_active", false)
+          .order("created_at", { ascending: true });
+
+        const queueSessionData = queueSession as any;
+        const queuePosition = allWaiting ? allWaiting.findIndex((s: any) => s.id === queueSessionData.id) + 1 : 0;
+        const activeSession = activeCheck[0] as any;
+        
+        // Get active session expiration
+        const { data: activeSessionData } = await supabaseAdmin
+          .from("demo_sessions")
+          .select("expires_at")
+          .eq("id", activeSession.id)
+          .single();
+
+        const expiresAt = activeSessionData ? new Date((activeSessionData as any).expires_at) : new Date();
+        const now = new Date();
+        const waitTimeMs = expiresAt.getTime() - now.getTime();
+        const waitTimeMinutes = Math.ceil(waitTimeMs / (1000 * 60));
+        const waitTimeSeconds = Math.ceil(waitTimeMs / 1000);
+
+        return NextResponse.json({
+          available: false,
+          inQueue: true,
+          queuePosition: queuePosition,
+          nextAvailableIn: waitTimeMinutes,
+          nextAvailableInSeconds: waitTimeSeconds,
+          expiresAt: activeSessionData ? (activeSessionData as any).expires_at : null,
+          message: `You are #${queuePosition} in line. Next available in ${waitTimeMinutes} minute${waitTimeMinutes !== 1 ? 's' : ''}.`,
+        }, { status: 429 });
+      }
+
+      // No active session - activate this queue session
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour from now
+
+      const { data: activatedSession, error: activateError } = await (supabaseAdmin
+        .from("demo_sessions") as any)
+        .update({
+          expires_at: expiresAt.toISOString(),
+          is_active: true,
+        })
+        .eq("id", queueSessionData.id)
+        .select()
+        .single();
+
+      if (activateError) {
+        return NextResponse.json(
+          { error: "Failed to activate session", details: activateError.message },
+          { status: 500 }
+        );
+      }
+
+      const origin = request.headers.get("origin") || 
+                     request.headers.get("referer")?.split("/").slice(0, 3).join("/") ||
+                     process.env.NEXT_PUBLIC_SITE_URL || 
+                     "https://app.getcoya.ai";
+
+      return NextResponse.json({
+        success: true,
+        sessionId: activatedSession.id,
+        sessionToken: queueToken,
+        expiresAt: expiresAt.toISOString(),
+        demoLink: `${origin}/demo/${queueToken}`,
+      });
+    }
+
+    // Generate new session token
     const sessionToken = randomUUID();
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour from now

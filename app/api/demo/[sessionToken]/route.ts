@@ -19,6 +19,34 @@ export async function GET(
       .eq("session_token", sessionToken)
       .single();
 
+    // If session is in queue, get active session info for timer sync
+    const sessionData = session as any;
+    let activeSessionInfo = null;
+    if (sessionData && !sessionData.is_active) {
+      const { data: activeSession } = await supabaseAdmin
+        .from("demo_sessions")
+        .select("id, expires_at, created_at")
+        .eq("is_active", true)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeSession) {
+        activeSessionInfo = activeSession;
+      }
+
+      // Get queue position
+      const { data: allWaiting } = await supabaseAdmin
+        .from("demo_sessions")
+        .select("id, created_at")
+        .eq("is_active", false)
+        .order("created_at", { ascending: true });
+
+      const queuePosition = allWaiting ? allWaiting.findIndex((s: any) => s.id === sessionData.id) + 1 : 0;
+      sessionData.queuePosition = queuePosition;
+    }
+
     if (error) {
       console.error("Error fetching demo session:", error);
       // Check if table doesn't exist (migration not run)
@@ -46,9 +74,16 @@ export async function GET(
     }
 
     // Check if expired
-    const sessionData = session as any;
     const now = new Date();
-    const expiresAt = new Date(sessionData.expires_at);
+    
+    // If in queue, use active session's expiration for timer sync
+    let expiresAt: Date;
+    if (!sessionData.is_active && activeSessionInfo) {
+      expiresAt = new Date((activeSessionInfo as any).expires_at);
+    } else {
+      expiresAt = new Date(sessionData.expires_at);
+    }
+    
     const isExpired = expiresAt < now;
     const remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
 
@@ -58,6 +93,7 @@ export async function GET(
         isExpired,
         remainingSeconds,
         remainingMinutes: Math.floor(remainingSeconds / 60),
+        activeSessionExpiresAt: activeSessionInfo ? (activeSessionInfo as any).expires_at : null,
       },
     });
   } catch (error) {
