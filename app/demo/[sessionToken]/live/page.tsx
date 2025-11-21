@@ -107,17 +107,16 @@ export default function DemoLive() {
     return () => clearInterval(timer);
   }, [remainingSeconds, router]);
 
-  // Load patients
+  // Load patients - always use demo business ID
   useEffect(() => {
-    if (!business?.id) return;
-
+    const DEMO_BUSINESS_ID = "eea1f8b5-f4ed-4141-85c7-c381643ce9df";
     const supabase = getSupabaseClient();
     
     async function loadPatients() {
       const { data: patientsData } = await (supabase as any)
         .from("patients")
         .select("*")
-        .eq("business_id", business.id)
+        .eq("business_id", DEMO_BUSINESS_ID)
         .order("last_call_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(5);
@@ -131,14 +130,14 @@ export default function DemoLive() {
     
     // Subscribe to patient updates
     const patientsChannel = supabase
-      .channel(`demo-patients-${business.id}`)
+      .channel(`demo-patients-${DEMO_BUSINESS_ID}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "patients",
-          filter: `business_id=eq.${business.id}`,
+          filter: `business_id=eq.${DEMO_BUSINESS_ID}`,
         },
         () => {
           loadPatients();
@@ -149,7 +148,7 @@ export default function DemoLive() {
     return () => {
       supabase.removeChannel(patientsChannel);
     };
-  }, [business?.id]);
+  }, []);
 
   // Load calls and bookings in real-time
   useEffect(() => {
