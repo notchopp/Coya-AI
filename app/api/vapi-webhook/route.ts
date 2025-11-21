@@ -1111,7 +1111,15 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const updateData: any = {
+        const updateData: {
+          phone: string | null;
+          patient_name: string | null;
+          last_intent: string | null;
+          last_call_date: string;
+          updated_at?: string;
+          last_visit?: string;
+          last_treatment?: string | null;
+        } = {
           phone: phone,
           patient_name: patientName || null,
           last_intent: intent || null,
@@ -1134,8 +1142,8 @@ export async function POST(request: NextRequest) {
 
         if (existingPatient) {
           // Update existing patient
-          const { error: updateError } = await supabaseAdmin
-            .from('patients')
+          const { error: updateError } = await (supabaseAdmin
+            .from('patients') as any)
             .update(updateData)
             .eq('patient_id', existingPatient.patient_id);
           
@@ -1147,8 +1155,8 @@ export async function POST(request: NextRequest) {
         } else {
           // Create new patient
           const nameParts = (patientName || '').split(' ');
-          const { error: insertError } = await supabaseAdmin
-            .from('patients')
+          const { error: insertError } = await (supabaseAdmin
+            .from('patients') as any)
             .insert({
               business_id: business.id,
               phone: phone,

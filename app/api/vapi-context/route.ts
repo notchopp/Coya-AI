@@ -458,16 +458,29 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
           
           if (patient) {
-            patientContext = {
-              name: patient.patient_name,
-              last_visit: patient.last_visit, // date of last booked appointment
-              last_treatment: patient.last_treatment, // service from last booking
-              last_intent: patient.last_intent, // what they asked about last time (if no booking)
-              notes: patient.notes,
-              last_call_date: patient.last_call_date,
+            const patientData = patient as {
+              patient_id: string;
+              patient_name: string | null;
+              phone: string | null;
+              last_visit: string | null;
+              last_treatment: string | null;
+              last_intent: string | null;
+              notes: string | null;
+              last_call_date: string | null;
             };
-            console.log("✅ Found patient context for caller:", fromNumber);
-            break;
+            
+            if (patientData.patient_name) {
+              patientContext = {
+                name: patientData.patient_name,
+                last_visit: patientData.last_visit, // date of last booked appointment
+                last_treatment: patientData.last_treatment, // service from last booking
+                last_intent: patientData.last_intent, // what they asked about last time (if no booking)
+                notes: patientData.notes,
+                last_call_date: patientData.last_call_date,
+              };
+              console.log("✅ Found patient context for caller:", fromNumber);
+              break;
+            }
           }
         }
       } catch (patientError) {
