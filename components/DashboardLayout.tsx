@@ -117,20 +117,22 @@ export default function DashboardLayout({
             >
               <Coyalogo src="/logo.gif" size={60} />
             </motion.div>
-            <div className="flex items-center gap-2">
-              <span 
-                key={accentColor}
-                className="font-semibold text-sm bg-clip-text text-transparent"
-                style={{
-                  background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                COYA AI
-              </span>
-              <span className="beta-badge" style={{ color: accentColor }}>Beta</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span 
+                  key={accentColor}
+                  className="font-bold text-xl sm:text-2xl bg-clip-text text-transparent leading-tight"
+                  style={{
+                    background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  COYA AI
+                </span>
+                <span className="beta-badge" style={{ color: accentColor }}>Beta</span>
+              </div>
             </div>
           </div>
           <motion.button
@@ -365,10 +367,37 @@ function SidebarContent({
             animate={showPremium ? { opacity: 1, x: 0 } : {}}
             transition={showPremium ? { delay: 0.3 } : {}}
           >
-            <div className="flex items-center gap-2">
-              <span 
-                key={accentColor}
-                className="font-bold text-lg bg-clip-text text-transparent"
+            <div className="flex flex-col gap-1 w-full">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span 
+                  key={accentColor}
+                  className="font-bold text-2xl sm:text-3xl bg-clip-text text-transparent leading-tight"
+                  style={{
+                    background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  COYA AI
+                </span>
+                <motion.span
+                  initial={showPremium ? { scale: 0 } : false}
+                  animate={showPremium ? { scale: 1 } : {}}
+                  transition={showPremium ? { type: "spring", delay: 0.4 } : {}}
+                  whileHover={showPremium ? { scale: 1.05 } : {}}
+                  className="beta-badge"
+                  style={{ color: accentColor }}
+                >
+                  Beta
+                </motion.span>
+              </div>
+              <motion.div
+                key={`live-${accentColor}`}
+                initial={showPremium ? { opacity: 0 } : false}
+                animate={showPremium ? { opacity: 1 } : {}}
+                transition={showPremium ? { delay: 0.5 } : {}}
+                className="text-sm font-medium bg-clip-text text-transparent"
                 style={{
                   background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
                   WebkitBackgroundClip: "text",
@@ -376,34 +405,9 @@ function SidebarContent({
                   backgroundClip: "text",
                 }}
               >
-                COYA AI
-              </span>
-              <motion.span
-                initial={showPremium ? { scale: 0 } : false}
-                animate={showPremium ? { scale: 1 } : {}}
-                transition={showPremium ? { type: "spring", delay: 0.4 } : {}}
-                whileHover={showPremium ? { scale: 1.05 } : {}}
-                className="beta-badge"
-                style={{ color: accentColor }}
-              >
-                Beta
-              </motion.span>
+                Live Receptionist
+              </motion.div>
             </div>
-            <motion.div
-              key={`live-${accentColor}`}
-              initial={showPremium ? { opacity: 0 } : false}
-              animate={showPremium ? { opacity: 1 } : {}}
-              transition={showPremium ? { delay: 0.5 } : {}}
-              className="text-xs bg-clip-text text-transparent mt-0.5"
-              style={{
-                background: `linear-gradient(to right, ${accentColor}, ${accentColor}DD, ${accentColor})`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              Live Receptionist
-            </motion.div>
           </motion.div>
         </motion.div>
       </motion.div>
