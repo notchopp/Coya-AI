@@ -45,7 +45,9 @@ export function useUserRole(): { role: UserRole; loading: boolean } {
 }
 
 /**
- * Check if user is admin or owner (owner has all admin permissions)
+ * Check if user is admin or owner
+ * IMPORTANT: Owner role has ALL admin permissions - always treat owner the same as admin
+ * This function returns true for both "admin" and "owner" roles
  */
 export function useIsAdmin(): boolean {
   const { role } = useUserRole();
