@@ -9,31 +9,44 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Check if demo is available
-    const { data: availability, error: availError } = await supabaseAdmin.rpc('check_demo_availability');
-    
-    if (availError) {
-      console.error("Error checking availability:", availError);
-      // Check if function doesn't exist (migration not run)
-      if (availError.message?.includes("function") || availError.message?.includes("does not exist")) {
+    // Check if demo is available - STRICT: Only 1 session at a time
+    const { data: activeSessions, error: sessionCheckError } = await supabaseAdmin
+      .from("demo_sessions")
+      .select("id, expires_at, created_at")
+      .eq("is_active", true)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
+
+    if (sessionCheckError) {
+      console.error("Error checking active sessions:", sessionCheckError);
+      // Check if table doesn't exist (migration not run)
+      if (sessionCheckError.message?.includes("relation") || sessionCheckError.message?.includes("does not exist")) {
         return NextResponse.json(
           { 
             error: "Demo system not initialized", 
             message: "Please run the database migration first. See supabase/migrations/add_demo_system.sql",
-            details: availError.message 
+            details: sessionCheckError.message 
           },
           { status: 500 }
         );
       }
-      // Continue anyway - don't block demo creation
     }
-    
-    const availabilityData = availability as any;
-    if (availabilityData && !availabilityData.available && availabilityData.next_available_in > 0) {
+
+    // If there's an active session, calculate wait time
+    if (activeSessions && activeSessions.length > 0) {
+      const activeSession = activeSessions[0] as any;
+      const expiresAt = new Date(activeSession.expires_at);
+      const now = new Date();
+      const waitTimeMs = expiresAt.getTime() - now.getTime();
+      const waitTimeMinutes = Math.ceil(waitTimeMs / (1000 * 60));
+      const waitTimeSeconds = Math.ceil(waitTimeMs / 1000);
+
       return NextResponse.json({
         available: false,
-        nextAvailableIn: availabilityData.next_available_in,
-        message: `Demo in use. Next available in ${availabilityData.next_available_in} minutes.`
+        nextAvailableIn: waitTimeMinutes,
+        nextAvailableInSeconds: waitTimeSeconds,
+        message: `Demo session in progress. Next available in ${waitTimeMinutes} minute${waitTimeMinutes !== 1 ? 's' : ''}.`,
+        expiresAt: activeSession.expires_at,
       }, { status: 429 });
     }
 

@@ -1,14 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Clock } from "lucide-react";
 
 export default function CreateDemo() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [waitTime, setWaitTime] = useState<{ minutes: number; seconds: number } | null>(null);
+
+  // Countdown timer for wait time
+  useEffect(() => {
+    if (!waitTime) return;
+
+    const interval = setInterval(() => {
+      setWaitTime((prev) => {
+        if (!prev) return null;
+        if (prev.seconds <= 1) {
+          if (prev.minutes <= 0) {
+            return null; // Wait time expired, allow retry
+          }
+          return { minutes: prev.minutes - 1, seconds: 59 };
+        }
+        return { minutes: prev.minutes, seconds: prev.seconds - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [waitTime]);
 
   const handleCreate = async () => {
     setLoading(true);
@@ -21,11 +42,16 @@ export default function CreateDemo() {
 
       const data = await response.json();
       
-      if (data.error) {
-        if (data.nextAvailableIn) {
-          alert(`Demo in use. Next available in ${data.nextAvailableIn} minutes.`);
+      if (!response.ok) {
+        if (data.nextAvailableIn !== undefined) {
+          // Set wait time and start countdown
+          const minutes = data.nextAvailableIn;
+          const seconds = data.nextAvailableInSeconds || minutes * 60;
+          setWaitTime({ minutes, seconds });
+          setLoading(false);
+          return;
         } else {
-          alert("Error: " + data.error);
+          alert("Error: " + (data.error || data.message || "Failed to create demo session"));
         }
         setLoading(false);
         return;
@@ -65,6 +91,28 @@ export default function CreateDemo() {
         </div>
 
         <div className="p-6 rounded-xl bg-black border border-white/10 space-y-4">
+          {waitTime && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-lg bg-red-500/20 border border-red-500/30"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-red-400" />
+                <p className="text-sm text-red-400 font-medium">Demo Session In Progress</p>
+              </div>
+              <p className="text-2xl font-bold text-white mb-1">
+                {waitTime.minutes > 0 
+                  ? `${waitTime.minutes}:${waitTime.seconds.toString().padStart(2, "0")}`
+                  : `${waitTime.seconds}s`
+                }
+              </p>
+              <p className="text-xs text-white/60">
+                Next available in {waitTime.minutes > 0 ? `${waitTime.minutes} minute${waitTime.minutes !== 1 ? 's' : ''} and ${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}` : `${waitTime.seconds} second${waitTime.seconds !== 1 ? 's' : ''}`}
+              </p>
+            </motion.div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2">Email (optional)</label>
             <input
@@ -78,13 +126,18 @@ export default function CreateDemo() {
 
           <button
             onClick={handleCreate}
-            disabled={loading}
-            className="w-full px-6 py-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={loading || (waitTime !== null && (waitTime.minutes > 0 || waitTime.seconds > 0))}
+            className="w-full px-6 py-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Creating Demo...
+              </>
+            ) : waitTime && (waitTime.minutes > 0 || waitTime.seconds > 0) ? (
+              <>
+                <Clock className="h-5 w-5" />
+                Wait {waitTime.minutes > 0 ? `${waitTime.minutes}:${waitTime.seconds.toString().padStart(2, "0")}` : `${waitTime.seconds}s`}
               </>
             ) : (
               "Start 1-Hour Demo"

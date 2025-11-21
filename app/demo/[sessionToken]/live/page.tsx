@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Phone, Clock, Calendar, MessageSquare, Loader2, ArrowLeft, FileText } from "lucide-react";
+import { Phone, Clock, Calendar, MessageSquare, Loader2, ArrowLeft, FileText, CheckCircle, X, Bot, UserCircle } from "lucide-react";
+import CallDetailsModal from "@/components/CallDetailsModal";
 
 type Call = {
   id: string;
@@ -16,6 +17,7 @@ type Call = {
   schedule: any;
   status: string | null;
   transcript: string | null;
+  ended_at: string | null;
 };
 
 type Message = {
@@ -43,7 +45,16 @@ export default function DemoLive() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<Message[]>([]);
+  const [showCallDetails, setShowCallDetails] = useState(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  // Find active/live call
+  const liveCall = calls.find(call => 
+    call.status === "in-progress" || 
+    call.status === "in_progress" || 
+    call.status === "active" ||
+    (!call.ended_at && call.status !== "ended" && call.status !== "completed")
+  );
 
   useEffect(() => {
     if (!sessionToken) return;
@@ -160,7 +171,7 @@ export default function DemoLive() {
     // Load existing calls with transcript
     supabase
       .from("calls")
-      .select("id, call_id, started_at, patient_name, last_intent, last_summary, schedule, status, transcript")
+      .select("id, call_id, started_at, patient_name, last_intent, last_summary, schedule, status, transcript, ended_at")
       .eq("business_id", business.id)
       .order("started_at", { ascending: false })
       .limit(20)
@@ -295,14 +306,15 @@ export default function DemoLive() {
     return messages;
   }
 
-  // Load transcript for selected call
+  // Load transcript for live call or selected call
   useEffect(() => {
-    if (!selectedCall || !selectedCall.call_id) {
+    const callToLoad = liveCall || selectedCall;
+    if (!callToLoad || !callToLoad.call_id) {
       setTranscriptMessages([]);
       return;
     }
 
-    const callId = selectedCall.call_id;
+    const callId = callToLoad.call_id;
 
     async function loadTranscript() {
       const supabase = getSupabaseClient();
@@ -319,8 +331,8 @@ export default function DemoLive() {
       if (turn?.transcript_json) {
         const messages = parseTranscriptJson(turn.transcript_json);
         setTranscriptMessages(messages);
-      } else if (selectedCall?.transcript) {
-        const messages = parseTranscript(selectedCall.transcript);
+      } else if (callToLoad?.transcript) {
+        const messages = parseTranscript(callToLoad.transcript);
         setTranscriptMessages(messages);
       } else {
         setTranscriptMessages([]);
@@ -329,10 +341,11 @@ export default function DemoLive() {
 
     loadTranscript();
     
-    // Poll for updates
-    const interval = setInterval(loadTranscript, 2000);
+    // Poll for updates more frequently if it's a live call
+    const pollInterval = liveCall ? 1000 : 2000;
+    const interval = setInterval(loadTranscript, pollInterval);
     return () => clearInterval(interval);
-  }, [selectedCall]);
+  }, [liveCall, selectedCall]);
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -388,100 +401,173 @@ export default function DemoLive() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Live Transcript */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <FileText className="h-5 w-5 text-yellow-500" />
-              <h2 className="text-xl font-bold">Live Transcript</h2>
-            </div>
-            <div className="p-4 rounded-xl bg-black border border-white/10 h-[600px] overflow-y-auto">
-              {selectedCall ? (
-                transcriptMessages.length > 0 ? (
-                  <div className="space-y-4">
-                    {transcriptMessages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[80%] p-3 rounded-lg ${
-                            msg.role === "user"
-                              ? "bg-yellow-500/20 border border-yellow-500/30"
-                              : "bg-white/5 border border-white/10"
-                          }`}
-                        >
-                          <p className="text-sm text-white/80">{msg.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={transcriptEndRef} />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-white/60">Waiting for transcript...</p>
-                  </div>
-                )
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-white/60">Select a call to view transcript</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Call Log & Bookings */}
-          <div className="space-y-6">
+          {/* Call Log - Main Focus */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Call Log */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="h-5 w-5 text-yellow-500" />
-                <h2 className="text-xl font-bold">Call Log</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-yellow-500" />
+                  <h2 className="text-xl font-bold">Call Log</h2>
+                  {liveCall && (
+                    <motion.div
+                      animate={{ opacity: [0.6, 1, 0.6] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                    >
+                      <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                      <span className="text-xs font-medium text-yellow-500">Live</span>
+                    </motion.div>
+                  )}
+                </div>
               </div>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              <div className="space-y-3">
                 {calls.length === 0 ? (
-                  <div className="p-6 rounded-xl bg-black border border-white/10 text-center">
-                    <MessageSquare className="h-8 w-8 mx-auto mb-2 text-white/40" />
-                    <p className="text-sm text-white/60">No calls yet. Call the demo number to get started!</p>
+                  <div className="p-8 rounded-xl bg-black border border-white/10 text-center">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-white/40" />
+                    <p className="text-white/60">No calls yet. Call the demo number to get started!</p>
                   </div>
                 ) : (
-                  calls.map((call) => (
-                    <motion.div
-                      key={call.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      onClick={() => setSelectedCall(call)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-colors ${
-                        selectedCall?.id === call.id
-                          ? "bg-yellow-500/20 border-yellow-500/30"
-                          : "bg-black border-white/10 hover:border-yellow-500/20"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">{call.patient_name || "Anonymous"}</span>
-                        <span className="text-xs text-white/60">
-                          {new Date(call.started_at).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      {call.last_intent && (
-                        <p className="text-xs text-white/70 mb-1">
-                          <span className="text-white/50">Intent: </span>
-                          {call.last_intent}
-                        </p>
-                      )}
-                      {call.last_summary && (
-                        <p className="text-xs text-white/60 line-clamp-2">
-                          {call.last_summary}
-                        </p>
-                      )}
-                      {call.schedule && (
-                        <div className="mt-2 p-1.5 rounded bg-green-500/20 border border-green-500/30 flex items-center gap-1.5">
-                          <Calendar className="h-3 w-3" />
-                          <span className="text-xs">Booked</span>
+                  calls.map((call) => {
+                    const isLive = call.id === liveCall?.id;
+                    const isSelected = selectedCall?.id === call.id;
+                    return (
+                      <motion.div
+                        key={call.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        onClick={() => {
+                          setSelectedCall(call);
+                          setShowCallDetails(true);
+                        }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                          isLive
+                            ? "bg-yellow-500/10 border-yellow-500/30 ring-2 ring-yellow-500/20"
+                            : isSelected
+                            ? "bg-yellow-500/20 border-yellow-500/30"
+                            : "bg-black border-white/10 hover:border-yellow-500/20 hover:bg-yellow-500/5"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-white">
+                                {call.patient_name || "Anonymous"}
+                              </span>
+                              {isLive && (
+                                <motion.span
+                                  animate={{ opacity: [0.6, 1, 0.6] }}
+                                  transition={{ duration: 1.5, repeat: Infinity }}
+                                  className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-500"
+                                >
+                                  Live
+                                </motion.span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/60 mb-2">
+                              {new Date(call.started_at).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </motion.div>
-                  ))
+                        {call.last_intent && (
+                          <div className="mb-2">
+                            <span className="text-xs text-white/50">Intent: </span>
+                            <span className="text-sm text-white/80 font-medium">{call.last_intent}</span>
+                          </div>
+                        )}
+                        {call.last_summary && (
+                          <p className="text-sm text-white/70 line-clamp-2 mb-2">
+                            {call.last_summary}
+                          </p>
+                        )}
+                        {call.schedule && (
+                          <div className="mt-2 p-2 rounded bg-green-500/20 border border-green-500/30 flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-green-400" />
+                            <span className="text-xs text-green-400">Appointment Booked</span>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })
                 )}
+              </div>
+            </div>
+
+            {/* Live Transcript - Only show when there's a live call */}
+            {liveCall && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-xl bg-black border border-yellow-500/30"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="h-5 w-5 text-yellow-500" />
+                  <h2 className="text-xl font-bold">Live Transcript</h2>
+                  <motion.div
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30"
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                    <span className="text-xs font-medium text-yellow-500">Live</span>
+                  </motion.div>
+                </div>
+                <div className="p-4 rounded-lg bg-black/50 border border-white/10 h-[400px] overflow-y-auto">
+                  {transcriptMessages.length > 0 ? (
+                    <div className="space-y-3">
+                      {transcriptMessages.map((msg, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[80%] p-3 rounded-lg ${
+                              msg.role === "user"
+                                ? "bg-blue-500/20 border border-blue-500/30"
+                                : "bg-yellow-500/20 border border-yellow-500/30"
+                            }`}
+                          >
+                            <p className="text-sm text-white/90">{msg.text}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                      <div ref={transcriptEndRef} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-white/60">Waiting for transcript...</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Bookings Sidebar */}
+          <div className="space-y-6">
+            {/* Feature Highlights */}
+            <div className="p-4 rounded-xl bg-black border border-yellow-500/20">
+              <h3 className="text-sm font-semibold text-yellow-500 mb-3">What You're Getting</h3>
+              <div className="space-y-3 text-xs text-white/70">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Real-time call transcripts</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>Automatic appointment booking</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>AI insights & summaries</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>24/7 availability</span>
+                </div>
               </div>
             </div>
 
@@ -522,6 +608,18 @@ export default function DemoLive() {
           </div>
         </div>
       </div>
+
+      {/* Call Details Modal */}
+      {showCallDetails && selectedCall && (
+        <CallDetailsModal
+          call={selectedCall as any}
+          isOpen={showCallDetails}
+          onClose={() => {
+            setShowCallDetails(false);
+            setSelectedCall(null);
+          }}
+        />
+      )}
     </div>
   );
 }
