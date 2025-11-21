@@ -23,6 +23,21 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 1. Go to: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com
 2. Click "Enable"
 
+## Fix "Access Blocked" Error (Testing Mode)
+
+If you see "Access blocked: coya-ai.vercel.app has not completed the Google verification process":
+
+1. Go to: https://console.cloud.google.com/apis/credentials
+2. Click on your OAuth 2.0 Client ID
+3. Scroll down to "Test users" section
+4. Click "+ ADD USERS"
+5. Add your email address (e.g., `cashcowclinton99@gmail.com`)
+6. Add any other test user emails
+7. Click "SAVE"
+8. Clear browser cache and try again
+
+**Note:** In testing mode, only approved test users can authorize. For production, you'll need to publish and verify your app.
+
 ## Testing the Integration
 
 1. Call `/api/calendar/connect?business_id=YOUR_BUSINESS_ID`
