@@ -3,6 +3,70 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getCalendarProvider, ensureFreshToken, type CalendarConnection } from "@/lib/calendar-providers";
 
 /**
+ * Normalizes date input to YYYY-MM-DD format
+ * Handles: day names (Monday, Tuesday, etc.), relative dates, and various date formats
+ */
+function normalizeDate(dateInput: string): string {
+  const dateStr = dateInput.trim();
+  
+  // If already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // Map day names to day indices (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const dayNames: Record<string, number> = {
+    'sunday': 0, 'sun': 0,
+    'monday': 1, 'mon': 1,
+    'tuesday': 2, 'tue': 2, 'tues': 2,
+    'wednesday': 3, 'wed': 3,
+    'thursday': 4, 'thu': 4, 'thur': 4, 'thurs': 4,
+    'friday': 5, 'fri': 5,
+    'saturday': 6, 'sat': 6,
+  };
+  
+  const dayNameLower = dateStr.toLowerCase();
+  
+  // If it's a day name, find the next occurrence
+  if (dayNames.hasOwnProperty(dayNameLower)) {
+    const targetDay = dayNames[dayNameLower];
+    const today = new Date();
+    const currentDay = today.getDay();
+    let daysUntilTarget = targetDay - currentDay;
+    
+    // If the target day has already passed this week, get next week's occurrence
+    if (daysUntilTarget <= 0) {
+      daysUntilTarget += 7;
+    }
+    
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysUntilTarget);
+    
+    // Format as YYYY-MM-DD
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Try to parse various date formats
+  // Handle formats like "November 24th 2025", "Nov 24 2025", "11/24/2025", etc.
+  let parsedDate: Date | null = null;
+  
+  // Try parsing as-is
+  parsedDate = new Date(dateStr);
+  if (!isNaN(parsedDate.getTime())) {
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(parsedDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // If all parsing fails, throw error
+  throw new Error(`Unable to parse date: ${dateStr}`);
+}
+
+/**
  * Vapi Tool: Check Calendar Availability
  * Checks if a time slot is available in the connected calendar (supports Google, Outlook, Calendly)
  */
@@ -93,12 +157,24 @@ export async function POST(request: NextRequest) {
       ? 30 
       : parseInt(String(duration_minutes), 10) || 30;
 
+    // Normalize date input (handles day names, relative dates, etc.)
+    let normalizedDate: string;
+    try {
+      normalizedDate = normalizeDate(date);
+    } catch (error) {
+      console.error("Date normalization error:", error, { date, time });
+      return NextResponse.json(
+        { error: "Invalid date format", details: error instanceof Error ? error.message : String(error) },
+        { status: 400 }
+      );
+    }
+
     // Parse date and time with proper timezone handling
-    // Date should be in format YYYY-MM-DD, time in HH:MM
+    // Date should now be in format YYYY-MM-DD, time in HH:MM
     let startDateTime: Date;
     try {
       // Parse as local time first (add seconds for proper parsing)
-      const dateTimeString = `${date}T${time}:00`;
+      const dateTimeString = `${normalizedDate}T${time}:00`;
       startDateTime = new Date(dateTimeString);
       
       // Validate the date is valid
@@ -113,10 +189,10 @@ export async function POST(request: NextRequest) {
       requestDate.setHours(0, 0, 0, 0);
       
       if (requestDate < now) {
-        throw new Error(`Cannot check availability for past date: ${date}`);
+        throw new Error(`Cannot check availability for past date: ${normalizedDate}`);
       }
     } catch (error) {
-      console.error("Date parsing error:", error, { date, time });
+      console.error("Date parsing error:", error, { originalDate: date, normalizedDate, time });
       return NextResponse.json(
         { error: "Invalid date or time format", details: error instanceof Error ? error.message : String(error) },
         { status: 400 }
@@ -161,7 +237,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       available: isAvailable,
       requested_slot: {
-        date,
+        date: normalizedDate,
         time,
         duration_minutes: duration,
       },
