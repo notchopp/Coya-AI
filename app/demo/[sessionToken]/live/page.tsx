@@ -107,30 +107,24 @@ export default function DemoLive() {
     return () => clearInterval(timer);
   }, [remainingSeconds, router]);
 
-  // Load patients - always use demo business ID
+  // Load patients - use API endpoint to bypass RLS
   useEffect(() => {
-    const DEMO_BUSINESS_ID = "eea1f8b5-f4ed-4141-85c7-c381643ce9df";
-    const supabase = getSupabaseClient();
-    
+    if (!sessionToken) return;
+
     async function loadPatients() {
       try {
-        console.log("🔍 Loading patients for demo business:", DEMO_BUSINESS_ID);
-        const { data: patientsData, error: patientsError } = await (supabase as any)
-          .from("patients")
-          .select("*")
-          .eq("business_id", DEMO_BUSINESS_ID)
-          .order("last_call_date", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .limit(5);
+        console.log("🔍 Loading patients for demo via API");
+        const response = await fetch(`/api/demo/${sessionToken}/patients`);
+        const data = await response.json();
 
-        if (patientsError) {
-          console.error("❌ Error loading patients:", patientsError);
+        if (!response.ok) {
+          console.error("❌ Error loading patients:", data.error);
           setPatients([]);
           return;
         }
 
-        console.log("✅ Loaded patients:", patientsData?.length || 0, patientsData);
-        setPatients(patientsData || []);
+        console.log("✅ Loaded patients:", data.count || 0, data.patients);
+        setPatients(data.patients || []);
       } catch (error) {
         console.error("❌ Exception loading patients:", error);
         setPatients([]);
@@ -139,27 +133,13 @@ export default function DemoLive() {
 
     loadPatients();
     
-    // Subscribe to patient updates
-    const patientsChannel = supabase
-      .channel(`demo-patients-${DEMO_BUSINESS_ID}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "patients",
-          filter: `business_id=eq.${DEMO_BUSINESS_ID}`,
-        },
-        () => {
-          loadPatients();
-        }
-      )
-      .subscribe();
-
+    // Poll for updates every 5 seconds (since we can't use real-time without auth)
+    const interval = setInterval(loadPatients, 5000);
+    
     return () => {
-      supabase.removeChannel(patientsChannel);
+      clearInterval(interval);
     };
-  }, []);
+  }, [sessionToken]);
 
   // Load calls and bookings in real-time
   useEffect(() => {
