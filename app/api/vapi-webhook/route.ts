@@ -1082,9 +1082,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 1️⃣6️⃣ Create/Update Patient Record
+    // 1️⃣6️⃣ Create/Update Patient Record (ONLY AT CALL END)
+    // Only create/update patient when call ends to avoid duplicate records
     // Auto-create or update patient from call data
-    if (phone && business) {
+    if (phone && business && messageType === "end-of-call-report") {
       try {
         // Normalize phone number for lookup
         const normalizedPhone = phone.replace(/[^\d+]/g, '');
@@ -1116,6 +1117,7 @@ export async function POST(request: NextRequest) {
           patient_name: string | null;
           last_intent: string | null;
           last_call_date: string;
+          transcript?: string | null;
           updated_at?: string;
           last_visit?: string;
           last_treatment?: string | null;
@@ -1124,6 +1126,7 @@ export async function POST(request: NextRequest) {
           patient_name: patientName || null,
           last_intent: intent || null,
           last_call_date: message.startedAt ? new Date(message.startedAt).toISOString() : new Date().toISOString(),
+          transcript: businessTranscript || null, // Update transcript column
           updated_at: new Date().toISOString(),
         };
 
@@ -1153,7 +1156,7 @@ export async function POST(request: NextRequest) {
             console.log("✅ Updated patient record:", existingPatient.patient_id);
           }
         } else {
-          // Create new patient
+          // Create new patient (only once at call end)
           const nameParts = (patientName || '').split(' ');
           const { error: insertError } = await (supabaseAdmin
             .from('patients') as any)
@@ -1166,6 +1169,7 @@ export async function POST(request: NextRequest) {
               last_treatment: schedule?.service || schedule?.summary || null,
               last_intent: intent || null,
               last_call_date: message.startedAt ? new Date(message.startedAt).toISOString() : new Date().toISOString(),
+              transcript: businessTranscript || null, // Store transcript on creation
               created_at: new Date().toISOString(),
             });
           
