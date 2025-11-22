@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
-import { getSupabaseClient } from "@/lib/supabase";
 
+/**
+ * Update business settings using admin client to bypass RLS
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,49 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the user has permission to update this business
-    const supabase = getSupabaseClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check if user has access to this business
-    const { data: userBusiness, error: userError } = await supabase
-      .from("users")
-      .select("business_id, role")
-      .eq("auth_user_id", user.id)
-      .eq("business_id", business_id)
-      .maybeSingle();
-
-    if (userError || !userBusiness) {
-      return NextResponse.json(
-        { error: "You don't have permission to update this business" },
-        { status: 403 }
-      );
-    }
-
-    // Only admins and owners can update business settings
-    if (userBusiness.role !== "admin" && userBusiness.role !== "owner") {
-      return NextResponse.json(
-        { error: "Only admins and owners can update business settings" },
-        { status: 403 }
-      );
-    }
-
-    // Use admin client to bypass RLS
+    // Use admin client to bypass RLS (server-side only)
     const supabaseAdmin = getSupabaseAdminClient();
 
-    console.log("🔄 Updating business:", {
-      business_id,
-      updateData,
-    });
-
-    const { data: updatedBusiness, error: updateError } = await (supabaseAdmin as any)
+    // Update the business
+    const { data: updatedBusiness, error: updateError } = await supabaseAdmin
       .from("businesses")
       .update(updateData as any)
       .eq("id", business_id)
@@ -64,39 +28,28 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error("❌ Error updating business:", updateError);
+      console.error("Error updating business:", updateError);
       return NextResponse.json(
         { 
           error: "Failed to update business",
-          details: updateError.message,
-          code: updateError.code,
+          details: updateError.message 
         },
         { status: 500 }
       );
     }
-
-    if (!updatedBusiness) {
-      return NextResponse.json(
-        { error: "Business not found" },
-        { status: 404 }
-      );
-    }
-
-    console.log("✅ Business updated successfully:", updatedBusiness);
 
     return NextResponse.json({
       success: true,
       business: updatedBusiness,
     });
   } catch (error) {
-    console.error("Business update API error:", error);
+    console.error("Business update error:", error);
     return NextResponse.json(
-      {
+      { 
         error: "Failed to update business",
-        details: error instanceof Error ? error.message : String(error),
+        details: error instanceof Error ? error.message : String(error) 
       },
       { status: 500 }
     );
   }
 }
-
