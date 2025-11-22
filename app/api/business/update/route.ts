@@ -20,9 +20,11 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     // Update the business
+    // @ts-ignore - Supabase types don't support dynamic update data
     const { data: updatedBusiness, error: updateError } = await supabaseAdmin
       .from("businesses")
-      .update(updateData as any)
+      // @ts-ignore
+      .update(updateData)
       .eq("id", business_id)
       .select()
       .single();
